@@ -1,2 +1,3 @@
 - [Private diary auth](auth-and-contracts.md) — browser sessions are cookie-based Clerk auth, with all diary data scoped server-side to the signed-in user.
 - [Diary insights scope](diary-insights.md) — calendar and mood analytics intentionally use the complete private diary, independent of list filters.
+- [Diary portability](diary-portability.md) — full backups use authenticated JSON with embedded base64 media; rich text remains local markdown without paid services.

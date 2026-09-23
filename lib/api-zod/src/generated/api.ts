@@ -59,22 +59,30 @@ export const GetDiaryWeeklySummaryResponse = zod.object({
  * Returns the signed-in user's diary entries with optional search and filters.
  * @summary List diary entries
  */
+export const listDiaryEntriesQueryFolderMax = 40;
+
 export const listDiaryEntriesQuerySortDefault = `newest`;
 
 export const ListDiaryEntriesQueryParams = zod.object({
   "q": zod.coerce.string().optional(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']).optional(),
+  "folder": zod.coerce.string().max(listDiaryEntriesQueryFolderMax).optional(),
   "favorite": zod.coerce.boolean().optional(),
   "from": zod.date().optional(),
   "to": zod.date().optional(),
   "sort": zod.enum(['newest', 'oldest']).default(listDiaryEntriesQuerySortDefault)
 })
 
+export const listDiaryEntriesResponseFolderMax = 40;
+
+
+
 export const ListDiaryEntriesResponseItem = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(listDiaryEntriesResponseFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -99,6 +107,9 @@ export const ListDiaryEntriesResponse = zod.array(ListDiaryEntriesResponseItem)
 export const createDiaryEntryBodyTitleMax = 160;
 
 
+export const createDiaryEntryBodyFolderDefault = `Shaxsiy`;
+export const createDiaryEntryBodyFolderMax = 40;
+
 export const createDiaryEntryBodyTagsItemMax = 32;
 
 export const createDiaryEntryBodyTagsMax = 8;
@@ -109,16 +120,22 @@ export const CreateDiaryEntryBody = zod.object({
   "title": zod.string().min(1).max(createDiaryEntryBodyTitleMax),
   "content": zod.string().min(1),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(createDiaryEntryBodyFolderMax).default(createDiaryEntryBodyFolderDefault),
   "tags": zod.array(zod.string().max(createDiaryEntryBodyTagsItemMax)).max(createDiaryEntryBodyTagsMax).optional(),
   "favorite": zod.boolean().default(createDiaryEntryBodyFavoriteDefault),
   "entryDate": zod.coerce.date()
 })
+
+export const createDiaryEntryResponseFolderMax = 40;
+
+
 
 export const CreateDiaryEntryResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(createDiaryEntryResponseFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -146,11 +163,16 @@ export const GetDiaryEntryParams = zod.object({
   "id": zod.coerce.number().int().min(1)
 })
 
+export const getDiaryEntryResponseFolderMax = 40;
+
+
+
 export const GetDiaryEntryResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(getDiaryEntryResponseFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -181,6 +203,8 @@ export const UpdateDiaryEntryParams = zod.object({
 export const updateDiaryEntryBodyTitleMax = 160;
 
 
+export const updateDiaryEntryBodyFolderMax = 40;
+
 export const updateDiaryEntryBodyTagsItemMax = 32;
 
 export const updateDiaryEntryBodyTagsMax = 8;
@@ -191,16 +215,22 @@ export const UpdateDiaryEntryBody = zod.object({
   "title": zod.string().min(1).max(updateDiaryEntryBodyTitleMax).optional(),
   "content": zod.string().min(1).optional(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']).optional(),
+  "folder": zod.string().min(1).max(updateDiaryEntryBodyFolderMax).optional(),
   "tags": zod.array(zod.string().max(updateDiaryEntryBodyTagsItemMax)).max(updateDiaryEntryBodyTagsMax).optional(),
   "favorite": zod.boolean().optional(),
   "entryDate": zod.coerce.date().optional()
 })
+
+export const updateDiaryEntryResponseFolderMax = 40;
+
+
 
 export const UpdateDiaryEntryResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(updateDiaryEntryResponseFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -245,11 +275,16 @@ export const ToggleDiaryEntryFavoriteBody = zod.object({
   "favorite": zod.boolean()
 })
 
+export const toggleDiaryEntryFavoriteResponseFolderMax = 40;
+
+
+
 export const ToggleDiaryEntryFavoriteResponse = zod.object({
   "id": zod.number().int(),
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(toggleDiaryEntryFavoriteResponseFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -379,6 +414,10 @@ export const ExportDiaryQueryParams = zod.object({
   "tag": zod.coerce.string().optional()
 })
 
+export const exportDiaryResponseEntriesItemFolderMax = 40;
+
+
+
 export const ExportDiaryResponse = zod.object({
   "exportedAt": zod.coerce.date(),
   "entries": zod.array(zod.object({
@@ -386,6 +425,7 @@ export const ExportDiaryResponse = zod.object({
   "title": zod.string(),
   "content": zod.string(),
   "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(exportDiaryResponseEntriesItemFolderMax),
   "tags": zod.array(zod.string()),
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
@@ -401,6 +441,105 @@ export const ExportDiaryResponse = zod.object({
   "createdAt": zod.coerce.date()
 }))
 }))
+})
+
+
+/**
+ * Returns all private entries and embedded media for the signed-in user as JSON.
+ * @summary Download a complete diary backup
+ */
+
+export const downloadDiaryBackupResponseEntriesItemTitleMax = 160;
+
+export const downloadDiaryBackupResponseEntriesItemFolderMax = 40;
+
+export const downloadDiaryBackupResponseEntriesItemTagsItemMax = 32;
+
+export const downloadDiaryBackupResponseEntriesItemTagsMax = 8;
+
+export const downloadDiaryBackupResponseEntriesItemPhotosItemFileNameMax = 180;
+
+export const downloadDiaryBackupResponseEntriesItemPhotosItemSizeMin = 0;
+
+export const downloadDiaryBackupResponseEntriesItemPhotosMax = 8;
+
+
+
+export const DownloadDiaryBackupResponse = zod.object({
+  "version": zod.number().int().min(1),
+  "exportedAt": zod.coerce.date(),
+  "entries": zod.array(zod.object({
+  "title": zod.string().min(1).max(downloadDiaryBackupResponseEntriesItemTitleMax),
+  "content": zod.string(),
+  "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(downloadDiaryBackupResponseEntriesItemFolderMax),
+  "tags": zod.array(zod.string().max(downloadDiaryBackupResponseEntriesItemTagsItemMax)).max(downloadDiaryBackupResponseEntriesItemTagsMax),
+  "favorite": zod.boolean(),
+  "entryDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional(),
+  "photos": zod.array(zod.object({
+  "fileName": zod.string().max(downloadDiaryBackupResponseEntriesItemPhotosItemFileNameMax),
+  "contentType": zod.string(),
+  "size": zod.number().int().min(downloadDiaryBackupResponseEntriesItemPhotosItemSizeMin),
+  "data": zod.string().describe('Base64-encoded private media bytes')
+})).max(downloadDiaryBackupResponseEntriesItemPhotosMax)
+}))
+})
+
+
+/**
+ * Replaces the signed-in user's diary with a validated JSON backup.
+ * @summary Restore a complete diary backup
+ */
+
+export const restoreDiaryBackupBodyEntriesItemTitleMax = 160;
+
+export const restoreDiaryBackupBodyEntriesItemFolderMax = 40;
+
+export const restoreDiaryBackupBodyEntriesItemTagsItemMax = 32;
+
+export const restoreDiaryBackupBodyEntriesItemTagsMax = 8;
+
+export const restoreDiaryBackupBodyEntriesItemPhotosItemFileNameMax = 180;
+
+export const restoreDiaryBackupBodyEntriesItemPhotosItemSizeMin = 0;
+
+export const restoreDiaryBackupBodyEntriesItemPhotosMax = 8;
+
+
+
+export const RestoreDiaryBackupBody = zod.object({
+  "version": zod.number().int().min(1),
+  "exportedAt": zod.coerce.date(),
+  "entries": zod.array(zod.object({
+  "title": zod.string().min(1).max(restoreDiaryBackupBodyEntriesItemTitleMax),
+  "content": zod.string(),
+  "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "folder": zod.string().min(1).max(restoreDiaryBackupBodyEntriesItemFolderMax),
+  "tags": zod.array(zod.string().max(restoreDiaryBackupBodyEntriesItemTagsItemMax)).max(restoreDiaryBackupBodyEntriesItemTagsMax),
+  "favorite": zod.boolean(),
+  "entryDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional(),
+  "photos": zod.array(zod.object({
+  "fileName": zod.string().max(restoreDiaryBackupBodyEntriesItemPhotosItemFileNameMax),
+  "contentType": zod.string(),
+  "size": zod.number().int().min(restoreDiaryBackupBodyEntriesItemPhotosItemSizeMin),
+  "data": zod.string().describe('Base64-encoded private media bytes')
+})).max(restoreDiaryBackupBodyEntriesItemPhotosMax)
+}))
+})
+
+export const restoreDiaryBackupResponseEntriesRestoredMin = 0;
+
+export const restoreDiaryBackupResponsePhotosRestoredMin = 0;
+
+
+
+export const RestoreDiaryBackupResponse = zod.object({
+  "entriesRestored": zod.number().int().min(restoreDiaryBackupResponseEntriesRestoredMin),
+  "photosRestored": zod.number().int().min(restoreDiaryBackupResponsePhotosRestoredMin)
 })
 
 

@@ -18,6 +18,7 @@ export const diaryEntriesTable = pgTable("diary_entries", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   mood: diaryMoodEnum("mood").notNull(),
+  folder: text("folder").notNull().default("Shaxsiy"),
   tags: text("tags").array().notNull().default([]),
   favorite: boolean("favorite").notNull().default(false),
   entryDate: date("entry_date", { mode: "string" }).notNull(),

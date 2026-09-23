@@ -11,6 +11,10 @@ import type { Mood } from './mood';
 export type ListDiaryEntriesParams = {
 q?: string;
 mood?: Mood;
+/**
+ * @maxLength 40
+ */
+folder?: string;
 favorite?: boolean;
 from?: Date;
 to?: Date;

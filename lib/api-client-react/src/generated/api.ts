@@ -21,6 +21,7 @@ import type {
 
 import type {
   BadRequestResponse,
+  DiaryBackup,
   DiaryEntry,
   DiaryEntryInput,
   DiaryEntryUpdate,
@@ -36,6 +37,7 @@ import type {
   NotFoundResponse,
   PinInput,
   PinVerification,
+  RestoreDiaryBackupResult,
   UnauthorizedResponse
 } from './api.schemas';
 
@@ -1452,4 +1454,171 @@ export function useExportDiary<TData = Awaited<ReturnType<typeof exportDiary>>, 
 
 
 
+
+export const getDownloadDiaryBackupUrl = () => {
+
+
+
+
+  return `/api/diary/backup`
+}
+
+/**
+ * Returns all private entries and embedded media for the signed-in user as JSON.
+ * @summary Download a complete diary backup
+ */
+export const downloadDiaryBackup = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiaryBackup> => {
+
+  return customFetch<DiaryBackup>(getDownloadDiaryBackupUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadDiaryBackupQueryKey = () => {
+    return [
+    `/api/diary/backup`
+    ] as const;
+    }
+
+
+export const getDownloadDiaryBackupQueryOptions = <TData = Awaited<ReturnType<typeof downloadDiaryBackup>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadDiaryBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadDiaryBackupQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadDiaryBackup>>> = ({ signal }) => downloadDiaryBackup({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadDiaryBackup>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadDiaryBackupQueryResult = NonNullable<Awaited<ReturnType<typeof downloadDiaryBackup>>>
+export type DownloadDiaryBackupQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Download a complete diary backup
+ */
+
+export function useDownloadDiaryBackup<TData = Awaited<ReturnType<typeof downloadDiaryBackup>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadDiaryBackup>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadDiaryBackupQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRestoreDiaryBackupUrl = () => {
+
+
+
+
+  return `/api/diary/backup/restore`
+}
+
+/**
+ * Replaces the signed-in user's diary with a validated JSON backup.
+ * @summary Restore a complete diary backup
+ */
+export const restoreDiaryBackup = async (diaryBackup: DiaryBackup, options?: Parameters<typeof customFetch>[1]): Promise<RestoreDiaryBackupResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RestoreDiaryBackupResult>(getRestoreDiaryBackupUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(diaryBackup)
+  }
+);}
+
+
+
+
+
+export const getRestoreDiaryBackupMutationKey = () => ['restoreDiaryBackup'] as const;
+
+export const getRestoreDiaryBackupMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDiaryBackup>>, TError,RestoreDiaryBackupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreDiaryBackup>>, TError,RestoreDiaryBackupMutationVariables, TContext> => {
+
+const mutationKey = getRestoreDiaryBackupMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreDiaryBackup>>, RestoreDiaryBackupMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  restoreDiaryBackup(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreDiaryBackupMutationResult = NonNullable<Awaited<ReturnType<typeof restoreDiaryBackup>>>
+    export type RestoreDiaryBackupMutationBody = BodyType<DiaryBackup>
+    export type RestoreDiaryBackupMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type RestoreDiaryBackupMutationVariables = {data: BodyType<DiaryBackup>}
+
+    /**
+ * @summary Restore a complete diary backup
+ */
+export const useRestoreDiaryBackup = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreDiaryBackup>>, TError,RestoreDiaryBackupMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof restoreDiaryBackup>>,
+        TError,
+        RestoreDiaryBackupMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRestoreDiaryBackupMutationOptions(options));
+    }
 

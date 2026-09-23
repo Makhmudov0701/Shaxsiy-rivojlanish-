@@ -1,9 +1,10 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BookOpen, Heart, LogOut, Moon, Plus, Search, Settings, Sparkles, Sun } from 'lucide-react';
+import { BookOpen, LogOut, Moon, Plus, Search, Settings, Sparkles, Star, Sun } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
+import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } from '@/components/rich-text';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -80,22 +81,28 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
         <div className="mb-5 flex items-start justify-between gap-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{formatEntryDate(entry.entryDate)}</span>
           <button type="button" onClick={() => onFavorite(entry)} disabled={busyFavorite} className={`grid size-8 shrink-0 place-items-center rounded-full border transition-all duration-200 ${entry.favorite ? 'border-[#d9a441] bg-[#f8e9bf] text-[#a66a13]' : 'border-border text-muted-foreground hover:border-[#d9a441] hover:text-[#a66a13]'}`} aria-label={entry.favorite ? 'Sevimlilardan olib tashlash' : 'Sevimlilarga qo‘shish'} data-testid={`button-favorite-${entry.id}`}>
-            <Heart size={15} fill={entry.favorite ? 'currentColor' : 'none'} className={`transition-transform ${busyFavorite ? 'scale-75 opacity-50' : 'group-hover:scale-110'}`} />
+            <Star size={15} fill={entry.favorite ? 'currentColor' : 'none'} className={`transition-transform ${busyFavorite ? 'scale-75 opacity-50' : 'group-hover:scale-110'}`} />
           </button>
         </div>
         <Link href={`/entry/${entry.id}`} className="block" data-testid={`link-entry-${entry.id}`}>
           <h3 className="line-clamp-2 font-serif text-[26px] leading-[1.04] tracking-[-0.025em] text-foreground transition-colors group-hover:text-[#6c4c21]">{entry.title}</h3>
-          <p className="mt-3 line-clamp-3 text-[13px] leading-[1.65] text-muted-foreground">{excerpt}</p>
+          <p className="mt-3 line-clamp-3 text-[13px] leading-[1.65] text-muted-foreground">{plainTextFromRichText(excerpt)}</p>
         </Link>
       </div>
       <div className="mt-6 flex items-end justify-between gap-3">
-        <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5">
           <MoodBadge mood={entry.mood} small />
+            <span className="rounded-full bg-[#eee8d5] px-2 py-1 text-[10px] text-[#756d5e]">{entry.folder}</span>
           {entry.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">#{tag}</span>)}
         </div>
         <button type="button" onClick={() => onDelete(entry)} className="text-muted-foreground/50 opacity-100 transition-all hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100" aria-label={`${entry.title} yozuvini o‘chirish`} data-testid={`button-delete-${entry.id}`}>
           <span className="font-mono text-[9px] uppercase tracking-[0.12em]">o‘chirish</span>
         </button>
+      </div>
+      <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+        <span>{richTextWordCount(entry.content)} ta so‘z</span>
+        <span>•</span>
+        <span>{estimatedReadingMinutes(entry.content)} daqiqa o‘qish</span>
       </div>
     </article>
   );

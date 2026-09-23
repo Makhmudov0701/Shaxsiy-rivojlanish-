@@ -37,6 +37,11 @@ export interface DiaryEntry {
   title: string;
   content: string;
   mood: Mood;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder: string;
   tags: string[];
   favorite: boolean;
   entryDate: string;
@@ -68,6 +73,11 @@ export interface DiaryEntryInput {
   content: string;
   mood: Mood;
   /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder?: string;
+  /**
      * @maxItems 8
      * @items.maxLength 32
      */
@@ -85,6 +95,11 @@ export interface DiaryEntryUpdate {
   /** @minLength 1 */
   content?: string;
   mood?: Mood;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder?: string;
   /**
      * @maxItems 8
      * @items.maxLength 32
@@ -128,6 +143,56 @@ export interface Error {
   error: string;
 }
 
+export interface DiaryBackupPhoto {
+  /** @maxLength 180 */
+  fileName: string;
+  contentType: string;
+  /** @minimum 0 */
+  size: number;
+  /** Base64-encoded private media bytes */
+  data: string;
+}
+
+export interface DiaryBackupEntry {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  content: string;
+  mood: Mood;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder: string;
+  /**
+     * @maxItems 8
+     * @items.maxLength 32
+     */
+  tags: string[];
+  favorite: boolean;
+  entryDate: string;
+  createdAt?: string;
+  updatedAt?: string;
+  /** @maxItems 8 */
+  photos: DiaryBackupPhoto[];
+}
+
+export interface DiaryBackup {
+  /** @minimum 1 */
+  version: number;
+  exportedAt: string;
+  entries: DiaryBackupEntry[];
+}
+
+export interface RestoreDiaryBackupResult {
+  /** @minimum 0 */
+  entriesRestored: number;
+  /** @minimum 0 */
+  photosRestored: number;
+}
+
 /**
  * Invalid request
  */
@@ -146,6 +211,10 @@ export type NotFoundResponse = Error;
 export type ListDiaryEntriesParams = {
 q?: string;
 mood?: Mood;
+/**
+ * @maxLength 40
+ */
+folder?: string;
 favorite?: boolean;
 from?: string;
 to?: string;

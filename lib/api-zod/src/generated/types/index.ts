@@ -7,6 +7,9 @@
  */
 
 export * from './badRequestResponse';
+export * from './diaryBackup';
+export * from './diaryBackupEntry';
+export * from './diaryBackupPhoto';
 export * from './diaryEntry';
 export * from './diaryEntryInput';
 export * from './diaryEntryUpdate';
@@ -27,4 +30,5 @@ export * from './mood';
 export * from './notFoundResponse';
 export * from './pinInput';
 export * from './pinVerification';
+export * from './restoreDiaryBackupResult';
 export * from './unauthorizedResponse';

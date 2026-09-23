@@ -73,6 +73,12 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/Mood"
+        - name: folder
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 40
         - name: favorite
           in: query
           required: false
@@ -413,6 +419,44 @@ paths:
                 format: binary
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /diary/backup:
+    get:
+      operationId: downloadDiaryBackup
+      tags: [diary]
+      summary: Download a complete diary backup
+      description: Returns all private entries and embedded media for the signed-in user as JSON.
+      responses:
+        "200":
+          description: Complete diary backup
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryBackup"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/backup/restore:
+    post:
+      operationId: restoreDiaryBackup
+      tags: [diary]
+      summary: Restore a complete diary backup
+      description: Replaces the signed-in user's diary with a validated JSON backup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiaryBackup"
+      responses:
+        "200":
+          description: Restore result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestoreDiaryBackupResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   parameters:
     DiaryEntryId:
@@ -454,7 +498,7 @@ components:
       enum: [peaceful, happy, grateful, energized, thoughtful, sad, anxious]
     DiaryEntry:
       type: object
-      required: [id, title, content, mood, tags, favorite, entryDate, createdAt, updatedAt, photos]
+      required: [id, title, content, mood, folder, tags, favorite, entryDate, createdAt, updatedAt, photos]
       properties:
         id:
           type: integer
@@ -464,6 +508,10 @@ components:
           type: string
         mood:
           $ref: "#/components/schemas/Mood"
+        folder:
+          type: string
+          minLength: 1
+          maxLength: 40
         tags:
           type: array
           items:
@@ -534,6 +582,11 @@ components:
           minLength: 1
         mood:
           $ref: "#/components/schemas/Mood"
+        folder:
+          type: string
+          minLength: 1
+          maxLength: 40
+          default: Shaxsiy
         tags:
           type: array
           maxItems: 8
@@ -558,6 +611,10 @@ components:
           minLength: 1
         mood:
           $ref: "#/components/schemas/Mood"
+        folder:
+          type: string
+          minLength: 1
+          maxLength: 40
         tags:
           type: array
           maxItems: 8
@@ -630,4 +687,81 @@ components:
       properties:
         error:
           type: string
+    DiaryBackupPhoto:
+      type: object
+      required: [fileName, contentType, size, data]
+      properties:
+        fileName:
+          type: string
+          maxLength: 180
+        contentType:
+          type: string
+        size:
+          type: integer
+          minimum: 0
+        data:
+          type: string
+          description: Base64-encoded private media bytes
+    DiaryBackupEntry:
+      type: object
+      required: [title, content, mood, folder, tags, favorite, entryDate, photos]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        content:
+          type: string
+        mood:
+          $ref: "#/components/schemas/Mood"
+        folder:
+          type: string
+          minLength: 1
+          maxLength: 40
+        tags:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            maxLength: 32
+        favorite:
+          type: boolean
+        entryDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        photos:
+          type: array
+          maxItems: 8
+          items:
+            $ref: "#/components/schemas/DiaryBackupPhoto"
+    DiaryBackup:
+      type: object
+      required: [version, exportedAt, entries]
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        exportedAt:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiaryBackupEntry"
+    RestoreDiaryBackupResult:
+      type: object
+      required: [entriesRestored, photosRestored]
+      properties:
+        entriesRestored:
+          type: integer
+          minimum: 0
+        photosRestored:
+          type: integer
+          minimum: 0
 

@@ -223,7 +223,7 @@ protectedRouter.get("/diary/entries", async (req, res): Promise<void> => {
     return;
   }
 
-  const { q, mood, favorite, from, to, sort } = parsed.data;
+  const { q, mood, folder, favorite, from, to, sort } = parsed.data;
   const filters = [eq(diaryEntriesTable.userId, userId)];
 
   if (q) {
@@ -240,6 +240,7 @@ protectedRouter.get("/diary/entries", async (req, res): Promise<void> => {
     );
   }
   if (mood) filters.push(eq(diaryEntriesTable.mood, mood));
+  if (folder) filters.push(eq(diaryEntriesTable.folder, folder.trim()));
   if (favorite !== undefined) filters.push(eq(diaryEntriesTable.favorite, favorite));
   if (from) filters.push(gte(diaryEntriesTable.entryDate, dateOnly(from)));
   if (to) filters.push(lte(diaryEntriesTable.entryDate, dateOnly(to)));
@@ -268,6 +269,7 @@ protectedRouter.post("/diary/entries", async (req, res): Promise<void> => {
       title: parsed.data.title,
       content: parsed.data.content,
       mood: parsed.data.mood,
+      folder: parsed.data.folder,
       tags: parsed.data.tags ?? [],
       favorite: parsed.data.favorite,
       entryDate: dateOnly(parsed.data.entryDate),

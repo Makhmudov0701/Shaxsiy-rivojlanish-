@@ -17,6 +17,11 @@ export interface DiaryEntryUpdate {
   content?: string;
   mood?: Mood;
   /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder?: string;
+  /**
      * @maxItems 8
      * @items.maxLength 32
      */

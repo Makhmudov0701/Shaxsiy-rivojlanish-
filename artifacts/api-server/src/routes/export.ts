@@ -1,7 +1,13 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
 import { db, diaryEntriesTable, diaryPhotosTable } from "@workspace/db";
-import { ExportDiaryQueryParams, ExportDiaryResponse } from "@workspace/api-zod";
+import {
+  DownloadDiaryBackupResponse,
+  ExportDiaryQueryParams,
+  ExportDiaryResponse,
+  RestoreDiaryBackupBody,
+  RestoreDiaryBackupResponse,
+} from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -16,6 +22,14 @@ function userIdFrom(res: { locals: { userId?: string } }): string {
 
 function dateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
+}
+
+const MAX_BACKUP_PHOTO_BYTES = 5 * 1024 * 1024;
+const MAX_BACKUP_BYTES = 50 * 1024 * 1024;
+const ALLOWED_BACKUP_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+
+function cleanBackupFileName(value: string): string {
+  return decodeURIComponent(value).replace(/[\\/:*?"<>|]/g, "-").trim().slice(0, 180) || "surat";
 }
 
 type ExportQuery = {
@@ -76,6 +90,64 @@ async function listExportEntries(userId: string, query: ExportQuery) {
   return entries.map((entry) => ({
     ...entry,
     photos: (byEntry.get(entry.id) ?? []).map((photo) => ({ ...photo, url: `/api/diary/photos/${photo.id}` })),
+  }));
+}
+
+async function listBackupEntries(userId: string) {
+  const entries = await db
+    .select()
+    .from(diaryEntriesTable)
+    .where(eq(diaryEntriesTable.userId, userId))
+    .orderBy(desc(diaryEntriesTable.entryDate), desc(diaryEntriesTable.id));
+  const photos = entries.length
+    ? await db
+        .select()
+        .from(diaryPhotosTable)
+        .where(and(eq(diaryPhotosTable.userId, userId), inArray(diaryPhotosTable.entryId, entries.map((entry) => entry.id))))
+    : [];
+  const byEntry = new Map<number, typeof photos>();
+  for (const photo of photos) byEntry.set(photo.entryId, [...(byEntry.get(photo.entryId) ?? []), photo]);
+
+  return entries.map((entry) => ({
+    title: entry.title,
+    content: entry.content,
+    mood: entry.mood,
+    folder: entry.folder,
+    tags: entry.tags,
+    favorite: entry.favorite,
+    entryDate: entry.entryDate,
+    createdAt: entry.createdAt,
+    updatedAt: entry.updatedAt,
+    photos: (byEntry.get(entry.id) ?? []).map((photo) => ({
+      fileName: photo.fileName,
+      contentType: photo.contentType,
+      size: photo.size,
+      data: photo.data.toString("base64"),
+    })),
+  }));
+}
+
+function decodeBackupEntries(entries: ReturnType<typeof RestoreDiaryBackupBody.parse>["entries"]) {
+  let totalBytes = 0;
+  return entries.map((entry) => ({
+    ...entry,
+    photos: entry.photos.map((photo) => {
+      if (!ALLOWED_BACKUP_TYPES.has(photo.contentType)) {
+        throw new Error("Zaxira ichida qo‘llab-quvvatlanmaydigan surat turi bor.");
+      }
+      if (photo.size > MAX_BACKUP_PHOTO_BYTES || photo.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(photo.data)) {
+        throw new Error("Zaxira ichidagi surat ma’lumotlari noto‘g‘ri.");
+      }
+      const data = Buffer.from(photo.data, "base64");
+      if (data.length !== photo.size) {
+        throw new Error("Zaxira ichidagi surat hajmi mos kelmaydi.");
+      }
+      totalBytes += data.length;
+      if (totalBytes > MAX_BACKUP_BYTES) {
+        throw new Error("Zaxira fayli juda katta.");
+      }
+      return { ...photo, fileName: cleanBackupFileName(photo.fileName), data };
+    }),
   }));
 }
 
@@ -174,6 +246,77 @@ protectedRouter.get("/diary/export", async (req, res): Promise<void> => {
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", 'attachment; filename="shaxsiy-kundalik.pdf"');
   res.send(makePdf(entries));
+});
+
+protectedRouter.get("/diary/backup", async (_req, res): Promise<void> => {
+  const backup = {
+    version: 1,
+    exportedAt: new Date(),
+    entries: await listBackupEntries(userIdFrom(res)),
+  };
+  res.setHeader("Content-Disposition", 'attachment; filename="shaxsiy-kundalik-zaxira.json"');
+  res.json(DownloadDiaryBackupResponse.parse(backup));
+});
+
+protectedRouter.post("/diary/backup/restore", async (req, res): Promise<void> => {
+  const parsed = RestoreDiaryBackupBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Zaxira fayli formati noto‘g‘ri yoki to‘liq emas." });
+    return;
+  }
+
+  let entries;
+  try {
+    entries = decodeBackupEntries(parsed.data.entries);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : "Zaxira faylini tekshirib bo‘lmadi." });
+    return;
+  }
+
+  const userId = userIdFrom(res);
+  let photosRestored = 0;
+  await db.transaction(async (tx) => {
+    await tx.delete(diaryPhotosTable).where(eq(diaryPhotosTable.userId, userId));
+    await tx.delete(diaryEntriesTable).where(eq(diaryEntriesTable.userId, userId));
+
+    for (const entry of entries) {
+      const [restoredEntry] = await tx
+        .insert(diaryEntriesTable)
+        .values({
+          userId,
+          title: entry.title,
+          content: entry.content,
+          mood: entry.mood,
+          folder: entry.folder,
+          tags: entry.tags,
+          favorite: entry.favorite,
+          entryDate: dateOnly(entry.entryDate),
+          ...(entry.createdAt ? { createdAt: entry.createdAt } : {}),
+          ...(entry.updatedAt ? { updatedAt: entry.updatedAt } : {}),
+        })
+        .returning({ id: diaryEntriesTable.id });
+
+      if (!restoredEntry) throw new Error("Yozuvni tiklab bo‘lmadi.");
+      for (const photo of entry.photos) {
+        await tx.insert(diaryPhotosTable).values({
+          entryId: restoredEntry.id,
+          userId,
+          fileName: photo.fileName,
+          contentType: photo.contentType,
+          size: photo.size,
+          data: photo.data,
+        });
+        photosRestored += 1;
+      }
+    }
+  });
+
+  res.json(
+    RestoreDiaryBackupResponse.parse({
+      entriesRestored: entries.length,
+      photosRestored,
+    }),
+  );
 });
 
 router.use(protectedRouter);

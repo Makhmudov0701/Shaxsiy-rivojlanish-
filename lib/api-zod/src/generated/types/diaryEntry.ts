@@ -13,6 +13,11 @@ export interface DiaryEntry {
   title: string;
   content: string;
   mood: Mood;
+  /**
+     * @minLength 1
+     * @maxLength 40
+     */
+  folder: string;
   tags: string[];
   favorite: boolean;
   entryDate: Date;
