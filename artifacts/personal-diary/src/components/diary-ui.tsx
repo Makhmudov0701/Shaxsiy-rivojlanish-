@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BookOpen, CalendarCheck2, LogOut, LockKeyhole, Moon, Plus, Search, Settings, Sparkles, Star, Sun } from 'lucide-react';
+import { BarChart3, BookOpen, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, FolderOpen, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Sparkles, Star, Sun, Timer, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -108,57 +108,143 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
   );
 }
 
+export type PortalView = 'entries' | 'calendar' | 'folders' | 'analytics';
+
+export function portalViewFromLocation(location: string): PortalView {
+  const query = location.split('?')[1]?.split('#')[0] ?? '';
+  const view = new URLSearchParams(query).get('view');
+  return view === 'calendar' || view === 'folders' || view === 'analytics' ? view : 'entries';
+}
+
+function SidebarNavLink({
+  href,
+  label,
+  icon,
+  active,
+  collapsed,
+  onNavigate,
+  testId,
+}: {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  active: boolean;
+  collapsed: boolean;
+  onNavigate: () => void;
+  testId: string;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      aria-label={label}
+      className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-[12px] transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}
+      data-testid={testId}
+    >
+      <span className={`grid shrink-0 place-items-center rounded-lg ${active ? 'text-sidebar-primary' : 'text-sidebar-foreground/55 group-hover:text-sidebar-foreground'}`}>{icon}</span>
+      <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
+      {active && !collapsed && <span className="ml-auto size-1.5 rounded-full bg-sidebar-primary" />}
+    </Link>
+  );
+}
+
 export function DiaryShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
   const appBasePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
   const firstName = user?.firstName || 'Yozuvchi';
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const pathname = location.split('?')[0];
+  const query = location.split('?')[1]?.split('#')[0] ?? '';
+  const searchParams = new URLSearchParams(query);
+  const portalView = portalViewFromLocation(location);
+  const pomodoroSelected = pathname.startsWith('/entry') && searchParams.get('focus') === 'pomodoro';
+
+  useEffect(() => {
+    setSidebarCollapsed(window.localStorage.getItem('kundalik-sidebar-yig‘iq') === 'ha');
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem('kundalik-sidebar-yig‘iq', sidebarCollapsed ? 'ha' : 'yo‘q');
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    if (!mobileOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileOpen(false);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [mobileOpen]);
+
+  const closeMobile = () => setMobileOpen(false);
+  const mainDiarySelected = (pathname === '/user-portal' && portalView === 'entries') || (pathname.startsWith('/entry') && !pomodoroSelected);
   return (
     <div className="paper-grain min-h-[100dvh] bg-background text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[238px] flex-col justify-between bg-sidebar px-5 py-7 text-sidebar-foreground md:flex">
+      {mobileOpen && <button type="button" onClick={closeMobile} className="fixed inset-0 z-30 bg-[#1f1830]/45 backdrop-blur-[2px] md:hidden" aria-label="Yon menyuni yopish" />}
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col justify-between bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-[width,transform] duration-300 md:translate-x-0 md:shadow-none ${sidebarCollapsed ? 'md:w-[82px]' : 'md:w-[258px]'} ${mobileOpen ? 'translate-x-0' : ''}`}>
         <div>
-          <LogoMark />
-          <div className="mt-16">
-            <p className="mb-3 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45">Sahifalarim</p>
+          <div className={`flex items-center ${sidebarCollapsed ? 'md:justify-center' : 'justify-between'}`}>
+            <LogoMark compact={sidebarCollapsed} />
+            <button type="button" onClick={() => setMobileOpen(false)} className="grid size-9 place-items-center rounded-xl text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden" aria-label="Yon menyuni yopish" title="Yon menyuni yopish"><X size={17} /></button>
+            <button type="button" onClick={() => setSidebarCollapsed((value) => !value)} className="hidden size-9 place-items-center rounded-xl text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:grid" aria-label={sidebarCollapsed ? 'Yon menyuni kengaytirish' : 'Yon menyuni yig‘ish'} title={sidebarCollapsed ? 'Yon menyuni kengaytirish' : 'Yon menyuni yig‘ish'}>
+              {sidebarCollapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+            </button>
+          </div>
+          <div className="mt-10">
+            <p className={`mb-3 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Asosiy menyu</p>
             <nav className="space-y-1">
-              <Link href="/user-portal" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/user-portal' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-portal"><BookOpen size={16} strokeWidth={1.8} /> Barcha yozuvlar</Link>
-              <Link href="/entry/new" className="flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" data-testid="link-new-entry"><Plus size={16} strokeWidth={1.8} /> Yangi yozuv</Link>
-              <Link href="/habits" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/habits' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-habits"><CalendarCheck2 size={16} strokeWidth={1.8} /> Odatlar</Link>
-              <Link href="/vault" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/vault' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-vault"><LockKeyhole size={16} strokeWidth={1.8} /> Maxfiy jild</Link>
-              <Link href="/settings" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-settings"><Settings size={16} strokeWidth={1.8} /> Sozlamalar</Link>
+              <SidebarNavLink href="/user-portal" label="Bosh sahifa / Kundalik" icon={<BookOpen size={16} strokeWidth={1.8} />} active={mainDiarySelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-portal" />
+              <SidebarNavLink href="/user-portal?view=calendar" label="Kalendar" icon={<CalendarDays size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'calendar'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-calendar" />
+              <SidebarNavLink href="/user-portal?view=folders" label="Papkalar va Teglar" icon={<FolderOpen size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'folders'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-folders-tags" />
+              <SidebarNavLink href="/user-portal?view=analytics" label="Tahlil va Kayfiyat" icon={<BarChart3 size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'analytics'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-analytics" />
+              <SidebarNavLink href="/entry/new?focus=pomodoro" label="Pomodoro Taymer" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
+              <SidebarNavLink href="/settings" label="Sozlamalar va Zaxira" icon={<Settings size={16} strokeWidth={1.8} />} active={pathname === '/settings'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-settings" />
+            </nav>
+            <p className={`mb-3 mt-8 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Shaxsiy vositalar</p>
+            <nav className="space-y-1">
+              <SidebarNavLink href="/entry/new" label="Yangi yozuv" icon={<Plus size={16} strokeWidth={1.8} />} active={pathname === '/entry/new' && !pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-new-entry" />
+              <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={16} strokeWidth={1.8} />} active={pathname === '/habits'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-habits" />
+              <SidebarNavLink href="/vault" label="Maxfiy jild" icon={<LockKeyhole size={16} strokeWidth={1.8} />} active={pathname === '/vault'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-vault" />
             </nav>
           </div>
         </div>
-        <div>
+        <div className={sidebarCollapsed ? 'md:flex md:flex-col md:items-center' : ''}>
           <div className="mb-4 rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-4">
-            <Sparkles size={16} className="mb-3 text-sidebar-primary" />
-            <p className="font-serif text-[18px] leading-tight text-sidebar-foreground">Siz uchun yaratilgan sokin makon.</p>
+            <Sparkles size={16} className={sidebarCollapsed ? 'md:mb-0' : 'mb-3'} />
+            <p className={sidebarCollapsed ? 'md:hidden' : 'font-serif text-[18px] leading-tight text-sidebar-foreground'}>Siz uchun yaratilgan sokin makon.</p>
           </div>
-          <div className="flex items-center justify-between border-t border-sidebar-border pt-4">
-            <div className="min-w-0">
+          <div className={`flex items-center justify-between border-t border-sidebar-border pt-4 ${sidebarCollapsed ? 'md:flex-col md:gap-3' : ''}`}>
+            <div className={`min-w-0 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
               <p className="truncate text-[12px] font-medium">{firstName}</p>
               <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.12em] text-sidebar-foreground/45">shaxsiy kundalik</p>
             </div>
-            <div className="flex items-center gap-1">
+            <div className={`flex items-center gap-1 ${sidebarCollapsed ? 'md:flex-col' : ''}`}>
               <ThemeToggle />
-              <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="rounded-lg p-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Chiqish" data-testid="button-sign-out"><LogOut size={15} /></button>
+              <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="rounded-lg p-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Chiqish" title="Chiqish" data-testid="button-sign-out"><LogOut size={15} /></button>
             </div>
           </div>
         </div>
       </aside>
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border/70 bg-background/90 px-5 py-4 backdrop-blur md:hidden">
-        <LogoMark compact />
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur md:hidden">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setMobileOpen(true)} className="grid size-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Yon menyuni ochish" title="Yon menyuni ochish" data-testid="button-mobile-menu"><Menu size={18} /></button>
+          <LogoMark compact />
+        </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/settings" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Sozlamalar" data-testid="link-mobile-settings"><Settings size={17} /></Link>
-          <Link href="/habits" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Odatlar" data-testid="link-mobile-habits"><CalendarCheck2 size={17} /></Link>
-          <Link href="/vault" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Maxfiy jild" data-testid="link-mobile-vault"><LockKeyhole size={17} /></Link>
-          <Link href="/user-portal" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Yozuvlar" data-testid="link-mobile-portal"><Search size={17} /></Link>
           <Link href="/entry/new" className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground" aria-label="Yangi yozuv" data-testid="link-mobile-new"><Plus size={17} /></Link>
         </div>
       </header>
-      <main className="min-h-[100dvh] md:pl-[238px]">{children}</main>
+      <main className={`min-h-[100dvh] transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-[82px]' : 'md:pl-[258px]'}`}>{children}</main>
     </div>
   );
 }

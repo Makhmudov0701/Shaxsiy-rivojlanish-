@@ -31,7 +31,7 @@ import {
   uploadDiaryPhoto,
 } from '@workspace/api-client-react';
 import type { DiaryEntry, DiaryPhoto, DiaryWeeklySummary } from '@workspace/api-client-react';
-import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta } from '@/components/diary-ui';
+import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta, portalViewFromLocation, type PortalView } from '@/components/diary-ui';
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
@@ -116,6 +116,83 @@ function WeeklySummaryCard({ summary, isLoading, isError, onRetry }: { summary?:
   return <section className="mt-8 overflow-hidden rounded-[24px] border border-[#d7c795] bg-[#faf3df] dark:border-[#5e5037] dark:bg-[#302a20]" data-testid="weekly-summary-card"><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-3"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Haftalik xulosa</p><span className="rounded-full border border-[#d8c38d] bg-[#f4e4b6] px-2 py-1 font-mono text-[9px] uppercase tracking-[.08em] text-[#8f601a]">Sokin tahlil</span></div><p className="mt-4 font-serif text-[clamp(1.45rem,3vw,2.1rem)] leading-tight text-primary">{summary.summary}</p><div className="mt-4 rounded-2xl border border-[#e2d4ad] bg-card/55 p-4 dark:border-[#5a4d38]"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9a6b23]">Yaxshi jihat</p><p className="mt-2 text-[13px] leading-relaxed text-foreground">{summary.insight}</p></div></div><div className="flex shrink-0 gap-2 text-center"><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.entryCount}</p><p className="mt-1 text-[10px] text-muted-foreground">yozuv</p></div><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.activeDays}</p><p className="mt-1 text-[10px] text-muted-foreground">faol kun</p></div></div></div><div className="flex flex-wrap items-center gap-3 border-t border-[#e2d4ad] px-5 py-3.5 text-[10px] text-muted-foreground dark:border-[#5a4d38] sm:px-6"><span>{range}</span>{summary.topMoods.length > 0 && <><span className="text-[#c8b684]">•</span><span>Ko‘p uchragan kayfiyatlar:</span>{summary.topMoods.map((item) => <MoodBadge key={item.mood} mood={item.mood} small />)}</>}</div></section>;
 }
 
+function FolderTagOverview({ entries, loading, onFolderClick, onTagClick }: { entries: DiaryEntry[]; loading: boolean; onFolderClick: (folder: string) => void; onTagClick: (tag: string) => void }) {
+  const folders = useMemo(() => {
+    const counts = new Map<string, number>();
+    entries.forEach((entry) => counts.set(entry.folder, (counts.get(entry.folder) ?? 0) + 1));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [entries]);
+  const tags = useMemo(() => {
+    const counts = new Map<string, number>();
+    entries.forEach((entry) => entry.tags.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1)));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [entries]);
+
+  return (
+    <section className="mt-8 rounded-[24px] border border-card-border bg-card p-5 shadow-sm sm:p-7" data-testid="folder-tag-overview">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-[.18em] text-muted-foreground">Tartiblangan xotiralar</p>
+          <h2 className="mt-1 font-serif text-[29px] leading-none tracking-[-.035em]">Papkalar va teglar</h2>
+        </div>
+        <p className="max-w-xs text-[12px] leading-relaxed text-muted-foreground sm:text-right">Yozuvlaringizni mavzu va siz bergan hashtaglar bo‘yicha tez toping.</p>
+      </div>
+      {loading ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="skeleton h-36 rounded-2xl" />
+          <div className="skeleton h-36 rounded-2xl" />
+        </div>
+      ) : entries.length === 0 ? (
+        <div className="mt-6 rounded-2xl border border-dashed border-[#d5c8a9] bg-[#faf6ea] px-5 py-10 text-center dark:border-[#5d5037] dark:bg-[#2d281f]">
+          <FolderOpen size={22} className="mx-auto text-[#b48b3d]" />
+          <p className="mt-3 font-serif text-[22px]">Hali tartiblanadigan yozuv yo‘q.</p>
+          <p className="mx-auto mt-1 max-w-sm text-[12px] leading-relaxed text-muted-foreground">Yangi yozuv qo‘shganingizda papkalar va teglar shu yerda ko‘rinadi.</p>
+        </div>
+      ) : (
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-[#e2d4ad] bg-[#faf6ea] p-4 dark:border-[#5a4d38] dark:bg-[#2d281f]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#9a6b23]">Papkalar</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Yozuvlar bo‘yicha toifalar</p>
+              </div>
+              <FolderOpen size={17} className="text-[#b48b3d]" />
+            </div>
+            <div className="mt-4 space-y-2">
+              {folders.map(([folder, count]) => (
+                <button key={folder} type="button" onClick={() => onFolderClick(folder)} className="flex w-full items-center justify-between rounded-xl border border-transparent bg-card/70 px-3 py-2.5 text-left text-[12px] transition-colors hover:border-[#cdbd91] hover:bg-card">
+                  <span className="font-medium">{folder}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{count} ta</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#d9e5db] bg-[#f1f7f2] p-4 dark:border-[#3e5c4c] dark:bg-[#25372d]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[.15em] text-[#47796c]">Teglar</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">Bir nechta mavzuga qaytish yo‘li</p>
+              </div>
+              <span className="font-mono text-[10px] text-[#47796c]">{tags.length} ta teg</span>
+            </div>
+            {tags.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {tags.map(([tag, count]) => (
+                  <button key={tag} type="button" onClick={() => onTagClick(tag)} className="rounded-full border border-[#c9dfcf] bg-card/70 px-3 py-2 text-[11px] text-[#35614f] transition-colors hover:border-[#78a98c] hover:bg-card dark:border-[#416c55] dark:text-[#b5d9c4]">
+                    #{tag} <span className="ml-1 font-mono text-[9px] opacity-70">{count}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-5 text-[12px] leading-relaxed text-muted-foreground">Hali hashtag qo‘shilmagan.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function HomePage() {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return <div className="min-h-[100dvh] bg-background" />;
@@ -137,7 +214,7 @@ export function HomePage() {
 }
 
 export function UserPortalPage() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [search, setSearch] = useState('');
   const [filterMood, setFilterMood] = useState<'all' | Mood>('all');
   const [filterFolder, setFilterFolder] = useState('all');
@@ -145,7 +222,7 @@ export function UserPortalPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [sort, setSort] = useState<'newest' | 'oldest'>('newest');
-  const [activeView, setActiveView] = useState<'entries' | 'calendar' | 'analytics'>('entries');
+  const [activeView, setActiveView] = useState<PortalView>(() => portalViewFromLocation(location));
   const [notice, setNotice] = useState('');
   const params = useMemo(() => ({ q: search.trim() || undefined, mood: filterMood === 'all' ? undefined : filterMood, folder: filterFolder === 'all' ? undefined : filterFolder, favorite: favoritesOnly ? true : undefined, from: fromDate || undefined, to: toDate || undefined, sort }), [search, filterMood, filterFolder, favoritesOnly, fromDate, toDate, sort]);
   const summary = useGetDiarySummary();
@@ -157,6 +234,23 @@ export function UserPortalPage() {
   const deleteMutation = useDeleteDiaryEntry();
   const flash = (text: string) => { setNotice(text); window.setTimeout(() => setNotice(''), 2600); };
   const [exporting, setExporting] = useState<'json' | 'pdf' | ''>('');
+  useEffect(() => {
+    setActiveView(portalViewFromLocation(location));
+  }, [location]);
+  const navigateView = (view: PortalView) => {
+    setActiveView(view);
+    setLocation(view === 'entries' ? '/user-portal' : `/user-portal?view=${view}`);
+  };
+  const showFolder = (folder: string) => {
+    setFavoritesOnly(false);
+    setFilterFolder(folder);
+    navigateView('entries');
+  };
+  const showTag = (tag: string) => {
+    setFavoritesOnly(false);
+    setSearch(`#${tag}`);
+    navigateView('entries');
+  };
   const updateQueries = (entry?: DiaryEntry) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiaryWeeklySummaryQueryKey() }); if (entry) queryClient.invalidateQueries({ queryKey: getGetDiaryEntryQueryKey(entry.id) }); };
   const onFavorite = (entry: DiaryEntry) => favoriteMutation.mutate({ id: entry.id, data: { favorite: !entry.favorite } }, { onSuccess: (updated) => { updateQueries(updated); flash(updated.favorite ? 'Sevimlilarga qo‘shildi.' : 'Sevimlilardan olib tashlandi.'); }, onError: () => flash('Yozuvni yangilab bo‘lmadi.') });
   const onDelete = (entry: DiaryEntry) => { if (!window.confirm(`“${entry.title}” yozuvini o‘chirishni xohlaysizmi?`)) return; deleteMutation.mutate({ id: entry.id }, { onSuccess: () => { updateQueries(); flash('Yozuv o‘chirildi.'); }, onError: () => flash('Yozuvni o‘chirib bo‘lmadi.') }); };
@@ -188,10 +282,11 @@ export function UserPortalPage() {
     <WeeklySummaryCard summary={weeklySummary.data} isLoading={weeklySummary.isLoading} isError={weeklySummary.isError} onRetry={() => weeklySummary.refetch()} />
       <div className="mt-7"><OnThisDayAndHeatmap entries={allEntries.data ?? []} loading={allEntries.isLoading} /></div>
      <div className="mt-10 flex flex-wrap gap-2 border-b border-border pb-3" role="tablist" aria-label="Kundalik ko‘rinishlari">
-       {([['entries', 'Yozuvlar'], ['calendar', 'Taqvim'], ['analytics', 'Kayfiyat tahlili']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={activeView === value} onClick={() => setActiveView(value)} className={`rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-colors ${activeView === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-${value}`}>{label}</button>)}
+        {([['entries', 'Yozuvlar'], ['calendar', 'Taqvim'], ['folders', 'Papkalar va teglar'], ['analytics', 'Kayfiyat tahlili']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={activeView === value} onClick={() => navigateView(value)} className={`rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-colors ${activeView === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-${value}`}>{label}</button>)}
      </div>
      {activeView === 'calendar' && <CalendarAnalytics mode="calendar" />}
      {activeView === 'analytics' && <CalendarAnalytics mode="analytics" />}
+      {activeView === 'folders' && <FolderTagOverview entries={allEntries.data ?? []} loading={allEntries.isLoading} onFolderClick={showFolder} onTagClick={showTag} />}
      {activeView === 'entries' && <>
      <div className="mt-12 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between"><div className="relative w-full max-w-[440px]"><Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="So‘z yoki #teg qidiring..." className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[#b89c5c] focus:ring-2 focus:ring-[#d9a441]/20" type="search" aria-label="So‘z yoki hashtag bo‘yicha qidirish" data-testid="input-search-entries" /></div><div className="flex flex-wrap gap-2"><div className="relative"><select value={filterMood} onChange={(e) => setFilterMood(e.target.value as 'all' | Mood)} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Kayfiyat bo‘yicha filter" data-testid="select-mood-filter"><option value="all">Barcha kayfiyatlar</option>{moods.map((mood) => <option key={mood} value={mood}>{moodMeta[mood].label}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div><div className="relative"><select value={filterFolder} onChange={(e) => setFilterFolder(e.target.value)} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Toifa bo‘yicha filter" data-testid="select-folder-filter"><option value="all">Barcha toifalar</option>{folderOptions.map((folder) => <option key={folder} value={folder}>{folder}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div><button type="button" onClick={() => setFavoritesOnly(!favoritesOnly)} className={`h-10 rounded-xl border px-3 text-[11px] transition-colors ${favoritesOnly ? 'border-[#d9a441] bg-[#f8e9bf] text-[#8f601a]' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-filter-favorites"><Star size={13} className="mr-1.5 inline-block" fill={favoritesOnly ? 'currentColor' : 'none'} /> Sevimlilar</button><div className="relative"><select value={sort} onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Saralash tartibi" data-testid="select-sort"><option value="newest">Avval yangilari</option><option value="oldest">Avval eskilari</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div></div><div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><span>Sanadan:</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Boshlanish sanasi" /><span>—</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Tugash sanasi" /></div></div>
     <div className="mt-7 flex items-center justify-between border-b border-border pb-4"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">{entries.data?.length ?? 0} ta yozuv</p>{data?.latestMood && <p className="text-[11px] text-muted-foreground">So‘nggi kayfiyat: <MoodBadge mood={data.latestMood} small /></p>}</div>
