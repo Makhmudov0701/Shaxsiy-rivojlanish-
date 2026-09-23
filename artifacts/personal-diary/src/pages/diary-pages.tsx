@@ -36,6 +36,7 @@ import { CalendarAnalytics } from '@/components/calendar-analytics';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
 import { OnThisDayAndHeatmap } from '@/components/diary-modules';
+import { PomodoroTimer } from '@/components/pomodoro-timer';
 
 const moods = Object.values(Mood);
 const defaultFolders = ['Shaxsiy', 'Ish', 'G‘oyalar', 'Kitoblar'];
@@ -286,6 +287,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
   };
    return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
      <div className="flex flex-wrap items-center justify-between gap-3"><Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>{!isNew && entry && <button type="button" onClick={exportPdf} disabled={pending || exportingPdf} className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5 text-[11px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:cursor-wait disabled:opacity-60" data-testid="button-export-entry-pdf"><Download size={14} />{exportingPdf ? 'Tayyorlanmoqda...' : 'PDF yuklash'}</button>}</div>
+     <div className="mt-7"><PomodoroTimer /></div>
     <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]">
       <div>
         <div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div>
