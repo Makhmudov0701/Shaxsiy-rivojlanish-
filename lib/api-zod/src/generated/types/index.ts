@@ -13,6 +13,8 @@ export * from './diaryEntryUpdate';
 export * from './diaryPhoto';
 export * from './diarySettings';
 export * from './diarySummary';
+export * from './diaryWeeklyMood';
+export * from './diaryWeeklySummary';
 export * from './error';
 export * from './exportDiary200One';
 export * from './exportDiaryFormat';

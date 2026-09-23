@@ -9,6 +9,7 @@ import {
   GetDiaryPhotoParams,
   GetDiaryEntryResponse,
   GetDiarySummaryResponse,
+  GetDiaryWeeklySummaryResponse,
   ListDiaryEntriesQueryParams,
   ListDiaryEntriesResponse,
   ToggleDiaryEntryFavoriteBody,
@@ -58,6 +59,47 @@ function calculateStreak(dates: string[]): number {
   }
 
   return streak;
+}
+
+const moodLabels: Record<string, string> = {
+  peaceful: "tinch",
+  happy: "a’lo",
+  grateful: "minnatdor",
+  energized: "g‘ayratli",
+  thoughtful: "o‘ylangan",
+  sad: "xafa",
+  anxious: "xavotirli",
+};
+
+function shiftedUtcDate(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return dateOnly(date);
+}
+
+function buildWeeklyReflection(
+  entryCount: number,
+  activeDays: number,
+  topMoods: Array<{ mood: string; count: number }>,
+) {
+  if (entryCount === 0) {
+    return {
+      summary:
+        "Bu hafta kundaligingizda yangi yozuv ko‘rinmadi. O‘zingizga bosim bermang — sokin qaytish ham yaxshi boshlanishdir.",
+      insight:
+        "Keyingi hafta birgina rost jumla yozishning o‘zi ichki ovozingizga joy berishi mumkin.",
+    };
+  }
+
+  const moodPhrase = topMoods
+    .map((item) => `${moodLabels[item.mood] ?? item.mood} (${item.count} ta)`)
+    .join(" va ");
+  const dayPhrase = `${activeDays} ${activeDays === 1 ? "kun" : "kun davomida"}`;
+
+  return {
+    summary: `Bu hafta ${entryCount} ta yozuv qoldirdingiz va ${dayPhrase} o‘zingizga vaqt ajratdingiz. Kundaligingizda ${moodPhrase} kayfiyatlar ko‘proq sezildi.`,
+    insight: `O‘zingizni kuzatib borayotganingiz muhim odat. ${moodLabels[topMoods[0]?.mood] ?? "turli"} kayfiyatni nomlay olishingiz ichki ehtiyojlaringizga e’tibor berayotganingizni ko‘rsatadi.`,
+  };
 }
 
 async function addPhotoMetadata<T extends { id: number }>(userId: string, entries: T[]) {
@@ -129,6 +171,48 @@ protectedRouter.get("/diary/summary", async (_req, res): Promise<void> => {
   };
 
   res.json(GetDiarySummaryResponse.parse(summary));
+});
+
+protectedRouter.get("/diary/weekly-summary", async (_req, res): Promise<void> => {
+  const userId = userIdFrom(res);
+  const weekEnd = dateOnly(new Date());
+  const weekStart = shiftedUtcDate(weekEnd, -6);
+  const entries = await db
+    .select({
+      entryDate: diaryEntriesTable.entryDate,
+      mood: diaryEntriesTable.mood,
+    })
+    .from(diaryEntriesTable)
+    .where(
+      and(
+        eq(diaryEntriesTable.userId, userId),
+        gte(diaryEntriesTable.entryDate, weekStart),
+        lte(diaryEntriesTable.entryDate, weekEnd),
+      ),
+    )
+    .orderBy(desc(diaryEntriesTable.entryDate));
+
+  const activeDays = new Set(entries.map((entry) => entry.entryDate)).size;
+  const moodCounts = new Map<string, number>();
+  for (const entry of entries) {
+    moodCounts.set(entry.mood, (moodCounts.get(entry.mood) ?? 0) + 1);
+  }
+  const topMoods = [...moodCounts.entries()]
+    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .slice(0, 2)
+    .map(([mood, count]) => ({ mood, count }));
+  const reflection = buildWeeklyReflection(entries.length, activeDays, topMoods);
+
+  res.json(
+    GetDiaryWeeklySummaryResponse.parse({
+      weekStart,
+      weekEnd,
+      entryCount: entries.length,
+      activeDays,
+      topMoods,
+      ...reflection,
+    }),
+  );
 });
 
 protectedRouter.get("/diary/entries", async (req, res): Promise<void> => {

@@ -41,6 +41,21 @@ paths:
                 $ref: "#/components/schemas/DiarySummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /diary/weekly-summary:
+    get:
+      operationId: getDiaryWeeklySummary
+      tags: [diary]
+      summary: Get a rule-based weekly diary summary
+      description: Returns a short Uzbek reflection built from the signed-in user's entries from the last seven days.
+      responses:
+        "200":
+          description: Weekly diary summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryWeeklySummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /diary/entries:
     get:
       operationId: listDiaryEntries
@@ -576,6 +591,39 @@ components:
           anyOf:
             - $ref: "#/components/schemas/Mood"
             - type: "null"
+    DiaryWeeklyMood:
+      type: object
+      required: [mood, count]
+      properties:
+        mood:
+          $ref: "#/components/schemas/Mood"
+        count:
+          type: integer
+          minimum: 1
+    DiaryWeeklySummary:
+      type: object
+      required: [weekStart, weekEnd, entryCount, activeDays, topMoods, summary, insight]
+      properties:
+        weekStart:
+          type: string
+          format: date
+        weekEnd:
+          type: string
+          format: date
+        entryCount:
+          type: integer
+          minimum: 0
+        activeDays:
+          type: integer
+          minimum: 0
+        topMoods:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiaryWeeklyMood"
+        summary:
+          type: string
+        insight:
+          type: string
     Error:
       type: object
       required: [error]

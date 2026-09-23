@@ -106,6 +106,24 @@ export interface DiarySummary {
   latestMood: Mood | null;
 }
 
+export interface DiaryWeeklyMood {
+  mood: Mood;
+  /** @minimum 1 */
+  count: number;
+}
+
+export interface DiaryWeeklySummary {
+  weekStart: string;
+  weekEnd: string;
+  /** @minimum 0 */
+  entryCount: number;
+  /** @minimum 0 */
+  activeDays: number;
+  topMoods: DiaryWeeklyMood[];
+  summary: string;
+  insight: string;
+}
+
 export interface Error {
   error: string;
 }

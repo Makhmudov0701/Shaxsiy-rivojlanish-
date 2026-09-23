@@ -11,12 +11,14 @@ import {
   getGetDiaryEntryQueryKey,
   getGetDiarySettingsQueryKey,
   getGetDiarySummaryQueryKey,
+  getGetDiaryWeeklySummaryQueryKey,
   getListDiaryEntriesQueryKey,
   exportDiary,
   useDeleteDiaryPhoto,
   useGetDiarySettings,
   useRemoveDiaryPin,
   useSetDiaryPin,
+  useGetDiaryWeeklySummary,
   useCreateDiaryEntry,
   useDeleteDiaryEntry,
   useGetDiaryEntry,
@@ -26,7 +28,7 @@ import {
   useUpdateDiaryEntry,
   uploadDiaryPhoto,
 } from '@workspace/api-client-react';
-import type { DiaryEntry, DiaryPhoto } from '@workspace/api-client-react';
+import type { DiaryEntry, DiaryPhoto, DiaryWeeklySummary } from '@workspace/api-client-react';
 import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta } from '@/components/diary-ui';
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 
@@ -86,6 +88,19 @@ function ErrorPanel({ onRetry, detail = false }: { onRetry: () => void; detail?:
   return <div className="rounded-[24px] border border-[#ecc6bd] bg-[#fff0ec] px-6 py-12 text-center" data-testid="status-error"><CircleAlert className="mx-auto text-destructive" size={24} /><h2 className="mt-4 font-serif text-[27px]">{detail ? 'Bu sahifaga kirib bo‘lmadi.' : 'Yozuvlar biroz kutmoqda.'}</h2><p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">Kundaligingizni hozircha yuklay olmadik. So‘zlaringiz xavfsiz, yana bir bor urinib ko‘ring.</p><button type="button" onClick={onRetry} className="mt-6 rounded-xl border border-destructive/30 bg-card px-4 py-2.5 text-[12px] font-semibold text-destructive transition-colors hover:bg-destructive hover:text-destructive-foreground" data-testid="button-retry">Qayta urinish</button></div>;
 }
 
+function WeeklySummaryCard({ summary, isLoading, isError, onRetry }: { summary?: DiaryWeeklySummary; isLoading: boolean; isError: boolean; onRetry: () => void }) {
+  if (isLoading) {
+    return <section className="mt-8 rounded-[24px] border border-card-border bg-card p-5 sm:p-6" aria-label="Haftalik xulosa yuklanmoqda"><div className="skeleton h-3 w-28 rounded-full" /><div className="mt-4 skeleton h-5 w-3/4 max-w-lg rounded-lg" /><div className="mt-3 skeleton h-3 w-full max-w-2xl rounded-full" /><div className="mt-2 skeleton h-3 w-4/5 max-w-xl rounded-full" /></section>;
+  }
+  if (isError) {
+    return <section className="mt-8 flex flex-col gap-3 rounded-[24px] border border-[#ecc6bd] bg-[#fff0ec] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6" role="alert" data-testid="weekly-summary-error"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Haftalik xulosa</p><p className="mt-2 text-[12px] text-muted-foreground">Xulosani hozircha yuklab bo‘lmadi.</p></div><button type="button" onClick={onRetry} className="self-start rounded-xl border border-destructive/30 bg-card px-3 py-2 text-[11px] font-semibold text-destructive sm:self-auto" data-testid="button-retry-weekly-summary">Qayta urinish</button></section>;
+  }
+  if (!summary) return null;
+  const dateFormat = new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'short' });
+  const range = `${dateFormat.format(new Date(`${summary.weekStart}T12:00:00`))} — ${dateFormat.format(new Date(`${summary.weekEnd}T12:00:00`))}`;
+  return <section className="mt-8 overflow-hidden rounded-[24px] border border-[#d7c795] bg-[#faf3df] dark:border-[#5e5037] dark:bg-[#302a20]" data-testid="weekly-summary-card"><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-3"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Haftalik xulosa</p><span className="rounded-full border border-[#d8c38d] bg-[#f4e4b6] px-2 py-1 font-mono text-[9px] uppercase tracking-[.08em] text-[#8f601a]">Sokin tahlil</span></div><p className="mt-4 font-serif text-[clamp(1.45rem,3vw,2.1rem)] leading-tight text-primary">{summary.summary}</p><div className="mt-4 rounded-2xl border border-[#e2d4ad] bg-card/55 p-4 dark:border-[#5a4d38]"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9a6b23]">Yaxshi jihat</p><p className="mt-2 text-[13px] leading-relaxed text-foreground">{summary.insight}</p></div></div><div className="flex shrink-0 gap-2 text-center"><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.entryCount}</p><p className="mt-1 text-[10px] text-muted-foreground">yozuv</p></div><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.activeDays}</p><p className="mt-1 text-[10px] text-muted-foreground">faol kun</p></div></div></div><div className="flex flex-wrap items-center gap-3 border-t border-[#e2d4ad] px-5 py-3.5 text-[10px] text-muted-foreground dark:border-[#5a4d38] sm:px-6"><span>{range}</span>{summary.topMoods.length > 0 && <><span className="text-[#c8b684]">•</span><span>Ko‘p uchragan kayfiyatlar:</span>{summary.topMoods.map((item) => <MoodBadge key={item.mood} mood={item.mood} small />)}</>}</div></section>;
+}
+
 export function HomePage() {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return <div className="min-h-[100dvh] bg-background" />;
@@ -118,13 +133,14 @@ export function UserPortalPage() {
   const [notice, setNotice] = useState('');
   const params = useMemo(() => ({ q: search.trim() || undefined, mood: filterMood === 'all' ? undefined : filterMood, favorite: favoritesOnly ? true : undefined, from: fromDate || undefined, to: toDate || undefined, sort }), [search, filterMood, favoritesOnly, fromDate, toDate, sort]);
   const summary = useGetDiarySummary();
+  const weeklySummary = useGetDiaryWeeklySummary();
   const entries = useListDiaryEntries(params, { query: { queryKey: getListDiaryEntriesQueryKey(params) } });
   const queryClient = useQueryClient();
   const favoriteMutation = useToggleDiaryEntryFavorite();
   const deleteMutation = useDeleteDiaryEntry();
   const flash = (text: string) => { setNotice(text); window.setTimeout(() => setNotice(''), 2600); };
   const [exporting, setExporting] = useState<'json' | 'pdf' | ''>('');
-  const updateQueries = (entry?: DiaryEntry) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); if (entry) queryClient.invalidateQueries({ queryKey: getGetDiaryEntryQueryKey(entry.id) }); };
+  const updateQueries = (entry?: DiaryEntry) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiaryWeeklySummaryQueryKey() }); if (entry) queryClient.invalidateQueries({ queryKey: getGetDiaryEntryQueryKey(entry.id) }); };
   const onFavorite = (entry: DiaryEntry) => favoriteMutation.mutate({ id: entry.id, data: { favorite: !entry.favorite } }, { onSuccess: (updated) => { updateQueries(updated); flash(updated.favorite ? 'Sevimlilarga qo‘shildi.' : 'Sevimlilardan olib tashlandi.'); }, onError: () => flash('Yozuvni yangilab bo‘lmadi.') });
   const onDelete = (entry: DiaryEntry) => { if (!window.confirm(`“${entry.title}” yozuvini o‘chirishni xohlaysizmi?`)) return; deleteMutation.mutate({ id: entry.id }, { onSuccess: () => { updateQueries(); flash('Yozuv o‘chirildi.'); }, onError: () => flash('Yozuvni o‘chirib bo‘lmadi.') }); };
   const downloadExport = async (format: 'json' | 'pdf') => {
@@ -150,6 +166,7 @@ export function UserPortalPage() {
   return <DiaryShell><div className="mx-auto max-w-[1360px] px-5 py-8 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><div className="diary-rise"><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy arxivingiz</p><h1 className="mt-3 font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[.9] tracking-[-.05em]">Xush kelibsiz<span className="text-[#a66a13]">.</span></h1><p className="mt-4 text-[14px] text-muted-foreground">Asrashga arziydigan kunlaringiz uchun joy.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => downloadExport('json')} disabled={Boolean(exporting)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[11px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:opacity-60" data-testid="button-export-json"><FileJson size={15} /> {exporting === 'json' ? 'Tayyorlanmoqda...' : 'JSON yuklash'}</button><button type="button" onClick={() => downloadExport('pdf')} disabled={Boolean(exporting)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[11px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:opacity-60" data-testid="button-export-pdf"><FileText size={15} /> {exporting === 'pdf' ? 'Tayyorlanmoqda...' : 'PDF yuklash'}</button><Link href="/entry/new" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" data-testid="button-new-entry"><span className="grid size-5 place-items-center rounded-full bg-[#d9a441] text-primary"><span className="text-[17px] leading-none">+</span></span> Yangi yozuv</Link></div></div>
     <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(([label, value, note], i) => <div key={label} className={`rounded-2xl border border-card-border bg-card p-5 diary-rise diary-delay-${i + 1}`} data-testid={`stat-${String(label).toLowerCase().replace(' ', '-')}`}><p className="font-mono text-[9px] uppercase tracking-[.15em] text-muted-foreground">{label}</p><div className="mt-4 flex items-end justify-between"><span className="font-serif text-[38px] leading-none">{data ? value : <span className="skeleton inline-block h-10 w-12 rounded-lg" />}</span><span className="text-[11px] text-muted-foreground">{note}</span></div></div>)}</div>
+    <WeeklySummaryCard summary={weeklySummary.data} isLoading={weeklySummary.isLoading} isError={weeklySummary.isError} onRetry={() => weeklySummary.refetch()} />
      <div className="mt-10 flex flex-wrap gap-2 border-b border-border pb-3" role="tablist" aria-label="Kundalik ko‘rinishlari">
        {([['entries', 'Yozuvlar'], ['calendar', 'Taqvim'], ['analytics', 'Kayfiyat tahlili']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={activeView === value} onClick={() => setActiveView(value)} className={`rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-colors ${activeView === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-${value}`}>{label}</button>)}
      </div>
@@ -292,6 +309,7 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
       queryClient.setQueryData(getGetDiaryEntryQueryKey(saved.id), { ...saved, photos: nextPhotos });
       queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() });
+       queryClient.invalidateQueries({ queryKey: getGetDiaryWeeklySummaryQueryKey() });
       setPhotoList(nextPhotos);
       setPendingFiles([]);
       setRemovedPhotoIds([]);

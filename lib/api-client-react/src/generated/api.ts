@@ -27,6 +27,7 @@ import type {
   DiaryPhoto,
   DiarySettings,
   DiarySummary,
+  DiaryWeeklySummary,
   ExportDiary200One,
   ExportDiaryParams,
   FavoriteUpdate,
@@ -138,6 +139,11 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 }
 
 
+
+
+
+
+
 export const getGetDiarySummaryUrl = () => {
 
 
@@ -209,6 +215,90 @@ export function useGetDiarySummary<TData = Awaited<ReturnType<typeof getDiarySum
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
+export const getGetDiaryWeeklySummaryUrl = () => {
+
+
+
+
+  return `/api/diary/weekly-summary`
+}
+
+/**
+ * Returns a short Uzbek reflection built from the signed-in user's entries from the last seven days.
+ * @summary Get a rule-based weekly diary summary
+ */
+export const getDiaryWeeklySummary = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiaryWeeklySummary> => {
+
+  return customFetch<DiaryWeeklySummary>(getGetDiaryWeeklySummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDiaryWeeklySummaryQueryKey = () => {
+    return [
+    `/api/diary/weekly-summary`
+    ] as const;
+    }
+
+
+export const getGetDiaryWeeklySummaryQueryOptions = <TData = Awaited<ReturnType<typeof getDiaryWeeklySummary>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiaryWeeklySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDiaryWeeklySummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDiaryWeeklySummary>>> = ({ signal }) => getDiaryWeeklySummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDiaryWeeklySummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDiaryWeeklySummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getDiaryWeeklySummary>>>
+export type GetDiaryWeeklySummaryQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get a rule-based weekly diary summary
+ */
+
+export function useGetDiaryWeeklySummary<TData = Awaited<ReturnType<typeof getDiaryWeeklySummary>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiaryWeeklySummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDiaryWeeklySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListDiaryEntriesUrl = (params?: ListDiaryEntriesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -288,6 +378,13 @@ export function useListDiaryEntries<TData = Awaited<ReturnType<typeof listDiaryE
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
 export const getCreateDiaryEntryUrl = () => {
 
 
@@ -446,6 +543,13 @@ export function useGetDiaryEntry<TData = Awaited<ReturnType<typeof getDiaryEntry
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+
+
+
+
+
+
 export const getUpdateDiaryEntryUrl = (id: number,) => {
 
 
@@ -857,7 +961,13 @@ export function useGetDiaryPhoto<TData = Awaited<ReturnType<typeof getDiaryPhoto
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-// End of generated API module.
+
+
+
+
+
+
+
 export const getDeleteDiaryPhotoUrl = (id: number,) => {
 
 
@@ -1002,7 +1112,13 @@ export function useGetDiarySettings<TData = Awaited<ReturnType<typeof getDiarySe
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-// End of generated API module.
+
+
+
+
+
+
+
 export const getSetDiaryPinUrl = () => {
 
 

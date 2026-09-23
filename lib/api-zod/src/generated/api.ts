@@ -31,6 +31,31 @@ export const GetDiarySummaryResponse = zod.object({
 
 
 /**
+ * Returns a short Uzbek reflection built from the signed-in user's entries from the last seven days.
+ * @summary Get a rule-based weekly diary summary
+ */
+export const getDiaryWeeklySummaryResponseEntryCountMin = 0;
+
+export const getDiaryWeeklySummaryResponseActiveDaysMin = 0;
+
+
+
+
+export const GetDiaryWeeklySummaryResponse = zod.object({
+  "weekStart": zod.coerce.date(),
+  "weekEnd": zod.coerce.date(),
+  "entryCount": zod.number().int().min(getDiaryWeeklySummaryResponseEntryCountMin),
+  "activeDays": zod.number().int().min(getDiaryWeeklySummaryResponseActiveDaysMin),
+  "topMoods": zod.array(zod.object({
+  "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "count": zod.number().int().min(1)
+})),
+  "summary": zod.string(),
+  "insight": zod.string()
+})
+
+
+/**
  * Returns the signed-in user's diary entries with optional search and filters.
  * @summary List diary entries
  */
