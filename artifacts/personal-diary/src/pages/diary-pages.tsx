@@ -35,6 +35,7 @@ import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, 
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
+import { OnThisDayAndHeatmap } from '@/components/diary-modules';
 
 const moods = Object.values(Mood);
 const defaultFolders = ['Shaxsiy', 'Ish', 'G‘oyalar', 'Kitoblar'];
@@ -149,6 +150,7 @@ export function UserPortalPage() {
   const summary = useGetDiarySummary();
   const weeklySummary = useGetDiaryWeeklySummary();
   const entries = useListDiaryEntries(params, { query: { queryKey: getListDiaryEntriesQueryKey(params) } });
+  const allEntries = useListDiaryEntries({ sort: 'oldest' }, { query: { queryKey: getListDiaryEntriesQueryKey({ sort: 'oldest' }) } });
   const queryClient = useQueryClient();
   const favoriteMutation = useToggleDiaryEntryFavorite();
   const deleteMutation = useDeleteDiaryEntry();
@@ -183,6 +185,7 @@ export function UserPortalPage() {
        {folderOptions.map((folder) => <button type="button" key={folder} onClick={() => { setFavoritesOnly(false); setFilterFolder(folder); }} className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[11px] font-semibold transition-colors ${!favoritesOnly && filterFolder === folder ? 'bg-[#eee8d5] text-[#756d5e]' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}><FolderOpen size={13} /> {folder}</button>)}
      </div>
     <WeeklySummaryCard summary={weeklySummary.data} isLoading={weeklySummary.isLoading} isError={weeklySummary.isError} onRetry={() => weeklySummary.refetch()} />
+      <div className="mt-7"><OnThisDayAndHeatmap entries={allEntries.data ?? []} loading={allEntries.isLoading} /></div>
      <div className="mt-10 flex flex-wrap gap-2 border-b border-border pb-3" role="tablist" aria-label="Kundalik ko‘rinishlari">
        {([['entries', 'Yozuvlar'], ['calendar', 'Taqvim'], ['analytics', 'Kayfiyat tahlili']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={activeView === value} onClick={() => setActiveView(value)} className={`rounded-xl px-4 py-2.5 text-[12px] font-semibold transition-colors ${activeView === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-${value}`}>{label}</button>)}
      </div>

@@ -9,6 +9,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { EntryPage, HomePage, SettingsPage, SignInPage, SignUpPage, UserPortalPage } from '@/pages/diary-pages';
+import { HabitsPage, VaultPage } from '@/pages/local-module-pages';
 import {
   Redirect,
   Route,
@@ -130,6 +131,12 @@ function Router() {
         </Route>
         <Route path="/settings">
           <ProtectedPage><SettingsPage /></ProtectedPage>
+        </Route>
+        <Route path="/habits">
+          <ProtectedPage><HabitsPage /></ProtectedPage>
+        </Route>
+        <Route path="/vault">
+          <ProtectedPage><VaultPage /></ProtectedPage>
         </Route>
         <Route component={NotFound} />
       </Switch>

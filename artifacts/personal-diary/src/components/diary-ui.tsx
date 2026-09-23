@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BookOpen, LogOut, Moon, Plus, Search, Settings, Sparkles, Star, Sun } from 'lucide-react';
+import { BookOpen, CalendarCheck2, LogOut, LockKeyhole, Moon, Plus, Search, Settings, Sparkles, Star, Sun } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -124,6 +124,8 @@ export function DiaryShell({ children }: { children: ReactNode }) {
             <nav className="space-y-1">
               <Link href="/user-portal" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/user-portal' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-portal"><BookOpen size={16} strokeWidth={1.8} /> Barcha yozuvlar</Link>
               <Link href="/entry/new" className="flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" data-testid="link-new-entry"><Plus size={16} strokeWidth={1.8} /> Yangi yozuv</Link>
+              <Link href="/habits" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/habits' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-habits"><CalendarCheck2 size={16} strokeWidth={1.8} /> Odatlar</Link>
+              <Link href="/vault" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/vault' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-vault"><LockKeyhole size={16} strokeWidth={1.8} /> Maxfiy jild</Link>
               <Link href="/settings" className={`flex items-center gap-3 rounded-xl px-3 py-3 text-[13px] transition-colors ${location === '/settings' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`} data-testid="link-settings"><Settings size={16} strokeWidth={1.8} /> Sozlamalar</Link>
             </nav>
           </div>
@@ -150,6 +152,8 @@ export function DiaryShell({ children }: { children: ReactNode }) {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link href="/settings" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Sozlamalar" data-testid="link-mobile-settings"><Settings size={17} /></Link>
+          <Link href="/habits" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Odatlar" data-testid="link-mobile-habits"><CalendarCheck2 size={17} /></Link>
+          <Link href="/vault" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Maxfiy jild" data-testid="link-mobile-vault"><LockKeyhole size={17} /></Link>
           <Link href="/user-portal" className="rounded-lg p-2 text-muted-foreground hover:bg-muted" aria-label="Yozuvlar" data-testid="link-mobile-portal"><Search size={17} /></Link>
           <Link href="/entry/new" className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground" aria-label="Yangi yozuv" data-testid="link-mobile-new"><Plus size={17} /></Link>
         </div>
