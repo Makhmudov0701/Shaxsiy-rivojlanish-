@@ -1,0 +1,1 @@
+- [Private diary auth](auth-and-contracts.md) — browser sessions are cookie-based Clerk auth, with all diary data scoped server-side to the signed-in user.
