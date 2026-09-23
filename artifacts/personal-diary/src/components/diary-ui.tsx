@@ -156,16 +156,12 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const appBasePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
   const firstName = user?.firstName || 'Yozuvchi';
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem('kundalik-sidebar-yig‘iq') === 'ha');
   const pathname = location.split('?')[0];
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const searchParams = new URLSearchParams(query);
   const portalView = portalViewFromLocation(location);
   const pomodoroSelected = pathname.startsWith('/entry') && searchParams.get('focus') === 'pomodoro';
-
-  useEffect(() => {
-    setSidebarCollapsed(window.localStorage.getItem('kundalik-sidebar-yig‘iq') === 'ha');
-  }, []);
 
   useEffect(() => {
     window.localStorage.setItem('kundalik-sidebar-yig‘iq', sidebarCollapsed ? 'ha' : 'yo‘q');
