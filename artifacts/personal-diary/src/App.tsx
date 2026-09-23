@@ -116,8 +116,8 @@ function Router() {
     <RoutedErrorBoundary>
       <Switch>
         <Route path="/" component={HomePage} />
-        <Route path="/sign-in/*?" component={() => <SignInPage basePath={basePath} />} />
-        <Route path="/sign-up/*?" component={() => <SignUpPage basePath={basePath} />} />
+        <Route path="/sign-in/*?" component={SignInPage} />
+        <Route path="/sign-up/*?" component={SignUpPage} />
         <Route path="/user-portal">
           <ProtectedPage><UserPortalPage /></ProtectedPage>
         </Route>
@@ -147,10 +147,6 @@ function ClerkProviderWithRoutes() {
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
-      localization={{
-        signIn: { start: { title: 'Welcome back', subtitle: 'A quiet place to return to.' } },
-        signUp: { start: { title: 'Make a little room', subtitle: 'Your private diary starts here.' } },
-      }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
