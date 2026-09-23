@@ -107,12 +107,6 @@ const MODE_LABELS: Record<TimerMode, string> = {
   longBreak: 'Uzoq tanaffus',
 };
 
-const MODE_NOTES: Record<TimerMode, string> = {
-  focus: 'Bir ishga yumshoq, chuqur e’tibor.',
-  shortBreak: 'Ko‘zlaringizni va fikringizni bo‘shating.',
-  longBreak: 'Bir necha davrdan so‘ng kengroq nafas.',
-};
-
 const MODE_COLORS: Record<TimerMode, string> = {
   focus: '#9b6543',
   shortBreak: '#47796c',
@@ -319,7 +313,7 @@ function AmbientSoundStudio({
   };
 
   return (
-    <section className="rounded-[24px] border border-[#d8d1bd] bg-[#f8f6ec] p-5 shadow-sm dark:border-[#4b4d43] dark:bg-[#292b26]" data-testid="ambient-sounds">
+    <section className="border-t border-[#ddd6c5] pt-5 dark:border-[#41453d]" data-testid="ambient-sounds">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin fon</p>
@@ -443,21 +437,19 @@ function FocusTimer({
   };
 
   return (
-    <section className="relative h-full overflow-hidden rounded-[28px] border border-[#d8c795] bg-[#faf3df] p-5 shadow-sm dark:border-[#5e5037] dark:bg-[#302a20] sm:p-8" data-testid="focus-timer">
-      <div className="absolute -right-24 -top-28 size-72 rounded-full border-[38px] border-[#f0e3bd]/80 dark:border-[#443924]" />
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
+    <section className="flex min-h-[min(700px,calc(100dvh-15rem))] flex-col items-center justify-center px-0 py-4 sm:py-8" data-testid="focus-timer">
+      <div className="flex w-full items-center justify-between gap-4 px-1">
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Bugungi ritm</p>
-          <h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-[.92] tracking-[-.04em]">Bir davr. Bir nafas.</h2>
-          <p className="mt-2 max-w-xs text-[11px] leading-relaxed text-[#75664b] dark:text-[#d4c49b]">{modeInfo.note}</p>
+          <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Hozirgi davr</p>
+          <p className="mt-1 text-[12px] font-semibold text-[#493c2b] dark:text-[#f1e4c3]">{modeInfo.label}</p>
         </div>
-        <div className="rounded-full border border-[#d8c795] bg-[#fff9e9]/70 px-3 py-1.5 font-mono text-[10px] text-[#8e6d34] dark:border-[#665837] dark:bg-[#3d3425] dark:text-[#dcc78d]" data-testid="text-cycle-count">{timer.cycle} davr yakunlangan</div>
+        <div className="font-mono text-[10px] text-[#8e6d34] dark:text-[#dcc78d]" data-testid="text-cycle-count">{timer.cycle} davr yakunlangan</div>
       </div>
-      <div className="relative mt-5 flex flex-col items-center">
-        <div className="relative size-[250px] sm:size-[300px]">
+      <div className="mt-5 flex flex-col items-center">
+        <div className="relative size-[300px] sm:size-[360px] lg:size-[390px]">
           <svg viewBox="0 0 260 260" className="-rotate-90 size-full" aria-hidden="true">
-            <circle cx="130" cy="130" r={radius} fill="none" stroke="#eadfbe" strokeWidth="10" />
-            <circle cx="130" cy="130" r={radius} fill="none" stroke={modeInfo.color} strokeWidth="10" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progress)} className="transition-[stroke-dashoffset] duration-300" />
+            <circle cx="130" cy="130" r={radius} fill="none" stroke="#ddd6c5" strokeWidth="7" className="dark:stroke-[#41453d]" />
+            <circle cx="130" cy="130" r={radius} fill="none" stroke={modeInfo.color} strokeWidth="7" strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={circumference * (1 - progress)} className="transition-[stroke-dashoffset] duration-300" />
           </svg>
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
@@ -473,14 +465,14 @@ function FocusTimer({
           ))}
         </div>
       </div>
-      <div className="relative mt-6 flex flex-wrap justify-center gap-2">
-        <button type="button" onClick={startOrPause} className="inline-flex items-center gap-2 rounded-xl bg-[#493c2b] px-5 py-3 text-[12px] font-semibold text-[#fff8e6] shadow-sm transition-transform hover:-translate-y-0.5 dark:bg-[#e6cf94] dark:text-[#352c20]" data-testid="button-timer-start-pause">
+      <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <button type="button" onClick={startOrPause} className="inline-flex items-center gap-2 rounded-xl bg-[#493c2b] px-6 py-3 text-[12px] font-semibold text-[#fff8e6] shadow-sm transition-transform hover:-translate-y-0.5 dark:bg-[#e6cf94] dark:text-[#352c20]" data-testid="button-timer-start-pause">
           {timer.running ? <Pause size={15} /> : <Play size={15} />} {timer.running ? 'Pauza' : 'Boshlash'}
         </button>
         <button type="button" onClick={skip} disabled={settings.strictMode && timer.mode === 'focus'} className="inline-flex items-center gap-2 rounded-xl border border-[#d8c795] bg-[#fff9e9]/70 px-3.5 py-3 text-[11px] font-semibold text-[#67563a] transition-colors hover:bg-[#f4e8c9] disabled:cursor-not-allowed disabled:opacity-45 dark:border-[#665837] dark:bg-[#3a3023] dark:text-[#ead9aa]" data-testid="button-timer-skip" title={settings.strictMode && timer.mode === 'focus' ? 'Qat’iy rejimda diqqat davrini o‘tkazib yuborib bo‘lmaydi' : 'Keyingi davrga o‘tish'}><SkipForward size={14} /> O‘tkazish</button>
         <button type="button" onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-[#d8c795] bg-[#fff9e9]/70 px-3.5 py-3 text-[11px] font-semibold text-[#67563a] transition-colors hover:bg-[#f4e8c9] dark:border-[#665837] dark:bg-[#3a3023] dark:text-[#ead9aa]" data-testid="button-timer-reset"><RotateCcw size={14} /> Qayta</button>
       </div>
-      <div className="relative mt-5 flex flex-wrap items-center justify-center gap-2 border-t border-[#e1d4ae] pt-4 dark:border-[#5a4d38]">
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-2 border-t border-[#e1d4ae] pt-4 dark:border-[#5a4d38]">
         <label className="flex items-center gap-2 text-[10px] text-[#89775a] dark:text-[#cfc09d]">
           <span>Hozirgi vazifa</span>
           <select value={timer.activeTaskId ?? ''} onChange={(event) => onTimerChange({ ...timer, activeTaskId: event.target.value || null })} disabled={timer.running} className="max-w-[220px] rounded-lg border border-[#d8c795] bg-[#fff9e9] px-2 py-1.5 text-[10px] text-[#4e422f] outline-none focus:ring-2 focus:ring-[#a56c34]/30 disabled:opacity-60 dark:border-[#665837] dark:bg-[#3b3224] dark:text-[#f0dfb5]" data-testid="select-timer-task">
@@ -489,7 +481,7 @@ function FocusTimer({
           </select>
         </label>
       </div>
-      <p className="relative mt-3 min-h-4 text-center text-[10px] text-[#876f41] dark:text-[#d6c18c]" aria-live="polite" data-testid="status-timer">{notice || (settings.strictMode && timer.mode === 'focus' ? 'Qat’iy rejim faol: diqqat davri tugamaguncha o‘tkazib bo‘lmaydi.' : timer.running ? 'Vaqt ketmoqda. Yozishda davom eting.' : 'Taymer boshlashga tayyor.')}</p>
+      <p className="mt-3 min-h-4 text-center text-[10px] text-[#876f41] dark:text-[#d6c18c]" aria-live="polite" data-testid="status-timer">{notice || (settings.strictMode && timer.mode === 'focus' ? 'Qat’iy rejim faol: diqqat davri tugamaguncha o‘tkazib bo‘lmaydi.' : timer.running ? 'Vaqt ketmoqda. Yozishda davom eting.' : 'Taymer boshlashga tayyor.')}</p>
     </section>
   );
 }
