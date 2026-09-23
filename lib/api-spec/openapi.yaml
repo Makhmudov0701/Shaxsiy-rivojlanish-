@@ -380,6 +380,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
         - name: from
           in: query
           required: false

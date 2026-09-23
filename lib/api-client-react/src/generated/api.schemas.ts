@@ -232,6 +232,10 @@ export const ListDiaryEntriesSort = {
 export type ExportDiaryParams = {
 format: ExportDiaryFormat;
 q?: string;
+/**
+ * @minimum 1
+ */
+id?: number;
 from?: string;
 to?: string;
 tag?: string;

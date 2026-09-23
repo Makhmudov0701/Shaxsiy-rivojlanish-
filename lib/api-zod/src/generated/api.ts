@@ -406,9 +406,13 @@ export const VerifyDiaryPinResponse = zod.object({
 /**
  * @summary Export diary entries as JSON or PDF
  */
+
+
+
 export const ExportDiaryQueryParams = zod.object({
   "format": zod.enum(['json', 'pdf']),
   "q": zod.coerce.string().optional(),
+  "id": zod.coerce.number().int().min(1).optional(),
   "from": zod.date().optional(),
   "to": zod.date().optional(),
   "tag": zod.coerce.string().optional()

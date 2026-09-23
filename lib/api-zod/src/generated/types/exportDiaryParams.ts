@@ -10,6 +10,10 @@ import type { ExportDiaryFormat } from './exportDiaryFormat';
 export type ExportDiaryParams = {
 format: ExportDiaryFormat;
 q?: string;
+/**
+ * @minimum 1
+ */
+id?: number;
 from?: Date;
 to?: Date;
 tag?: string;

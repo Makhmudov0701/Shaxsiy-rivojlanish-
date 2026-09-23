@@ -34,6 +34,7 @@ function cleanBackupFileName(value: string): string {
 
 type ExportQuery = {
   format: "json" | "pdf";
+  id?: number;
   q?: string;
   from?: Date;
   to?: Date;
@@ -42,6 +43,7 @@ type ExportQuery = {
 
 async function listExportEntries(userId: string, query: ExportQuery) {
   const filters = [eq(diaryEntriesTable.userId, userId)];
+  if (query.id) filters.push(eq(diaryEntriesTable.id, query.id));
   const normalizedQuery = query.q?.trim().replace(/^#+/, "");
   if (normalizedQuery) {
     filters.push(
@@ -161,6 +163,22 @@ function pdfSafe(value: string): string {
     .replace(/([\\()])/g, "\\$1");
 }
 
+function pdfRichText(value: string): string {
+  return value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^[*-]\s+/gm, "• ")
+    .replace(/^>\s+/gm, "❝ ")
+    .replace(/[*_~]/g, "")
+    .replace(/\r?\n/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function wrap(value: string, width = 88): string[] {
   const words = value.split(/\s+/).filter(Boolean);
   const lines: string[] = [];
@@ -184,8 +202,8 @@ function makePdf(entries: Awaited<ReturnType<typeof listExportEntries>>): Buffer
     "",
     ...entries.flatMap((entry) => [
       `${entry.entryDate}  ${entry.title}`,
-      `Kayfiyat: ${entry.mood}  Teglar: ${entry.tags.map((tag) => `#${tag}`).join(" ") || "-"}`,
-      ...wrap(entry.content),
+      `Toifa: ${entry.folder}  Kayfiyat: ${entry.mood}  Teglar: ${entry.tags.map((tag) => `#${tag}`).join(" ") || "-"}`,
+      ...wrap(pdfRichText(entry.content)),
       entry.photos.length ? `[${entry.photos.length} ta surat biriktirilgan]` : "",
       "",
     ]),
@@ -237,6 +255,10 @@ protectedRouter.get("/diary/export", async (req, res): Promise<void> => {
     return;
   }
   const entries = await listExportEntries(userIdFrom(res), parsed.data);
+  if (parsed.data.id && entries.length === 0) {
+    res.status(404).json({ error: "Yozuv topilmadi." });
+    return;
+  }
   if (parsed.data.format === "json") {
     const payload = ExportDiaryResponse.parse({ exportedAt: new Date(), entries });
     res.setHeader("Content-Disposition", 'attachment; filename="shaxsiy-kundalik.json"');
