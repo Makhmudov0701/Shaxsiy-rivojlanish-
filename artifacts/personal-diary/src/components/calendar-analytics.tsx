@@ -7,6 +7,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/
 import { getListDiaryEntriesQueryKey, Mood, useListDiaryEntries } from '@workspace/api-client-react';
 import type { DiaryEntry } from '@workspace/api-client-react';
 import { moodMeta, MoodBadge } from '@/components/diary-ui';
+import { formatUzbekDate, parseDateValue } from '@/lib/date-utils';
 
 type AnalyticsMode = 'calendar' | 'analytics';
 
@@ -17,17 +18,22 @@ function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function parseEntryDate(value: string) {
-  const [year, month, day] = value.slice(0, 10).split('-').map(Number);
-  return new Date(year, month - 1, day);
+function parseEntryDate(value: unknown): Date | null {
+  if (typeof value !== 'string') return null;
+  return parseDateValue(value.slice(0, 10));
+}
+
+function entryDateKey(value: unknown): string | null {
+  const date = parseEntryDate(value);
+  return date ? dateKey(date) : null;
 }
 
 function monthLabel(date: Date) {
-  return new Intl.DateTimeFormat('uz-UZ', { month: 'long', year: 'numeric' }).format(date);
+  return formatUzbekDate(date, { month: 'long', year: 'numeric' }, 'Oy noma’lum');
 }
 
 function shortMonthLabel(date: Date) {
-  return new Intl.DateTimeFormat('uz-UZ', { month: 'short' }).format(date).replace('.', '');
+  return formatUzbekDate(date, { month: 'short' }, 'Oy').replace('.', '');
 }
 
 function countMoods(entries: DiaryEntry[]) {
@@ -43,14 +49,18 @@ function CalendarSkeleton() {
 
 function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: DiaryEntry[]; visibleMonth: Date; setVisibleMonth: (date: Date) => void }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const entriesByDate = useMemo(() => entries.reduce<Record<string, DiaryEntry[]>>((result, entry) => ({ ...result, [entry.entryDate.slice(0, 10)]: [...(result[entry.entryDate.slice(0, 10)] ?? []), entry] }), {}), [entries]);
+  const entriesByDate = useMemo(() => entries.reduce<Record<string, DiaryEntry[]>>((result, entry) => {
+    const key = entryDateKey(entry.entryDate);
+    if (!key) return result;
+    return { ...result, [key]: [...(result[key] ?? []), entry] };
+  }, {}), [entries]);
   const monthEntries = entries.filter((entry) => {
     const date = parseEntryDate(entry.entryDate);
-    return date.getFullYear() === visibleMonth.getFullYear() && date.getMonth() === visibleMonth.getMonth();
+    return date !== null && date.getFullYear() === visibleMonth.getFullYear() && date.getMonth() === visibleMonth.getMonth();
   });
-  const entryDates = Object.keys(entriesByDate).map(parseEntryDate);
+  const entryDates = Object.keys(entriesByDate).map(parseEntryDate).filter((date): date is Date => date !== null);
   const selectedEntries = selectedDate ? entriesByDate[selectedDate] ?? [] : [];
-  const monthDays = new Set(monthEntries.map((entry) => entry.entryDate.slice(0, 10))).size;
+  const monthDays = new Set(monthEntries.map((entry) => entryDateKey(entry.entryDate)).filter((key): key is string => key !== null)).size;
 
   return (
     <div className="rounded-[24px] border border-card-border bg-card p-5 sm:p-7">
@@ -61,7 +71,7 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
       <Calendar
         month={visibleMonth}
         onMonthChange={setVisibleMonth}
-        selected={selectedDate ? parseEntryDate(selectedDate) : undefined}
+         selected={selectedDate ? parseEntryDate(selectedDate) ?? undefined : undefined}
         onSelect={(date: Date | undefined) => setSelectedDate(date ? dateKey(date) : null)}
         modifiers={{ hasEntry: entryDates }}
         modifiersClassNames={{ hasEntry: 'bg-[#f8e9bf] text-[#6c4c21] rounded-xl' }}
@@ -71,7 +81,7 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
         aria-label="Yozuvlar taqvimi"
       />
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/70 pt-4 text-[10px] text-muted-foreground"><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[#d9a441]" /> yozuv bor</span><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[#cfc09c] bg-background" /> bo‘sh kun</span><span className="ml-auto">Sanani tanlang</span></div>
-      {selectedDate && <div className="mt-5 rounded-2xl border border-[#d9c795] bg-[#faf2dc] p-4 dark:border-[#6b5832] dark:bg-[#332c21]" data-testid="selected-date-entries"><div className="flex items-center justify-between gap-3"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#8f601a]">Tanlangan kun</p><button type="button" onClick={() => setSelectedDate(null)} className="text-[10px] text-muted-foreground underline-offset-2 hover:underline" aria-label="Tanlangan sanani yopish">Yopish</button></div><p className="mt-1 font-serif text-[21px]">{new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' }).format(parseEntryDate(selectedDate))}</p>{selectedEntries.length > 0 ? <div className="mt-3 space-y-2">{selectedEntries.map((entry) => <Link key={entry.id} href={`/entry/${entry.id}`} className="group flex items-center justify-between gap-3 rounded-xl border border-[#e3d5ad] bg-card/70 px-3 py-2.5 transition-colors hover:border-[#b89c5c]" data-testid={`calendar-entry-${entry.id}`}><span className="min-w-0 truncate font-serif text-[17px] group-hover:text-[#6c4c21]">{entry.title}</span><MoodBadge mood={entry.mood} small /></Link>)}</div> : <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Bu kunda yozuv saqlanmagan.</p>}</div>}
+      {selectedDate && <div className="mt-5 rounded-2xl border border-[#d9c795] bg-[#faf2dc] p-4 dark:border-[#6b5832] dark:bg-[#332c21]" data-testid="selected-date-entries"><div className="flex items-center justify-between gap-3"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#8f601a]">Tanlangan kun</p><button type="button" onClick={() => setSelectedDate(null)} className="text-[10px] text-muted-foreground underline-offset-2 hover:underline" aria-label="Tanlangan sanani yopish">Yopish</button></div><p className="mt-1 font-serif text-[21px]">{formatUzbekDate(selectedDate, { day: 'numeric', month: 'long', year: 'numeric' })}</p>{selectedEntries.length > 0 ? <div className="mt-3 space-y-2">{selectedEntries.map((entry) => <Link key={entry.id} href={`/entry/${entry.id}`} className="group flex items-center justify-between gap-3 rounded-xl border border-[#e3d5ad] bg-card/70 px-3 py-2.5 transition-colors hover:border-[#b89c5c]" data-testid={`calendar-entry-${entry.id}`}><span className="min-w-0 truncate font-serif text-[17px] group-hover:text-[#6c4c21]">{entry.title}</span><MoodBadge mood={entry.mood} small /></Link>)}</div> : <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Bu kunda yozuv saqlanmagan.</p>}</div>}
     </div>
   );
 }
@@ -79,7 +89,7 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
 function MoodAnalytics({ entries, visibleMonth, setVisibleMonth }: { entries: DiaryEntry[]; visibleMonth: Date; setVisibleMonth: (date: Date) => void }) {
   const monthEntries = entries.filter((entry) => {
     const date = parseEntryDate(entry.entryDate);
-    return date.getFullYear() === visibleMonth.getFullYear() && date.getMonth() === visibleMonth.getMonth();
+    return date !== null && date.getFullYear() === visibleMonth.getFullYear() && date.getMonth() === visibleMonth.getMonth();
   });
   const moodCounts = countMoods(monthEntries);
   const moodData = moodValues.map((mood) => ({ mood, name: moodMeta[mood].label, count: moodCounts[mood], fill: moodMeta[mood].color })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
@@ -87,7 +97,7 @@ function MoodAnalytics({ entries, visibleMonth, setVisibleMonth }: { entries: Di
     const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 5 + index, 1);
     const monthEntriesForChart = entries.filter((entry) => {
       const entryDate = parseEntryDate(entry.entryDate);
-      return entryDate.getFullYear() === date.getFullYear() && entryDate.getMonth() === date.getMonth();
+      return entryDate !== null && entryDate.getFullYear() === date.getFullYear() && entryDate.getMonth() === date.getMonth();
     });
     const counts = countMoods(monthEntriesForChart);
     return { month: shortMonthLabel(date), ...counts };

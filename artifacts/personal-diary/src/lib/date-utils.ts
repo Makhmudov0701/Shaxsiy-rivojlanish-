@@ -6,15 +6,20 @@ export function parseDateValue(value: unknown): Date | null {
   }
 
   if (typeof value !== 'string' && typeof value !== 'number') return null;
-  const candidate = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-    ? new Date(`${value}T12:00:00`)
-    : new Date(value);
+  let candidate: Date;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    candidate = new Date(year, month - 1, day, 12);
+    if (candidate.getFullYear() !== year || candidate.getMonth() !== month - 1 || candidate.getDate() !== day) return null;
+  } else {
+    candidate = new Date(value);
+  }
 
   return Number.isNaN(candidate.getTime()) ? null : candidate;
 }
 
 export function safeDate(value: unknown, fallback = new Date()): Date {
-  return parseDateValue(value) ?? fallback;
+  return parseDateValue(value) ?? parseDateValue(fallback) ?? new Date();
 }
 
 export function formatUzbekDate(
