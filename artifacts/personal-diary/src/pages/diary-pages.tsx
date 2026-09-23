@@ -128,15 +128,40 @@ export function EntryPage() {
 }
 
 function clerkErrorMessage(error: unknown) {
-  const first = (error as { errors?: Array<{ code?: string }> })?.errors?.[0];
+  const first = (error as {
+    errors?: Array<{ code?: string; longMessage?: string; message?: string }>;
+    message?: string;
+  })?.errors?.[0];
   if (first?.code === 'form_password_pwned') return 'Bu parol xavfsiz emas. Boshqa parol tanlang.';
   if (first?.code === 'form_password_length') return 'Parol juda qisqa. Uzunroq parol tanlang.';
+  if (first?.code === 'form_password_not_enabled') return 'Email va parol orqali ro‘yxatdan o‘tish yoqilmagan.';
   if (first?.code === 'form_identifier_exists') return 'Bu email manzili allaqachon ro‘yxatdan o‘tgan.';
+  if (first?.code === 'form_identifier_not_allowed') return 'Bu email manzilidan ro‘yxatdan o‘tish mumkin emas.';
   if (first?.code === 'form_identifier_not_found') return 'Bu email manzili bilan hisob topilmadi.';
   if (first?.code === 'form_password_incorrect') return 'Parol noto‘g‘ri.';
   if (first?.code === 'form_param_format_invalid') return 'Kiritilgan ma’lumot formatini tekshiring.';
+  if (first?.code === 'strategy_for_user_invalid') return 'Email va parol orqali ro‘yxatdan o‘tish Clerk sozlamalarida yoqilmagan.';
+  if (first?.code === 'captcha_invalid' || first?.code === 'captcha_missing') return 'Xavfsizlik tekshiruvi bajarilmadi. Sahifani yangilang va qayta urinib ko‘ring.';
   if (first?.code === 'too_many_requests') return 'Juda ko‘p urinish bo‘ldi. Biroz kutib, qayta urinib ko‘ring.';
+  if (first?.longMessage || first?.message) return first.longMessage ?? first.message ?? 'Clerk auth xatosi.';
+  const message = (error as { message?: string })?.message;
+  if (message) return message;
   return 'Amalni bajarib bo‘lmadi. Ma’lumotlarni tekshirib, qayta urinib ko‘ring.';
+}
+
+function logClerkError(context: string, error: unknown) {
+  const clerkError = error as {
+    errors?: Array<{ code?: string; longMessage?: string; message?: string; meta?: unknown }>;
+    message?: string;
+  };
+  console.error(`[Clerk ${context}]`, {
+    message: clerkError?.message,
+    errors: clerkError?.errors?.map(({ code, longMessage, message }) => ({
+      code,
+      longMessage,
+      message,
+    })),
+  });
 }
 
 function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
@@ -174,7 +199,7 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         if (signInHook.signIn.status === 'complete') await finish();
         else setError('Qo‘shimcha tasdiqlash talab qilindi. Hisob sozlamalarini tekshiring.');
       }
-    } catch (submissionError) { setError(clerkErrorMessage(submissionError)); } finally { setBusy(false); }
+    } catch (submissionError) { logClerkError(isSignUp ? 'sign-up' : 'sign-in', submissionError); setError(clerkErrorMessage(submissionError)); } finally { setBusy(false); }
   };
 
   const verify = async (event: React.FormEvent) => {
@@ -186,7 +211,7 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
       if (result.error) throw result.error;
       if (signUpHook.signUp.status === 'complete') await finish();
       else setError('Kod hali tasdiqlanmadi. Qayta urinib ko‘ring.');
-    } catch (verificationError) { setError(clerkErrorMessage(verificationError)); } finally { setBusy(false); }
+    } catch (verificationError) { logClerkError('email-verification', verificationError); setError(clerkErrorMessage(verificationError)); } finally { setBusy(false); }
   };
 
   return <div className="w-full max-w-[440px] rounded-[24px] border border-[#d8ccb0] bg-[#fffaf0] p-7 shadow-xl sm:p-9">
