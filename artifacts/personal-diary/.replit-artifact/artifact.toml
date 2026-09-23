@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Personal Diary"
+description = "A private personal diary web app for writing, organizing, searching, and reflecting on daily entries with secure user accounts."
+version = "1.0.0"
+id = "artifacts/personal-diary"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21651
+
+[services.development]
+run = "pnpm --filter @workspace/personal-diary run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/personal-diary", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/personal-diary/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21651"
+BASE_PATH = "/"

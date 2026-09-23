@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: diary
+    description: Private diary operations
 paths:
   /healthz:
     get:
@@ -24,7 +26,204 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /diary/summary:
+    get:
+      operationId: getDiarySummary
+      tags: [diary]
+      summary: Get diary summary
+      description: Returns lightweight stats for the signed-in user's diary.
+      responses:
+        "200":
+          description: Diary summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiarySummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/entries:
+    get:
+      operationId: listDiaryEntries
+      tags: [diary]
+      summary: List diary entries
+      description: Returns the signed-in user's diary entries with optional search and filters.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: mood
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/Mood"
+        - name: favorite
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [newest, oldest]
+            default: newest
+      responses:
+        "200":
+          description: Diary entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiaryEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createDiaryEntry
+      tags: [diary]
+      summary: Create diary entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiaryEntryInput"
+      responses:
+        "201":
+          description: Created diary entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/entries/{id}:
+    get:
+      operationId: getDiaryEntry
+      tags: [diary]
+      summary: Get one diary entry
+      parameters:
+        - $ref: "#/components/parameters/DiaryEntryId"
+      responses:
+        "200":
+          description: Diary entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryEntry"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      operationId: updateDiaryEntry
+      tags: [diary]
+      summary: Update diary entry
+      parameters:
+        - $ref: "#/components/parameters/DiaryEntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiaryEntryUpdate"
+      responses:
+        "200":
+          description: Updated diary entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteDiaryEntry
+      tags: [diary]
+      summary: Delete diary entry
+      parameters:
+        - $ref: "#/components/parameters/DiaryEntryId"
+      responses:
+        "204":
+          description: Diary entry deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /diary/entries/{id}/favorite:
+    patch:
+      operationId: toggleDiaryEntryFavorite
+      tags: [diary]
+      summary: Toggle diary entry favorite state
+      parameters:
+        - $ref: "#/components/parameters/DiaryEntryId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FavoriteUpdate"
+      responses:
+        "200":
+          description: Updated diary entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryEntry"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 components:
+  parameters:
+    DiaryEntryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
   schemas:
     HealthStatus:
       type: object
@@ -33,4 +232,110 @@ components:
           type: string
       required:
         - status
+    Mood:
+      type: string
+      enum: [peaceful, happy, grateful, energized, thoughtful, sad, anxious]
+    DiaryEntry:
+      type: object
+      required: [id, title, content, mood, tags, favorite, entryDate, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        mood:
+          $ref: "#/components/schemas/Mood"
+        tags:
+          type: array
+          items:
+            type: string
+        favorite:
+          type: boolean
+        entryDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DiaryEntryInput:
+      type: object
+      required: [title, content, mood, entryDate]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        content:
+          type: string
+          minLength: 1
+        mood:
+          $ref: "#/components/schemas/Mood"
+        tags:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            maxLength: 32
+        favorite:
+          type: boolean
+          default: false
+        entryDate:
+          type: string
+          format: date
+    DiaryEntryUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        content:
+          type: string
+          minLength: 1
+        mood:
+          $ref: "#/components/schemas/Mood"
+        tags:
+          type: array
+          maxItems: 8
+          items:
+            type: string
+            maxLength: 32
+        favorite:
+          type: boolean
+        entryDate:
+          type: string
+          format: date
+    FavoriteUpdate:
+      type: object
+      required: [favorite]
+      properties:
+        favorite:
+          type: boolean
+    DiarySummary:
+      type: object
+      required: [totalEntries, thisMonth, writingStreak, favoriteCount, latestMood]
+      properties:
+        totalEntries:
+          type: integer
+        thisMonth:
+          type: integer
+        writingStreak:
+          type: integer
+        favoriteCount:
+          type: integer
+        latestMood:
+          anyOf:
+            - $ref: "#/components/schemas/Mood"
+            - type: "null"
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
 
