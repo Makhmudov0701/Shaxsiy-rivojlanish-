@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp } from '@clerk/react';
+import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleAlert, Heart, LoaderCircle, LockKeyhole, Search } from 'lucide-react';
 import {
   DiaryEntryInput,
@@ -133,7 +134,7 @@ function clerkErrorMessage(error: unknown) {
     message?: string;
   })?.errors?.[0];
   if (first?.code === 'form_password_pwned') return 'Bu parol xavfsiz emas. Boshqa parol tanlang.';
-  if (first?.code === 'form_password_length') return 'Parol juda qisqa. Uzunroq parol tanlang.';
+  if (first?.code === 'form_password_length') return PASSWORD_TOO_SHORT_MESSAGE;
   if (first?.code === 'form_password_not_enabled') return 'Email va parol orqali ro‘yxatdan o‘tish yoqilmagan.';
   if (first?.code === 'form_identifier_exists') return 'Bu email manzili allaqachon ro‘yxatdan o‘tgan.';
   if (first?.code === 'form_identifier_not_allowed') return 'Bu email manzilidan ro‘yxatdan o‘tish mumkin emas.';
@@ -189,6 +190,11 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setBusy(true); setError('');
     try {
       if (isSignUp) {
+        const passwordResult = passwordSchema.safeParse(password);
+        if (!passwordResult.success) {
+          setError(passwordResult.error.issues[0]?.message ?? PASSWORD_TOO_SHORT_MESSAGE);
+          return;
+        }
         const result = await signUpHook.signUp.password({ emailAddress: email.trim(), password });
         if (result.error) throw result.error;
         if (signUpHook.signUp.status === 'complete') await finish();
@@ -216,7 +222,7 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
   return <div className="w-full max-w-[440px] rounded-[24px] border border-[#d8ccb0] bg-[#fffaf0] p-7 shadow-xl sm:p-9">
     <div className="mb-8 flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy kundalik</p><h1 className="mt-3 font-serif text-[38px] leading-none text-[#30243f]">{verificationSent ? 'Emailni tasdiqlang' : isSignUp ? 'Kundalik oching' : 'Xush kelibsiz'}</h1><p className="mt-3 text-[13px] leading-relaxed text-[#756d7e]">{verificationSent ? 'Emailingizga yuborilgan kodni kiriting.' : isSignUp ? 'Faqat sizga tegishli sokin makon.' : 'Yozuvlaringizga qaytish vaqti keldi.'}</p></div><ThemeToggle /></div>
-    {verificationSent ? <form onSubmit={verify} className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Tasdiqlash kodi<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="6 xonali kod" inputMode="numeric" autoComplete="one-time-code" /></label><button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />} Tasdiqlash</button></form> : <form onSubmit={submit} noValidate className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Email manzili<input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="sizning@email.uz" type="email" autoComplete="email" /></label><label className="block text-[12px] font-medium text-[#30243f]">Parol<input value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="Parolingiz" type="password" autoComplete={isSignUp ? 'new-password' : 'current-password'} /></label><button type="submit" disabled={busy || !loaded} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />}{isSignUp ? 'Ro‘yxatdan o‘tish' : 'Kirish'}</button></form>}
+    {verificationSent ? <form onSubmit={verify} className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Tasdiqlash kodi<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="6 xonali kod" inputMode="numeric" autoComplete="one-time-code" /></label><button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />} Tasdiqlash</button></form> : <form onSubmit={submit} noValidate className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Email manzili<input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="sizning@email.uz" type="email" autoComplete="email" /></label><label className="block text-[12px] font-medium text-[#30243f]">Parol<input value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="Parolingiz" type="password" minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined} autoComplete={isSignUp ? 'new-password' : 'current-password'} /></label><button type="submit" disabled={busy || !loaded} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />}{isSignUp ? 'Ro‘yxatdan o‘tish' : 'Kirish'}</button></form>}
     {error && <p className="mt-5 rounded-xl border border-[#ecc6bd] bg-[#fff0ec] px-3 py-2.5 text-[12px] leading-relaxed text-[#8f3f2d]" role="alert">{error}</p>}
     <p className="mt-7 border-t border-[#e4dac3] pt-5 text-center text-[12px] text-[#756d7e]">{isSignUp ? 'Hisobingiz bormi?' : 'Hisobingiz yo‘qmi?'} <Link href={isSignUp ? '/sign-in' : '/sign-up'} className="font-semibold text-[#9a6b23]">{isSignUp ? 'Kirish' : 'Ro‘yxatdan o‘ting'}</Link></p>
   </div>;
