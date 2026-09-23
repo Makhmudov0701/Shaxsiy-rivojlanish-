@@ -130,7 +130,12 @@ export function EntryPage() {
 function clerkErrorMessage(error: unknown) {
   const first = (error as { errors?: Array<{ code?: string }> })?.errors?.[0];
   if (first?.code === 'form_password_pwned') return 'Bu parol xavfsiz emas. Boshqa parol tanlang.';
+  if (first?.code === 'form_password_length') return 'Parol juda qisqa. Uzunroq parol tanlang.';
   if (first?.code === 'form_identifier_exists') return 'Bu email manzili allaqachon ro‘yxatdan o‘tgan.';
+  if (first?.code === 'form_identifier_not_found') return 'Bu email manzili bilan hisob topilmadi.';
+  if (first?.code === 'form_password_incorrect') return 'Parol noto‘g‘ri.';
+  if (first?.code === 'form_param_format_invalid') return 'Kiritilgan ma’lumot formatini tekshiring.';
+  if (first?.code === 'too_many_requests') return 'Juda ko‘p urinish bo‘ldi. Biroz kutib, qayta urinib ko‘ring.';
   return 'Amalni bajarib bo‘lmadi. Ma’lumotlarni tekshirib, qayta urinib ko‘ring.';
 }
 
@@ -159,7 +164,7 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
     setBusy(true); setError('');
     try {
       if (isSignUp) {
-        const result = await signUpHook.signUp.create({ emailAddress: email.trim(), password });
+        const result = await signUpHook.signUp.password({ emailAddress: email.trim(), password });
         if (result.error) throw result.error;
         if (signUpHook.signUp.status === 'complete') await finish();
         else { const verification = await signUpHook.signUp.verifications.sendEmailCode(); if (verification.error) throw verification.error; setVerificationSent(true); }
