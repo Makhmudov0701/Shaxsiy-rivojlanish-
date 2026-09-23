@@ -261,12 +261,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
-    const selectedText = window.getSelection()?.toString() ?? '';
-    if ((format === 'bold' || format === 'italic') && !selectedText) {
-      const tag = format === 'bold' ? 'strong' : 'em';
-      const placeholder = format === 'bold' ? 'qalin matn' : 'qiya matn';
-      document.execCommand('insertHTML', false, `<${tag}>${placeholder}</${tag}>`);
-    } else if (format === 'bold') {
+    if (format === 'bold') {
       document.execCommand('bold');
     } else if (format === 'italic') {
       document.execCommand('italic');
