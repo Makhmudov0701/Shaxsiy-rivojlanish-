@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleAlert, FileJson, FileText, Heart, ImagePlus, LoaderCircle, LockKeyhole, Search, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleAlert, FileJson, FileText, Heart, ImagePlus, LoaderCircle, LockKeyhole, Mic, MicOff, Search, ShieldCheck, X } from 'lucide-react';
 import {
   DiaryEntryInput,
   DiaryEntryUpdate,
@@ -31,6 +31,52 @@ import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, 
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 
 const moods = Object.values(Mood);
+
+interface SpeechRecognitionAlternativeLike {
+  transcript: string;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  [index: number]: SpeechRecognitionAlternativeLike;
+}
+
+interface SpeechRecognitionResultListLike {
+  length: number;
+  [index: number]: SpeechRecognitionResultLike;
+}
+
+interface SpeechRecognitionResultEventLike extends Event {
+  resultIndex: number;
+  results: SpeechRecognitionResultListLike;
+}
+
+interface SpeechRecognitionErrorEventLike extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionLike {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionResultEventLike) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognitionConstructor() {
+  if (typeof window === 'undefined') return undefined;
+  const browserWindow = window as Window & {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition;
+}
 
 function LoadingRows() {
   return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{[1, 2, 3, 4, 5, 6].map((item) => <div key={item} className="h-[218px] rounded-[22px] border border-border bg-card p-5" data-testid={`skeleton-entry-${item}`}><div className="skeleton h-3 w-24 rounded-full" /><div className="skeleton mt-8 h-8 w-4/5 rounded-lg" /><div className="skeleton mt-3 h-3 w-full rounded-full" /><div className="skeleton mt-2 h-3 w-3/4 rounded-full" /></div>)}</div>;
@@ -138,13 +184,26 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
   const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voicePreview, setVoicePreview] = useState('');
+  const [voiceError, setVoiceError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const speechRecognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const create = useCreateDiaryEntry();
   const update = useUpdateDiaryEntry();
   const deletePhoto = useDeleteDiaryPhoto();
   const photoPreviews = useMemo(() => pendingFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [pendingFiles]);
 
   useEffect(() => () => photoPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [photoPreviews]);
+
+  useEffect(() => {
+    setVoiceSupported(Boolean(getSpeechRecognitionConstructor()));
+    return () => {
+      speechRecognitionRef.current?.abort();
+      speechRecognitionRef.current = null;
+    };
+  }, []);
 
   const addPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -155,6 +214,63 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
     else setPhotoError('');
     setPendingFiles((current) => [...current, ...accepted]);
     event.target.value = '';
+  };
+
+  const toggleVoiceInput = () => {
+    if (isListening) {
+      speechRecognitionRef.current?.stop();
+      return;
+    }
+
+    const SpeechRecognition = getSpeechRecognitionConstructor();
+    if (!SpeechRecognition) {
+      setVoiceError('Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.');
+      return;
+    }
+
+    setVoiceError('');
+    setVoicePreview('');
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'uz-UZ';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const transcript = event.results[index][0]?.transcript ?? '';
+        if (event.results[index].isFinal) finalTranscript += transcript;
+        else interimTranscript += transcript;
+      }
+      if (finalTranscript.trim()) {
+        setContent((current) => `${current.trim()}${current.trim() ? ' ' : ''}${finalTranscript.trim()}`);
+      }
+      setVoicePreview(interimTranscript.trim());
+    };
+    recognition.onerror = (event) => {
+      const messages: Record<string, string> = {
+        'not-allowed': 'Mikrofon uchun ruxsat bering va qayta urinib ko‘ring.',
+        'no-speech': 'Ovoz aniqlanmadi. Yana bir bor urinib ko‘ring.',
+        network: 'Ovozli xizmatga ulanib bo‘lmadi. Internetni tekshiring.',
+      };
+      setVoiceError(messages[event.error] ?? 'Ovozli yozishda xatolik yuz berdi. Yana urinib ko‘ring.');
+      setVoicePreview('');
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      setVoicePreview('');
+      speechRecognitionRef.current = null;
+    };
+    speechRecognitionRef.current = recognition;
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setVoiceError('Ovozli yozishni boshlab bo‘lmadi. Yana urinib ko‘ring.');
+      setIsListening(false);
+      speechRecognitionRef.current = null;
+    }
   };
 
   const save = async () => {
@@ -193,7 +309,7 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
   const pending = saving || create.isPending || update.isPending || deletePhoto.isPending;
   return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>
-    <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>
+    <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-4 rounded-2xl border border-[#d8cdaF] bg-[#fbf6e9] p-4 dark:border-[#5d523f] dark:bg-[#2d291f]" data-testid="voice-input-panel"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Ovozli yozish</p><p className="mt-1 text-[11px] text-muted-foreground">{isListening ? 'Sizni tinglayapman. Gapiring.' : 'Gapiring — so‘zlaringiz matnga aylanadi.'}</p></div><button type="button" onClick={toggleVoiceInput} disabled={pending || (!voiceSupported && !isListening)} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-55 ${isListening ? 'border-[#b75539] bg-[#f4ddd4] text-[#9d432d] shadow-sm' : 'border-[#cdbd8e] bg-card text-foreground hover:border-[#b89c5c] hover:bg-[#f8e9bf]'}`} aria-label={isListening ? 'Ovozli yozishni to‘xtatish' : 'Ovoz orqali yozish'} data-testid="button-voice-input">{isListening ? <MicOff size={15} /> : <Mic size={15} />}{isListening ? 'To‘xtatish' : 'Ovoz orqali yozish'}</button></div>{isListening && <p className="mt-3 flex items-center gap-2 text-[11px] text-[#9d432d]" aria-live="polite"><span className="size-2 animate-pulse rounded-full bg-[#b75539]" />{voicePreview || 'Tinglanmoqda...'}</p>}{!voiceSupported && <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.</p>}{voiceError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert"><CircleAlert size={14} className="mt-0.5 shrink-0" />{voiceError}</p>}</div><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>
       <aside className="space-y-6 lg:pt-14"><div className="rounded-2xl border border-card-border bg-card p-5"><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyat</p><div className="mt-4 grid grid-cols-2 gap-2">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`rounded-xl px-2 py-2.5 text-left text-[11px] transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div><div className="rounded-2xl border border-card-border bg-card p-5"><label className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground" htmlFor="entry-tags">Hashtaglar</label><input id="entry-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#oila, #ish yoki #shaxsiy" className="mt-3 w-full border-b border-border bg-transparent pb-2 text-[12px] outline-none placeholder:text-muted-foreground/55 focus:border-[#b89c5c]" data-testid="input-entry-tags" /><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vergul yoki bo‘sh joy bilan ajrating.</p><button type="button" onClick={() => setFavorite(!favorite)} className={`mt-5 flex items-center gap-2 text-[11px] ${favorite ? 'text-[#a66a13]' : 'text-muted-foreground'}`} data-testid="button-entry-favorite"><Heart size={15} fill={favorite ? 'currentColor' : 'none'} /> Sevimlilarga saqlash</button></div><button type="button" onClick={save} disabled={pending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-[12px] font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-save-entry">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <Check size={15} />}{pending ? 'Saqlanmoqda...' : 'Saqlash'}</button>{error && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" data-testid="status-form-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}<p className="text-center font-mono text-[9px] uppercase leading-relaxed tracking-[.1em] text-muted-foreground/70">Faqat siz uchun · har doim</p></aside>
     </div>
   </div></DiaryShell>;
