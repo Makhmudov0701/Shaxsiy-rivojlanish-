@@ -18,3 +18,5 @@
 //   export type Post = typeof postsTable.$inferSelect;
 
 export * from "./diary-entries";
+export * from "./diary-photos";
+export * from "./user-settings";
