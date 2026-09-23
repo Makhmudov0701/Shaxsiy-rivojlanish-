@@ -161,7 +161,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const searchParams = new URLSearchParams(query);
   const portalView = portalViewFromLocation(location);
-  const pomodoroSelected = pathname.startsWith('/entry') && searchParams.get('focus') === 'pomodoro';
+  const pomodoroSelected = pathname === '/pomodoro';
 
   useEffect(() => {
     window.localStorage.setItem('kundalik-sidebar-yig‘iq', sidebarCollapsed ? 'ha' : 'yo‘q');
@@ -202,7 +202,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/user-portal?view=calendar" label="Kalendar" icon={<CalendarDays size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'calendar'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-calendar" />
               <SidebarNavLink href="/user-portal?view=folders" label="Papkalar va Teglar" icon={<FolderOpen size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'folders'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-folders-tags" />
               <SidebarNavLink href="/user-portal?view=analytics" label="Tahlil va Kayfiyat" icon={<BarChart3 size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'analytics'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-analytics" />
-              <SidebarNavLink href="/entry/new?focus=pomodoro" label="Pomodoro Taymer" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
+              <SidebarNavLink href="/pomodoro" label="Pomodoro va Vazifalar" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
               <SidebarNavLink href="/settings" label="Sozlamalar va Zaxira" icon={<Settings size={16} strokeWidth={1.8} />} active={pathname === '/settings'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-settings" />
             </nav>
             <p className={`mb-3 mt-8 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Shaxsiy vositalar</p>

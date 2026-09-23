@@ -339,8 +339,9 @@ function FocusTimer({
   };
 
   const skip = () => {
-    const nextMode: TimerMode = timer.mode === 'focus' ? 'shortBreak' : 'focus';
-    onTimerChange({ ...timer, mode: nextMode, remaining: MODE_INFO[nextMode].seconds, running: false, endAt: null });
+    const nextCycle = timer.mode === 'focus' ? timer.cycle + 1 : timer.cycle;
+    const nextMode: TimerMode = timer.mode === 'focus' ? (nextCycle % 4 === 0 ? 'longBreak' : 'shortBreak') : 'focus';
+    onTimerChange({ ...timer, mode: nextMode, remaining: MODE_INFO[nextMode].seconds, running: false, endAt: null, cycle: nextCycle });
     setNotice('Keyingi davr tayyor.');
   };
 
@@ -564,6 +565,8 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
   const activeTask = tasks.find((task) => task.id === workspace.timer.activeTaskId);
   const openCount = tasks.filter((task) => !task.completed).length;
   const todayFocus = workspace.sessions.filter((session) => session.mode === 'focus' && dayKey(session.startedAt) === dayKey(Date.now())).reduce((sum, session) => sum + session.durationMinutes, 0);
+  const estimatedPomodoros = tasks.reduce((sum, task) => sum + task.estimate, 0);
+  const completedPomodoros = tasks.reduce((sum, task) => sum + task.completedPomodoros, 0);
 
   const updateTimer = (timer: TimerSnapshot) => setWorkspace((current) => ({ ...current, timer }));
   const addSession = (mode: TimerMode, taskId: string | null, minutes: number) => {
@@ -603,7 +606,11 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
           <p className="font-mono text-[9px] uppercase tracking-[.22em] text-[#9a6b23]">Fokus kundaligi</p>
           <h1 className="mt-2 font-serif text-[clamp(2.8rem,6vw,5.3rem)] leading-[.88] tracking-[-.055em]">Bugun nimaga<br /><em className="text-[#47796c]">joy</em> ochasiz?</h1>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-[#d8d3c2] bg-card px-3 py-2.5 shadow-sm"><span className="grid size-8 place-items-center rounded-xl bg-[#e2eee7] text-[#47796c]"><CheckCircle2 size={16} /></span><span><span className="block font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">Bugun</span><strong className="block font-serif text-[20px] leading-none">{todayFocus} daqiqa</strong></span></div>
+        <div className="grid grid-cols-3 divide-x divide-[#ddd6c5] overflow-hidden rounded-2xl border border-[#d8d3c2] bg-card shadow-sm dark:divide-[#45463c]">
+          <div className="px-3 py-2.5"><span className="block font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">Bugun</span><strong className="mt-1 block font-serif text-[19px] leading-none">{todayFocus} <span className="text-[10px] font-normal">daq</span></strong></div>
+          <div className="px-3 py-2.5"><span className="block font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">Reja</span><strong className="mt-1 block font-serif text-[19px] leading-none">{estimatedPomodoros} <span className="text-[10px] font-normal">davr</span></strong></div>
+          <div className="px-3 py-2.5"><span className="block font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">Bajarildi</span><strong className="mt-1 block font-serif text-[19px] leading-none text-[#47796c]">{completedPomodoros} <span className="text-[10px] font-normal text-foreground">davr</span></strong></div>
+        </div>
       </div>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(340px,.8fr)]">
         <FocusTimer timer={workspace.timer} tasks={tasks} onTimerChange={updateTimer} onSession={addSession} />
@@ -617,7 +624,7 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
               <input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="Yangi vazifa nomi..." className="w-full bg-transparent px-1 py-2 text-[13px] outline-none placeholder:text-muted-foreground/70" aria-label="Yangi vazifa nomi" />
               <div className="mt-2 flex flex-wrap gap-2">
                 <input value={newProject} onChange={(event) => setNewProject(event.target.value)} placeholder="Loyiha yoki papka" className="min-w-0 flex-1 rounded-lg border border-[#dcd8ca] bg-card px-2.5 py-2 text-[10px] outline-none focus:border-[#9bb7a7] dark:border-[#484a41]" aria-label="Loyiha nomi" />
-                <select value={newEstimate} onChange={(event) => setNewEstimate(event.target.value)} className="rounded-lg border border-[#dcd8ca] bg-card px-2 py-2 text-[10px] outline-none dark:border-[#484a41]" aria-label="Pomodoro taxmini"><option value="1">1 davr</option><option value="2">2 davr</option><option value="3">3 davr</option><option value="4">4 davr</option><option value="8">8 davr</option></select>
+                <select value={newEstimate} onChange={(event) => setNewEstimate(event.target.value)} className="rounded-lg border border-[#dcd8ca] bg-card px-2 py-2 text-[10px] outline-none dark:border-[#484a41]" aria-label="Pomodoro taxmini"><option value="1">1 davr · 25 daq</option><option value="2">2 davr · 50 daq</option><option value="3">3 davr · 75 daq</option><option value="4">4 davr · 100 daq</option><option value="8">8 davr · 200 daq</option></select>
                 <button type="submit" disabled={!newTitle.trim()} className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-[10px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-add-task"><Plus size={13} /> Qo‘shish</button>
               </div>
             </form>
