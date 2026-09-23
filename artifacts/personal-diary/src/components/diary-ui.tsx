@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { BookOpen, Heart, LogOut, Moon, Plus, Search, Settings, Sparkles, Sun } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
+import { formatUzbekDate } from '@/lib/date-utils';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -67,9 +68,8 @@ export function MoodBadge({ mood, small = false }: { mood: Mood; small?: boolean
   );
 }
 
-export function formatEntryDate(value: string) {
-  const date = new Date(`${value}T12:00:00`);
-  return new Intl.DateTimeFormat('uz-UZ', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+export function formatEntryDate(value: string | null | undefined) {
+  return formatUzbekDate(value, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry: DiaryEntry; onFavorite: (entry: DiaryEntry) => void; onDelete: (entry: DiaryEntry) => void; busyFavorite?: boolean }) {

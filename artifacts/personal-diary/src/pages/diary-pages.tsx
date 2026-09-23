@@ -31,6 +31,7 @@ import {
 import type { DiaryEntry, DiaryPhoto, DiaryWeeklySummary } from '@workspace/api-client-react';
 import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta } from '@/components/diary-ui';
 import { CalendarAnalytics } from '@/components/calendar-analytics';
+import { formatUzbekDate } from '@/lib/date-utils';
 
 const moods = Object.values(Mood);
 
@@ -96,8 +97,7 @@ function WeeklySummaryCard({ summary, isLoading, isError, onRetry }: { summary?:
     return <section className="mt-8 flex flex-col gap-3 rounded-[24px] border border-[#ecc6bd] bg-[#fff0ec] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6" role="alert" data-testid="weekly-summary-error"><div><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Haftalik xulosa</p><p className="mt-2 text-[12px] text-muted-foreground">Xulosani hozircha yuklab bo‘lmadi.</p></div><button type="button" onClick={onRetry} className="self-start rounded-xl border border-destructive/30 bg-card px-3 py-2 text-[11px] font-semibold text-destructive sm:self-auto" data-testid="button-retry-weekly-summary">Qayta urinish</button></section>;
   }
   if (!summary) return null;
-  const dateFormat = new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'short' });
-  const range = `${dateFormat.format(new Date(`${summary.weekStart}T12:00:00`))} — ${dateFormat.format(new Date(`${summary.weekEnd}T12:00:00`))}`;
+  const range = `${formatUzbekDate(summary.weekStart, { day: 'numeric', month: 'short' })} — ${formatUzbekDate(summary.weekEnd, { day: 'numeric', month: 'short' })}`;
   return <section className="mt-8 overflow-hidden rounded-[24px] border border-[#d7c795] bg-[#faf3df] dark:border-[#5e5037] dark:bg-[#302a20]" data-testid="weekly-summary-card"><div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6"><div className="max-w-3xl"><div className="flex flex-wrap items-center gap-3"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Haftalik xulosa</p><span className="rounded-full border border-[#d8c38d] bg-[#f4e4b6] px-2 py-1 font-mono text-[9px] uppercase tracking-[.08em] text-[#8f601a]">Sokin tahlil</span></div><p className="mt-4 font-serif text-[clamp(1.45rem,3vw,2.1rem)] leading-tight text-primary">{summary.summary}</p><div className="mt-4 rounded-2xl border border-[#e2d4ad] bg-card/55 p-4 dark:border-[#5a4d38]"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9a6b23]">Yaxshi jihat</p><p className="mt-2 text-[13px] leading-relaxed text-foreground">{summary.insight}</p></div></div><div className="flex shrink-0 gap-2 text-center"><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.entryCount}</p><p className="mt-1 text-[10px] text-muted-foreground">yozuv</p></div><div className="rounded-2xl border border-[#e2d4ad] bg-card/55 px-3 py-2.5 dark:border-[#5a4d38]"><p className="font-serif text-[24px] leading-none">{summary.activeDays}</p><p className="mt-1 text-[10px] text-muted-foreground">faol kun</p></div></div></div><div className="flex flex-wrap items-center gap-3 border-t border-[#e2d4ad] px-5 py-3.5 text-[10px] text-muted-foreground dark:border-[#5a4d38] sm:px-6"><span>{range}</span>{summary.topMoods.length > 0 && <><span className="text-[#c8b684]">•</span><span>Ko‘p uchragan kayfiyatlar:</span>{summary.topMoods.map((item) => <MoodBadge key={item.mood} mood={item.mood} small />)}</>}</div></section>;
 }
 

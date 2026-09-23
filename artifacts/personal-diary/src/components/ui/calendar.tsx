@@ -4,6 +4,7 @@ import * as React from 'react';
 import { DayButton, DayPicker, getDefaultClassNames } from 'react-day-picker';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { formatUzbekDate } from '@/lib/date-utils';
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -36,7 +37,7 @@ function Calendar({
       captionLayout={captionLayout}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString('default', { month: 'short' }),
+          formatUzbekDate(date, { month: 'short' }, 'Oy'),
         ...formatters,
       }}
       classNames={{
@@ -189,7 +190,7 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString()}
+       data-day={formatUzbekDate(day.date, { year: 'numeric', month: '2-digit', day: '2-digit' }, '')}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
