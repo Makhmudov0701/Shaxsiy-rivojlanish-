@@ -301,6 +301,46 @@
     pointer-events: none;
   }
 
+  .rich-editor {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .rich-editor:focus {
+    outline: none;
+  }
+
+  .rich-editor p {
+    margin: 0 0 1rem;
+  }
+
+  .rich-editor p:last-child {
+    margin-bottom: 0;
+  }
+
+  .rich-editor ul {
+    margin: 0 0 1rem;
+    padding-left: 1.5rem;
+    list-style: disc;
+  }
+
+  .rich-editor li {
+    padding-left: 0.25rem;
+  }
+
+  .rich-editor blockquote {
+    margin: 0 0 1rem;
+    border-left: 2px solid #d9a441;
+    padding-left: 1rem;
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+
+  .rich-editor strong,
+  .rich-editor b {
+    font-weight: 700;
+  }
+
   /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
    * buttons/badges can remove the automatic brightness adjustment on interactions
    * and program their own. */
