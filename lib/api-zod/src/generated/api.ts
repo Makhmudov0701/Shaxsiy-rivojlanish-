@@ -54,7 +54,16 @@ export const ListDiaryEntriesResponseItem = zod.object({
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 export const ListDiaryEntriesResponse = zod.array(ListDiaryEntriesResponseItem)
 
@@ -89,7 +98,16 @@ export const CreateDiaryEntryResponse = zod.object({
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -112,7 +130,16 @@ export const GetDiaryEntryResponse = zod.object({
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -153,7 +180,16 @@ export const UpdateDiaryEntryResponse = zod.object({
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
 })
 
 
@@ -193,7 +229,153 @@ export const ToggleDiaryEntryFavoriteResponse = zod.object({
   "favorite": zod.boolean(),
   "entryDate": zod.coerce.date(),
   "createdAt": zod.coerce.date(),
-  "updatedAt": zod.coerce.date()
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Upload a private photo for a diary entry
+ */
+
+
+
+export const UploadDiaryPhotoParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const uploadDiaryPhotoHeaderXFileNameMax = 180;
+
+
+
+export const UploadDiaryPhotoHeader = zod.object({
+  "X-File-Name": zod.string().max(uploadDiaryPhotoHeaderXFileNameMax)
+})
+
+export const UploadDiaryPhotoResponse = zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary View a private diary photo
+ */
+
+
+
+export const GetDiaryPhotoParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const GetDiaryPhotoResponse = zod.unknown()
+
+
+/**
+ * @summary Delete a private diary photo
+ */
+
+
+
+export const DeleteDiaryPhotoParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteDiaryPhotoResponse = zod.void()
+
+
+/**
+ * @summary Get private diary settings
+ */
+export const GetDiarySettingsResponse = zod.object({
+  "pinEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Set or replace the four digit diary PIN
+ */
+export const setDiaryPinBodyPinRegExp = new RegExp('^[0-9]{4}$');
+
+
+export const SetDiaryPinBody = zod.object({
+  "pin": zod.string().regex(setDiaryPinBodyPinRegExp)
+})
+
+export const SetDiaryPinResponse = zod.object({
+  "pinEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Remove the diary PIN
+ */
+export const RemoveDiaryPinResponse = zod.object({
+  "pinEnabled": zod.boolean()
+})
+
+
+/**
+ * @summary Verify the four digit diary PIN
+ */
+export const verifyDiaryPinBodyPinRegExp = new RegExp('^[0-9]{4}$');
+
+
+export const VerifyDiaryPinBody = zod.object({
+  "pin": zod.string().regex(verifyDiaryPinBodyPinRegExp)
+})
+
+export const VerifyDiaryPinResponse = zod.object({
+  "verified": zod.boolean()
+})
+
+
+/**
+ * @summary Export diary entries as JSON or PDF
+ */
+export const ExportDiaryQueryParams = zod.object({
+  "format": zod.enum(['json', 'pdf']),
+  "q": zod.coerce.string().optional(),
+  "from": zod.date().optional(),
+  "to": zod.date().optional(),
+  "tag": zod.coerce.string().optional()
+})
+
+export const ExportDiaryResponse = zod.object({
+  "exportedAt": zod.coerce.date(),
+  "entries": zod.array(zod.object({
+  "id": zod.number().int(),
+  "title": zod.string(),
+  "content": zod.string(),
+  "mood": zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),
+  "tags": zod.array(zod.string()),
+  "favorite": zod.boolean(),
+  "entryDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date(),
+  "photos": zod.array(zod.object({
+  "id": zod.number().int(),
+  "entryId": zod.number().int(),
+  "fileName": zod.string(),
+  "contentType": zod.string(),
+  "size": zod.number().int(),
+  "url": zod.string(),
+  "createdAt": zod.coerce.date()
+}))
+}))
 })
 
 

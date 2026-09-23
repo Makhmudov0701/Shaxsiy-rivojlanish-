@@ -4,10 +4,11 @@ import { ClerkProvider, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { PinLockGate } from '@/components/security-ui';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
-import { EntryPage, HomePage, SignInPage, SignUpPage, UserPortalPage } from '@/pages/diary-pages';
+import { EntryPage, HomePage, SettingsPage, SignInPage, SignUpPage, UserPortalPage } from '@/pages/diary-pages';
 import {
   Redirect,
   Route,
@@ -106,7 +107,7 @@ function ProtectedPage({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   if (!isLoaded) return <div className="min-h-[100dvh] bg-background" />;
   if (!isSignedIn) return <Redirect to="/" />;
-  return <>{children}</>;
+  return <PinLockGate>{children}</PinLockGate>;
 }
 
 function Router() {
@@ -126,6 +127,9 @@ function Router() {
         </Route>
         <Route path="/entry/:id">
           <ProtectedPage><EntryPage /></ProtectedPage>
+        </Route>
+        <Route path="/settings">
+          <ProtectedPage><SettingsPage /></ProtectedPage>
         </Route>
         <Route component={NotFound} />
       </Switch>

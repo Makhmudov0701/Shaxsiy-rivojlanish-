@@ -24,11 +24,17 @@ import type {
   DiaryEntry,
   DiaryEntryInput,
   DiaryEntryUpdate,
+  DiaryPhoto,
+  DiarySettings,
   DiarySummary,
+  ExportDiary200One,
+  ExportDiaryParams,
   FavoriteUpdate,
   HealthStatus,
   ListDiaryEntriesParams,
   NotFoundResponse,
+  PinInput,
+  PinVerification,
   UnauthorizedResponse
 } from './api.schemas';
 
@@ -132,11 +138,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 }
 
 
-
-
-
-
-
 export const getGetDiarySummaryUrl = () => {
 
 
@@ -208,12 +209,6 @@ export function useGetDiarySummary<TData = Awaited<ReturnType<typeof getDiarySum
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
-
 
 export const getListDiaryEntriesUrl = (params?: ListDiaryEntriesParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -293,13 +288,6 @@ export function useListDiaryEntries<TData = Awaited<ReturnType<typeof listDiaryE
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
-
-
 export const getCreateDiaryEntryUrl = () => {
 
 
@@ -458,13 +446,6 @@ export function useGetDiaryEntry<TData = Awaited<ReturnType<typeof getDiaryEntry
 
   return withQueryKey(query, queryOptions.queryKey);
 }
-
-
-
-
-
-
-
 export const getUpdateDiaryEntryUrl = (id: number,) => {
 
 
@@ -716,4 +697,643 @@ export const useToggleDiaryEntryFavorite = <TError = ErrorType<BadRequestRespons
       > => {
       return useMutation(getToggleDiaryEntryFavoriteMutationOptions(options));
     }
+
+export const getUploadDiaryPhotoUrl = (id: number,) => {
+
+
+
+
+  return `/api/diary/entries/${id}/photos`
+}
+
+/**
+ * @summary Upload a private photo for a diary entry
+ */
+export const uploadDiaryPhoto = async (id: number,
+    uploadDiaryPhotoBody: Blob, options?: Parameters<typeof customFetch>[1]): Promise<DiaryPhoto> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DiaryPhoto>(getUploadDiaryPhotoUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/octet-stream', ...getHeaders(options?.headers) },
+    body: uploadDiaryPhotoBody
+  }
+);}
+
+
+
+
+
+export const getUploadDiaryPhotoMutationKey = () => ['uploadDiaryPhoto'] as const;
+
+export const getUploadDiaryPhotoMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDiaryPhoto>>, TError,UploadDiaryPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadDiaryPhoto>>, TError,UploadDiaryPhotoMutationVariables, TContext> => {
+
+const mutationKey = getUploadDiaryPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadDiaryPhoto>>, UploadDiaryPhotoMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  uploadDiaryPhoto(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadDiaryPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof uploadDiaryPhoto>>>
+    export type UploadDiaryPhotoMutationBody = BodyType<Blob>
+    export type UploadDiaryPhotoMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UploadDiaryPhotoMutationVariables = {id: number;data: BodyType<Blob>}
+
+    /**
+ * @summary Upload a private photo for a diary entry
+ */
+export const useUploadDiaryPhoto = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadDiaryPhoto>>, TError,UploadDiaryPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadDiaryPhoto>>,
+        TError,
+        UploadDiaryPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUploadDiaryPhotoMutationOptions(options));
+    }
+
+export const getGetDiaryPhotoUrl = (id: number,) => {
+
+
+
+
+  return `/api/diary/photos/${id}`
+}
+
+/**
+ * @summary View a private diary photo
+ */
+export const getDiaryPhoto = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetDiaryPhotoUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDiaryPhotoQueryKey = (id: number,) => {
+    return [
+    `/api/diary/photos/${id}`
+    ] as const;
+    }
+
+
+export const getGetDiaryPhotoQueryOptions = <TData = Awaited<ReturnType<typeof getDiaryPhoto>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiaryPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDiaryPhotoQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDiaryPhoto>>> = ({ signal }) => getDiaryPhoto(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDiaryPhoto>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDiaryPhotoQueryResult = NonNullable<Awaited<ReturnType<typeof getDiaryPhoto>>>
+export type GetDiaryPhotoQueryError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+
+
+/**
+ * @summary View a private diary photo
+ */
+
+export function useGetDiaryPhoto<TData = Awaited<ReturnType<typeof getDiaryPhoto>>, TError = ErrorType<UnauthorizedResponse | NotFoundResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiaryPhoto>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDiaryPhotoQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+// End of generated API module.
+export const getDeleteDiaryPhotoUrl = (id: number,) => {
+
+
+
+
+  return `/api/diary/photos/${id}`
+}
+
+/**
+ * @summary Delete a private diary photo
+ */
+export const deleteDiaryPhoto = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteDiaryPhotoUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteDiaryPhotoMutationKey = () => ['deleteDiaryPhoto'] as const;
+
+export const getDeleteDiaryPhotoMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryPhoto>>, TError,DeleteDiaryPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryPhoto>>, TError,DeleteDiaryPhotoMutationVariables, TContext> => {
+
+const mutationKey = getDeleteDiaryPhotoMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDiaryPhoto>>, DeleteDiaryPhotoMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDiaryPhoto(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDiaryPhotoMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDiaryPhoto>>>
+
+    export type DeleteDiaryPhotoMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteDiaryPhotoMutationVariables = {id: number}
+
+    /**
+ * @summary Delete a private diary photo
+ */
+export const useDeleteDiaryPhoto = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryPhoto>>, TError,DeleteDiaryPhotoMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDiaryPhoto>>,
+        TError,
+        DeleteDiaryPhotoMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteDiaryPhotoMutationOptions(options));
+    }
+
+export const getGetDiarySettingsUrl = () => {
+
+
+
+
+  return `/api/diary/settings`
+}
+
+/**
+ * @summary Get private diary settings
+ */
+export const getDiarySettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiarySettings> => {
+
+  return customFetch<DiarySettings>(getGetDiarySettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDiarySettingsQueryKey = () => {
+    return [
+    `/api/diary/settings`
+    ] as const;
+    }
+
+
+export const getGetDiarySettingsQueryOptions = <TData = Awaited<ReturnType<typeof getDiarySettings>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiarySettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDiarySettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDiarySettings>>> = ({ signal }) => getDiarySettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDiarySettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDiarySettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getDiarySettings>>>
+export type GetDiarySettingsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Get private diary settings
+ */
+
+export function useGetDiarySettings<TData = Awaited<ReturnType<typeof getDiarySettings>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDiarySettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDiarySettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+// End of generated API module.
+export const getSetDiaryPinUrl = () => {
+
+
+
+
+  return `/api/diary/settings/pin`
+}
+
+/**
+ * @summary Set or replace the four digit diary PIN
+ */
+export const setDiaryPin = async (pinInput: PinInput, options?: Parameters<typeof customFetch>[1]): Promise<DiarySettings> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DiarySettings>(getSetDiaryPinUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pinInput)
+  }
+);}
+
+
+
+
+
+export const getSetDiaryPinMutationKey = () => ['setDiaryPin'] as const;
+
+export const getSetDiaryPinMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setDiaryPin>>, TError,SetDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setDiaryPin>>, TError,SetDiaryPinMutationVariables, TContext> => {
+
+const mutationKey = getSetDiaryPinMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setDiaryPin>>, SetDiaryPinMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  setDiaryPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetDiaryPinMutationResult = NonNullable<Awaited<ReturnType<typeof setDiaryPin>>>
+    export type SetDiaryPinMutationBody = BodyType<PinInput>
+    export type SetDiaryPinMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type SetDiaryPinMutationVariables = {data: BodyType<PinInput>}
+
+    /**
+ * @summary Set or replace the four digit diary PIN
+ */
+export const useSetDiaryPin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setDiaryPin>>, TError,SetDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setDiaryPin>>,
+        TError,
+        SetDiaryPinMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetDiaryPinMutationOptions(options));
+    }
+
+export const getRemoveDiaryPinUrl = () => {
+
+
+
+
+  return `/api/diary/settings/pin`
+}
+
+/**
+ * @summary Remove the diary PIN
+ */
+export const removeDiaryPin = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiarySettings> => {
+
+  return customFetch<DiarySettings>(getRemoveDiaryPinUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveDiaryPinMutationKey = () => ['removeDiaryPin'] as const;
+
+export const getRemoveDiaryPinMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext> => {
+
+const mutationKey = getRemoveDiaryPinMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeDiaryPin>>, void> = () => {
+
+
+          return  removeDiaryPin(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveDiaryPinMutationResult = NonNullable<Awaited<ReturnType<typeof removeDiaryPin>>>
+
+    export type RemoveDiaryPinMutationError = ErrorType<UnauthorizedResponse>
+
+
+    /**
+ * @summary Remove the diary PIN
+ */
+export const useRemoveDiaryPin = <TError = ErrorType<UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof removeDiaryPin>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRemoveDiaryPinMutationOptions(options));
+    }
+
+export const getVerifyDiaryPinUrl = () => {
+
+
+
+
+  return `/api/diary/settings/pin/verify`
+}
+
+/**
+ * @summary Verify the four digit diary PIN
+ */
+export const verifyDiaryPin = async (pinInput: PinInput, options?: Parameters<typeof customFetch>[1]): Promise<PinVerification> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<PinVerification>(getVerifyDiaryPinUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(pinInput)
+  }
+);}
+
+
+
+
+
+export const getVerifyDiaryPinMutationKey = () => ['verifyDiaryPin'] as const;
+
+export const getVerifyDiaryPinMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext> => {
+
+const mutationKey = getVerifyDiaryPinMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyDiaryPin>>, VerifyDiaryPinMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyDiaryPin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyDiaryPinMutationResult = NonNullable<Awaited<ReturnType<typeof verifyDiaryPin>>>
+    export type VerifyDiaryPinMutationBody = BodyType<PinInput>
+    export type VerifyDiaryPinMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type VerifyDiaryPinMutationVariables = {data: BodyType<PinInput>}
+
+    /**
+ * @summary Verify the four digit diary PIN
+ */
+export const useVerifyDiaryPin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyDiaryPin>>,
+        TError,
+        VerifyDiaryPinMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyDiaryPinMutationOptions(options));
+    }
+
+export const getExportDiaryUrl = (params: ExportDiaryParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/diary/export?${stringifiedParams}` : `/api/diary/export`
+}
+
+/**
+ * @summary Export diary entries as JSON or PDF
+ */
+export const exportDiary = async (params: ExportDiaryParams, options?: Parameters<typeof customFetch>[1]): Promise<ExportDiary200One | Blob> => {
+
+  return customFetch<ExportDiary200One | Blob>(getExportDiaryUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getExportDiaryQueryKey = (params?: ExportDiaryParams,) => {
+    return [
+    `/api/diary/export`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getExportDiaryQueryOptions = <TData = Awaited<ReturnType<typeof exportDiary>>, TError = ErrorType<UnauthorizedResponse>>(params: ExportDiaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportDiary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getExportDiaryQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof exportDiary>>> = ({ signal }) => exportDiary(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof exportDiary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ExportDiaryQueryResult = NonNullable<Awaited<ReturnType<typeof exportDiary>>>
+export type ExportDiaryQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary Export diary entries as JSON or PDF
+ */
+
+export function useExportDiary<TData = Awaited<ReturnType<typeof exportDiary>>, TError = ErrorType<UnauthorizedResponse>>(
+ params: ExportDiaryParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof exportDiary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getExportDiaryQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

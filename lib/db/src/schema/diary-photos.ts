@@ -1,5 +1,11 @@
-import { integer, pgTable, serial, text, timestamp, bytea } from "drizzle-orm/pg-core";
+import { customType, integer, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { diaryEntriesTable } from "./diary-entries";
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 export const diaryPhotosTable = pgTable("diary_photos", {
   id: serial("id").primaryKey(),

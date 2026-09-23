@@ -14,3 +14,9 @@ The installed Clerk React SDK exposes the modern custom-flow hooks as signal sta
 **Why:** The legacy `isLoaded`, `setActive`, and resource-returning mutation methods are not part of the signal hook shape and cause both type errors and incorrect completion handling.
 
 **How to apply:** When changing the custom Uzbek auth screen, keep all Clerk error details behind a localized app message and treat a successful factor response as complete only after the corresponding future resource reports `status === 'complete'` and `finalize()` succeeds.
+
+Private diary photos use authenticated PostgreSQL bytea storage because private App Storage could not be provisioned; photo bytes and metadata must remain scoped to the Clerk user. The optional four-digit PIN is stored only as a server-side scrypt hash.
+
+**Why:** The diary's images are private content, and the workspace storage fallback must not turn them into public URLs or client-managed blobs.
+
+**How to apply:** Keep photo upload, view, and delete routes behind Clerk ownership checks, enforce image type/size limits, and never expose the stored PIN hash to the browser.

@@ -1,16 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
-import { ArrowLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleAlert, Heart, LoaderCircle, LockKeyhole, Search } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, CalendarDays, Check, ChevronDown, CircleAlert, FileJson, FileText, Heart, ImagePlus, LoaderCircle, LockKeyhole, Search, ShieldCheck, X } from 'lucide-react';
 import {
   DiaryEntryInput,
   DiaryEntryUpdate,
   Mood,
   getGetDiaryEntryQueryKey,
+  getGetDiarySettingsQueryKey,
   getGetDiarySummaryQueryKey,
   getListDiaryEntriesQueryKey,
+  exportDiary,
+  useDeleteDiaryPhoto,
+  useGetDiarySettings,
+  useRemoveDiaryPin,
+  useSetDiaryPin,
   useCreateDiaryEntry,
   useDeleteDiaryEntry,
   useGetDiaryEntry,
@@ -18,8 +24,9 @@ import {
   useListDiaryEntries,
   useToggleDiaryEntryFavorite,
   useUpdateDiaryEntry,
+  uploadDiaryPhoto,
 } from '@workspace/api-client-react';
-import type { DiaryEntry } from '@workspace/api-client-react';
+import type { DiaryEntry, DiaryPhoto } from '@workspace/api-client-react';
 import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta } from '@/components/diary-ui';
 
 const moods = Object.values(Mood);
@@ -68,19 +75,42 @@ export function UserPortalPage() {
   const favoriteMutation = useToggleDiaryEntryFavorite();
   const deleteMutation = useDeleteDiaryEntry();
   const flash = (text: string) => { setNotice(text); window.setTimeout(() => setNotice(''), 2600); };
+  const [exporting, setExporting] = useState<'json' | 'pdf' | ''>('');
   const updateQueries = (entry?: DiaryEntry) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); if (entry) queryClient.invalidateQueries({ queryKey: getGetDiaryEntryQueryKey(entry.id) }); };
   const onFavorite = (entry: DiaryEntry) => favoriteMutation.mutate({ id: entry.id, data: { favorite: !entry.favorite } }, { onSuccess: (updated) => { updateQueries(updated); flash(updated.favorite ? 'Sevimlilarga qo‘shildi.' : 'Sevimlilardan olib tashlandi.'); }, onError: () => flash('Yozuvni yangilab bo‘lmadi.') });
   const onDelete = (entry: DiaryEntry) => { if (!window.confirm(`“${entry.title}” yozuvini o‘chirishni xohlaysizmi?`)) return; deleteMutation.mutate({ id: entry.id }, { onSuccess: () => { updateQueries(); flash('Yozuv o‘chirildi.'); }, onError: () => flash('Yozuvni o‘chirib bo‘lmadi.') }); };
+  const downloadExport = async (format: 'json' | 'pdf') => {
+    setExporting(format);
+    try {
+      const result = await exportDiary({ format, q: search.trim() || undefined, from: fromDate || undefined, to: toDate || undefined }, { responseType: format === 'pdf' ? 'blob' : 'json' });
+      const blob = result instanceof Blob ? result : new Blob([JSON.stringify(result, null, 2)], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = format === 'pdf' ? 'shaxsiy-kundalik.pdf' : 'shaxsiy-kundalik.json';
+      anchor.click();
+      URL.revokeObjectURL(url);
+      flash(format === 'pdf' ? 'PDF yuklab olindi.' : 'JSON yuklab olindi.');
+    } catch {
+      flash('Eksportni tayyorlab bo‘lmadi.');
+    } finally {
+      setExporting('');
+    }
+  };
   const data = summary.data;
   const stats = [['Jami yozuvlar', data?.totalEntries ?? 0, 'barchasi'], ['Bu oy', data?.thisMonth ?? 0, 'yozuv'], ['Ketma-ket kunlar', data?.writingStreak ?? 0, 'kun'], ['Sevimlilar', data?.favoriteCount ?? 0, 'saqlangan']];
   return <DiaryShell><div className="mx-auto max-w-[1360px] px-5 py-8 sm:px-8 md:px-10 lg:px-14 lg:py-12">
-    <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><div className="diary-rise"><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy arxivingiz</p><h1 className="mt-3 font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[.9] tracking-[-.05em]">Xush kelibsiz<span className="text-[#a66a13]">.</span></h1><p className="mt-4 text-[14px] text-muted-foreground">Asrashga arziydigan kunlaringiz uchun joy.</p></div><Link href="/entry/new" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" data-testid="button-new-entry"><span className="grid size-5 place-items-center rounded-full bg-[#d9a441] text-primary"><span className="text-[17px] leading-none">+</span></span> Yangi yozuv</Link></div>
+    <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end"><div className="diary-rise"><p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy arxivingiz</p><h1 className="mt-3 font-serif text-[clamp(3rem,5vw,5.2rem)] leading-[.9] tracking-[-.05em]">Xush kelibsiz<span className="text-[#a66a13]">.</span></h1><p className="mt-4 text-[14px] text-muted-foreground">Asrashga arziydigan kunlaringiz uchun joy.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => downloadExport('json')} disabled={Boolean(exporting)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[11px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:opacity-60" data-testid="button-export-json"><FileJson size={15} /> {exporting === 'json' ? 'Tayyorlanmoqda...' : 'JSON yuklash'}</button><button type="button" onClick={() => downloadExport('pdf')} disabled={Boolean(exporting)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-card px-3.5 py-3 text-[11px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:opacity-60" data-testid="button-export-pdf"><FileText size={15} /> {exporting === 'pdf' ? 'Tayyorlanmoqda...' : 'PDF yuklash'}</button><Link href="/entry/new" className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md" data-testid="button-new-entry"><span className="grid size-5 place-items-center rounded-full bg-[#d9a441] text-primary"><span className="text-[17px] leading-none">+</span></span> Yangi yozuv</Link></div></div>
     <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{stats.map(([label, value, note], i) => <div key={label} className={`rounded-2xl border border-card-border bg-card p-5 diary-rise diary-delay-${i + 1}`} data-testid={`stat-${String(label).toLowerCase().replace(' ', '-')}`}><p className="font-mono text-[9px] uppercase tracking-[.15em] text-muted-foreground">{label}</p><div className="mt-4 flex items-end justify-between"><span className="font-serif text-[38px] leading-none">{data ? value : <span className="skeleton inline-block h-10 w-12 rounded-lg" />}</span><span className="text-[11px] text-muted-foreground">{note}</span></div></div>)}</div>
-    <div className="mt-12 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between"><div className="relative w-full max-w-[440px]"><Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Yozuvlardan qidiring..." className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[#b89c5c] focus:ring-2 focus:ring-[#d9a441]/20" type="search" aria-label="Yozuvlardan qidirish" data-testid="input-search-entries" /></div><div className="flex flex-wrap gap-2"><div className="relative"><select value={filterMood} onChange={(e) => setFilterMood(e.target.value as 'all' | Mood)} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Kayfiyat bo‘yicha filter" data-testid="select-mood-filter"><option value="all">Barcha kayfiyatlar</option>{moods.map((mood) => <option key={mood} value={mood}>{moodMeta[mood].label}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div><button type="button" onClick={() => setFavoritesOnly(!favoritesOnly)} className={`h-10 rounded-xl border px-3 text-[11px] transition-colors ${favoritesOnly ? 'border-[#d9a441] bg-[#f8e9bf] text-[#8f601a]' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-filter-favorites"><Heart size={13} className="mr-1.5 inline-block" fill={favoritesOnly ? 'currentColor' : 'none'} /> Sevimlilar</button><div className="relative"><select value={sort} onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Saralash tartibi" data-testid="select-sort"><option value="newest">Avval yangilari</option><option value="oldest">Avval eskilari</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div></div><div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><span>Sana:</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Boshlanish sanasi" /><span>—</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Tugash sanasi" /></div></div>
+    <div className="mt-12 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between"><div className="relative w-full max-w-[440px]"><Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="So‘z yoki #teg qidiring..." className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-[13px] outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-[#b89c5c] focus:ring-2 focus:ring-[#d9a441]/20" type="search" aria-label="So‘z yoki hashtag bo‘yicha qidirish" data-testid="input-search-entries" /></div><div className="flex flex-wrap gap-2"><div className="relative"><select value={filterMood} onChange={(e) => setFilterMood(e.target.value as 'all' | Mood)} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Kayfiyat bo‘yicha filter" data-testid="select-mood-filter"><option value="all">Barcha kayfiyatlar</option>{moods.map((mood) => <option key={mood} value={mood}>{moodMeta[mood].label}</option>)}</select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div><button type="button" onClick={() => setFavoritesOnly(!favoritesOnly)} className={`h-10 rounded-xl border px-3 text-[11px] transition-colors ${favoritesOnly ? 'border-[#d9a441] bg-[#f8e9bf] text-[#8f601a]' : 'border-border bg-card text-muted-foreground hover:text-foreground'}`} data-testid="button-filter-favorites"><Heart size={13} className="mr-1.5 inline-block" fill={favoritesOnly ? 'currentColor' : 'none'} /> Sevimlilar</button><div className="relative"><select value={sort} onChange={(e) => setSort(e.target.value as 'newest' | 'oldest')} className="h-10 appearance-none rounded-xl border border-border bg-card pl-3 pr-9 text-[11px] text-foreground outline-none focus:border-[#b89c5c]" aria-label="Saralash tartibi" data-testid="select-sort"><option value="newest">Avval yangilari</option><option value="oldest">Avval eskilari</option></select><ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} /></div></div><div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"><span>Sanadan:</span><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Boshlanish sanasi" /><span>—</span><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-xl border border-border bg-card px-3 text-foreground outline-none focus:border-[#b89c5c]" aria-label="Tugash sanasi" /></div></div>
     <div className="mt-7 flex items-center justify-between border-b border-border pb-4"><p className="font-mono text-[10px] uppercase tracking-[.16em] text-muted-foreground">{entries.data?.length ?? 0} ta yozuv</p>{data?.latestMood && <p className="text-[11px] text-muted-foreground">So‘nggi kayfiyat: <MoodBadge mood={data.latestMood} small /></p>}</div>
     <div className="mt-6">{entries.isLoading ? <LoadingRows /> : entries.isError ? <ErrorPanel onRetry={() => entries.refetch()} /> : entries.data?.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{entries.data.map((entry) => <EntryCard key={entry.id} entry={entry} onFavorite={onFavorite} onDelete={onDelete} busyFavorite={favoriteMutation.isPending && favoriteMutation.variables?.id === entry.id} />)}</div> : <EmptyEntries filtered={Boolean(search || favoritesOnly || filterMood !== 'all' || fromDate || toDate)} onCreate={() => setLocation('/entry/new')} />}</div>
     {notice && <FlashNotice message={notice} />}
   </div></DiaryShell>;
+}
+
+function normalizeTags(value: string) {
+  return [...new Set(value.split(/[,\s]+/).map((tag) => tag.replace(/^#+/, '').trim().toLowerCase()).filter(Boolean))].slice(0, 8);
 }
 
 function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
@@ -94,25 +124,68 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
   const [favorite, setFavorite] = useState(entry?.favorite ?? false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
+  const [photoError, setPhotoError] = useState('');
+  const [photoList, setPhotoList] = useState<DiaryPhoto[]>(entry?.photos ?? []);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const create = useCreateDiaryEntry();
   const update = useUpdateDiaryEntry();
-  const save = () => {
+  const deletePhoto = useDeleteDiaryPhoto();
+  const photoPreviews = useMemo(() => pendingFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [pendingFiles]);
+
+  useEffect(() => () => photoPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [photoPreviews]);
+
+  const addPhotos = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    const existingCount = photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).length + pendingFiles.length;
+    const available = Math.max(0, 8 - existingCount);
+    const accepted = files.filter((file) => ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) && file.size <= 5 * 1024 * 1024).slice(0, available);
+    if (accepted.length !== files.length) setPhotoError('JPG, PNG, WEBP yoki GIF rasmlari, har biri 5 MB gacha. Eng ko‘pi bilan 8 ta surat qo‘shing.');
+    else setPhotoError('');
+    setPendingFiles((current) => [...current, ...accepted]);
+    event.target.value = '';
+  };
+
+  const save = async () => {
     if (!title.trim() || !content.trim() || !entryDate) { setError('Sarlavha, matn va sanani to‘ldiring.'); return; }
     setError('');
-    const normalizedTags = tags.split(',').map((tag) => tag.trim()).filter(Boolean).slice(0, 8);
-    if (isNew) {
-      const data: DiaryEntryInput = { title: title.trim(), content: content.trim(), mood, entryDate, tags: normalizedTags, favorite };
-      create.mutate({ data }, { onSuccess: (created) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); setLocation(`/entry/${created.id}`); }, onError: () => setError('Yozuvni saqlab bo‘lmadi. Yana urinib ko‘ring.') });
-    } else if (entry) {
-      const data: DiaryEntryUpdate = { title: title.trim(), content: content.trim(), mood, entryDate, tags: normalizedTags, favorite };
-      update.mutate({ id: entry.id, data }, { onSuccess: (updated) => { queryClient.setQueryData(getGetDiaryEntryQueryKey(entry.id), updated); queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); setNotice('Hozirgina saqlandi.'); window.setTimeout(() => setNotice(''), 2200); }, onError: () => setError('O‘zgarishlarni saqlab bo‘lmadi. Yana urinib ko‘ring.') });
+    setPhotoError('');
+    setSaving(true);
+    try {
+      const normalizedTags = normalizeTags(tags);
+      const saved = isNew
+        ? await create.mutateAsync({ data: { title: title.trim(), content: content.trim(), mood, entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryInput })
+        : entry
+          ? await update.mutateAsync({ id: entry.id, data: { title: title.trim(), content: content.trim(), mood, entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryUpdate })
+          : null;
+      if (!saved) return;
+      const uploaded = await Promise.all(pendingFiles.map((file) => uploadDiaryPhoto(saved.id, file, { headers: { 'X-File-Name': encodeURIComponent(file.name) } })));
+      await Promise.all(removedPhotoIds.map((id) => deletePhoto.mutateAsync({ id })));
+      const nextPhotos = [...photoList.filter((photo) => !removedPhotoIds.includes(photo.id)), ...uploaded];
+      queryClient.setQueryData(getGetDiaryEntryQueryKey(saved.id), { ...saved, photos: nextPhotos });
+      queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() });
+      setPhotoList(nextPhotos);
+      setPendingFiles([]);
+      setRemovedPhotoIds([]);
+      if (isNew) setLocation(`/entry/${saved.id}`);
+      else {
+        setNotice('Hozirgina saqlandi.');
+        window.setTimeout(() => setNotice(''), 2200);
+      }
+    } catch {
+      setError('Yozuv yoki suratlarni saqlab bo‘lmadi. Yana urinib ko‘ring.');
+    } finally {
+      setSaving(false);
     }
   };
-  const pending = create.isPending || update.isPending;
+  const pending = saving || create.isPending || update.isPending || deletePhoto.isPending;
   return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>
-    <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /></div>
-      <aside className="space-y-6 lg:pt-14"><div className="rounded-2xl border border-card-border bg-card p-5"><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyat</p><div className="mt-4 grid grid-cols-2 gap-2">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`rounded-xl px-2 py-2.5 text-left text-[11px] transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div><div className="rounded-2xl border border-card-border bg-card p-5"><label className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground" htmlFor="entry-tags">Teglar</label><input id="entry-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="masalan, oila, ish, sayohat" className="mt-3 w-full border-b border-border bg-transparent pb-2 text-[12px] outline-none placeholder:text-muted-foreground/55 focus:border-[#b89c5c]" data-testid="input-entry-tags" /><button type="button" onClick={() => setFavorite(!favorite)} className={`mt-5 flex items-center gap-2 text-[11px] ${favorite ? 'text-[#a66a13]' : 'text-muted-foreground'}`} data-testid="button-entry-favorite"><Heart size={15} fill={favorite ? 'currentColor' : 'none'} /> Sevimlilarga saqlash</button></div><button type="button" onClick={save} disabled={pending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-[12px] font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-save-entry">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <Check size={15} />}{pending ? 'Saqlanmoqda...' : 'Saqlash'}</button>{error && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" data-testid="status-form-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}<p className="text-center font-mono text-[9px] uppercase leading-relaxed tracking-[.1em] text-muted-foreground/70">Faqat siz uchun · har doim</p></aside>
+    <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>
+      <aside className="space-y-6 lg:pt-14"><div className="rounded-2xl border border-card-border bg-card p-5"><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyat</p><div className="mt-4 grid grid-cols-2 gap-2">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`rounded-xl px-2 py-2.5 text-left text-[11px] transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div><div className="rounded-2xl border border-card-border bg-card p-5"><label className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground" htmlFor="entry-tags">Hashtaglar</label><input id="entry-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="#oila, #ish yoki #shaxsiy" className="mt-3 w-full border-b border-border bg-transparent pb-2 text-[12px] outline-none placeholder:text-muted-foreground/55 focus:border-[#b89c5c]" data-testid="input-entry-tags" /><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vergul yoki bo‘sh joy bilan ajrating.</p><button type="button" onClick={() => setFavorite(!favorite)} className={`mt-5 flex items-center gap-2 text-[11px] ${favorite ? 'text-[#a66a13]' : 'text-muted-foreground'}`} data-testid="button-entry-favorite"><Heart size={15} fill={favorite ? 'currentColor' : 'none'} /> Sevimlilarga saqlash</button></div><button type="button" onClick={save} disabled={pending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-[12px] font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-save-entry">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <Check size={15} />}{pending ? 'Saqlanmoqda...' : 'Saqlash'}</button>{error && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" data-testid="status-form-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}<p className="text-center font-mono text-[9px] uppercase leading-relaxed tracking-[.1em] text-muted-foreground/70">Faqat siz uchun · har doim</p></aside>
     </div>
   </div></DiaryShell>;
 }
@@ -126,6 +199,64 @@ export function EntryPage() {
   if (entryQuery.isLoading) return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-16 sm:px-8"><div className="skeleton h-4 w-24 rounded" /><div className="skeleton mt-12 h-20 w-3/4 rounded-2xl" /><div className="skeleton mt-8 h-6 w-full rounded" /><div className="skeleton mt-3 h-6 w-5/6 rounded" /></div></DiaryShell>;
   if (entryQuery.isError || !entryQuery.data) return <DiaryShell><div className="mx-auto max-w-[700px] px-5 py-24 sm:px-8"><ErrorPanel detail onRetry={() => entryQuery.refetch()} /></div></DiaryShell>;
   return <EntryForm entry={entryQuery.data} isNew={false} />;
+}
+
+export function SettingsPage() {
+  const queryClient = useQueryClient();
+  const settings = useGetDiarySettings();
+  const setPinMutation = useSetDiaryPin();
+  const removePinMutation = useRemoveDiaryPin();
+  const [pin, setPin] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const savePin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!/^\d{4}$/.test(pin)) {
+      setError('PIN kodi aynan 4 ta raqamdan iborat bo‘lishi kerak.');
+      return;
+    }
+    setError('');
+    try {
+      const result = await setPinMutation.mutateAsync({ data: { pin } });
+      queryClient.setQueryData(getGetDiarySettingsQueryKey(), result);
+      setPin('');
+      setNotice('PIN kodi saqlandi.');
+      window.setTimeout(() => setNotice(''), 2400);
+    } catch {
+      setError('PIN kodini saqlab bo‘lmadi. Qayta urinib ko‘ring.');
+    }
+  };
+
+  const removePin = async () => {
+    setError('');
+    try {
+      const result = await removePinMutation.mutateAsync();
+      queryClient.setQueryData(getGetDiarySettingsQueryKey(), result);
+      Object.keys(window.sessionStorage).filter((key) => key.startsWith('kundalik-pin-')).forEach((key) => window.sessionStorage.removeItem(key));
+      setNotice('PIN kodi olib tashlandi.');
+      window.setTimeout(() => setNotice(''), 2400);
+    } catch {
+      setError('PIN kodini olib tashlab bo‘lmadi.');
+    }
+  };
+
+  const pending = setPinMutation.isPending || removePinMutation.isPending;
+  return <DiaryShell><div className="mx-auto max-w-[850px] px-5 py-8 sm:px-8 md:px-10 lg:px-14 lg:py-12">
+    <p className="font-mono text-[10px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy makon</p>
+    <h1 className="mt-3 font-serif text-[clamp(3rem,6vw,5.8rem)] leading-[.9] tracking-[-.05em]">Sozlamalar<span className="text-[#a66a13]">.</span></h1>
+    <p className="mt-4 max-w-lg text-[14px] leading-relaxed text-muted-foreground">Kundaligingizga kirish va shaxsiylikni o‘zingizga moslang.</p>
+    <div className="mt-10 grid gap-5 lg:grid-cols-[1fr_280px]">
+      <section className="rounded-[24px] border border-card-border bg-card p-6 sm:p-8">
+        <div className="flex items-start gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e7def0] text-[#5b3f69]"><ShieldCheck size={21} strokeWidth={1.6} /></span><div><h2 className="font-serif text-[27px]">PIN bilan himoya</h2><p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">Kundalik ochilganda 4 xonali kod so‘ralsin.</p></div></div>
+        <form onSubmit={savePin} className="mt-7 border-t border-border pt-6"><label htmlFor="diary-pin" className="text-[12px] font-medium">Yangi 4 xonali PIN kodi</label><input id="diary-pin" value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))} className="mt-2 h-12 w-full rounded-xl border border-border bg-background px-4 font-mono text-[18px] tracking-[.4em] outline-none focus:border-[#b89c5c]" inputMode="numeric" maxLength={4} placeholder="••••" autoComplete="new-password" /><button type="submit" disabled={pending} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground disabled:opacity-60">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <ShieldCheck size={15} />} {settings.data?.pinEnabled ? 'PIN kodini yangilash' : 'PIN kodini yoqish'}</button></form>
+        {settings.data?.pinEnabled && <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-[#c3ddcf] bg-[#edf6f0] px-4 py-3 text-[12px] text-[#35614f]"><span>PIN kodi yoqilgan.</span><button type="button" onClick={removePin} disabled={pending} className="font-semibold underline underline-offset-2 disabled:opacity-60">O‘chirish</button></div>}
+        {error && <p className="mt-4 flex gap-2 text-[12px] text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}
+        {notice && <p className="mt-4 flex items-center gap-2 text-[12px] text-[#47796c]"><Check size={14} />{notice}</p>}
+      </section>
+      <aside className="rounded-[24px] border border-[#d8ccb0] bg-[#f7f0df] p-6"><LockKeyhole size={20} className="text-[#9a6b23]" /><h2 className="mt-5 font-serif text-[24px] leading-tight">Faqat siz uchun</h2><p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">PIN kodi serverda ochiq matn sifatida saqlanmaydi. Kirish kodi faqat sizning kundaligingizni ochish uchun ishlatiladi.</p></aside>
+    </div>
+  </div></DiaryShell>;
 }
 
 function clerkErrorMessage(error: unknown) {

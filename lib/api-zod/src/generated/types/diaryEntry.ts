@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DiaryPhoto } from './diaryPhoto';
 import type { Mood } from './mood';
 
 export interface DiaryEntry {
@@ -17,4 +18,5 @@ export interface DiaryEntry {
   entryDate: Date;
   createdAt: Date;
   updatedAt: Date;
+  photos: DiaryPhoto[];
 }

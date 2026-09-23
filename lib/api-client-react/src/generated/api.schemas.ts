@@ -22,6 +22,16 @@ export const Mood = {
   anxious: 'anxious',
 } as const;
 
+export interface DiaryPhoto {
+  id: number;
+  entryId: number;
+  fileName: string;
+  contentType: string;
+  size: number;
+  url: string;
+  createdAt: string;
+}
+
 export interface DiaryEntry {
   id: number;
   title: string;
@@ -32,6 +42,20 @@ export interface DiaryEntry {
   entryDate: string;
   createdAt: string;
   updatedAt: string;
+  photos: DiaryPhoto[];
+}
+
+export interface DiarySettings {
+  pinEnabled: boolean;
+}
+
+export interface PinInput {
+  /** @pattern ^[0-9]{4}$ */
+  pin: string;
+}
+
+export interface PinVerification {
+  verified: boolean;
 }
 
 export interface DiaryEntryInput {
@@ -117,4 +141,25 @@ export const ListDiaryEntriesSort = {
   newest: 'newest',
   oldest: 'oldest',
 } as const;
+
+export type ExportDiaryParams = {
+format: ExportDiaryFormat;
+q?: string;
+from?: string;
+to?: string;
+tag?: string;
+};
+
+export type ExportDiaryFormat = typeof ExportDiaryFormat[keyof typeof ExportDiaryFormat];
+
+
+export const ExportDiaryFormat = {
+  json: 'json',
+  pdf: 'pdf',
+} as const;
+
+export type ExportDiary200One = {
+  exportedAt: string;
+  entries: DiaryEntry[];
+};
 

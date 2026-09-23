@@ -196,6 +196,208 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /diary/entries/{id}/photos:
+    post:
+      operationId: uploadDiaryPhoto
+      tags: [diary]
+      summary: Upload a private photo for a diary entry
+      parameters:
+        - $ref: "#/components/parameters/DiaryEntryId"
+        - name: X-File-Name
+          in: header
+          required: true
+          schema:
+            type: string
+            maxLength: 180
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "201":
+          description: Uploaded diary photo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryPhoto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /diary/photos/{id}:
+    get:
+      operationId: getDiaryPhoto
+      tags: [diary]
+      summary: View a private diary photo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Private diary photo bytes
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteDiaryPhoto
+      tags: [diary]
+      summary: Delete a private diary photo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "204":
+          description: Diary photo deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /diary/settings:
+    get:
+      operationId: getDiarySettings
+      tags: [diary]
+      summary: Get private diary settings
+      responses:
+        "200":
+          description: Diary settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiarySettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/settings/pin:
+    put:
+      operationId: setDiaryPin
+      tags: [diary]
+      summary: Set or replace the four digit diary PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinInput"
+      responses:
+        "200":
+          description: Updated diary settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiarySettings"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: removeDiaryPin
+      tags: [diary]
+      summary: Remove the diary PIN
+      responses:
+        "200":
+          description: Updated diary settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiarySettings"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/settings/pin/verify:
+    post:
+      operationId: verifyDiaryPin
+      tags: [diary]
+      summary: Verify the four digit diary PIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PinInput"
+      responses:
+        "200":
+          description: PIN verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PinVerification"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/export:
+    get:
+      operationId: exportDiary
+      tags: [diary]
+      summary: Export diary entries as JSON or PDF
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [json, pdf]
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: tag
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Exported diary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [exportedAt, entries]
+                properties:
+                  exportedAt:
+                    type: string
+                    format: date-time
+                  entries:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DiaryEntry"
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 components:
   parameters:
     DiaryEntryId:
@@ -237,7 +439,7 @@ components:
       enum: [peaceful, happy, grateful, energized, thoughtful, sad, anxious]
     DiaryEntry:
       type: object
-      required: [id, title, content, mood, tags, favorite, entryDate, createdAt, updatedAt]
+      required: [id, title, content, mood, tags, favorite, entryDate, createdAt, updatedAt, photos]
       properties:
         id:
           type: integer
@@ -262,6 +464,48 @@ components:
         updatedAt:
           type: string
           format: date-time
+        photos:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiaryPhoto"
+    DiaryPhoto:
+      type: object
+      required: [id, entryId, fileName, contentType, size, url, createdAt]
+      properties:
+        id:
+          type: integer
+        entryId:
+          type: integer
+        fileName:
+          type: string
+        contentType:
+          type: string
+        size:
+          type: integer
+        url:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    DiarySettings:
+      type: object
+      required: [pinEnabled]
+      properties:
+        pinEnabled:
+          type: boolean
+    PinInput:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+          pattern: "^[0-9]{4}$"
+    PinVerification:
+      type: object
+      required: [verified]
+      properties:
+        verified:
+          type: boolean
     DiaryEntryInput:
       type: object
       required: [title, content, mood, entryDate]
