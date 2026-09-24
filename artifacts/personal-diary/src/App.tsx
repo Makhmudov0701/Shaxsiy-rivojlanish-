@@ -6,12 +6,16 @@ import { shadcn } from '@clerk/themes';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { PinLockGate } from '@/components/security-ui';
 import { ActiveTimeGate } from '@/components/active-time-limit';
+import { AmbientSoundProvider } from '@/components/ambient-sound';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { EntryPage, HomePage, SettingsPage, SignInPage, SignUpPage, UserPortalPage } from '@/pages/diary-pages';
 import { FocusTodoPage } from '@/pages/focus-todo-page';
 import { HabitsPage, VaultPage } from '@/pages/local-module-pages';
+import { IdeasPage } from '@/pages/ideas-page';
+import { GoalsPage } from '@/pages/goals-page';
+import { BooksPage } from '@/pages/books-page';
 import {
   Redirect,
   Route,
@@ -140,6 +144,15 @@ function Router() {
         <Route path="/vault">
           <ProtectedPage><VaultPage /></ProtectedPage>
         </Route>
+        <Route path="/ideas">
+          <ProtectedPage><IdeasPage /></ProtectedPage>
+        </Route>
+        <Route path="/goals">
+          <ProtectedPage><GoalsPage /></ProtectedPage>
+        </Route>
+        <Route path="/books">
+          <ProtectedPage><BooksPage /></ProtectedPage>
+        </Route>
         <Route path="/pomodoro">
           <ProtectedPage><FocusTodoPage /></ProtectedPage>
         </Route>
@@ -170,7 +183,9 @@ function ClerkProviderWithRoutes() {
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
           <ActiveTimeGate>
-            <Router />
+            <AmbientSoundProvider>
+              <Router />
+            </AmbientSoundProvider>
           </ActiveTimeGate>
           <Toaster />
         </TooltipProvider>

@@ -193,7 +193,7 @@ export function PomodoroTimer() {
           <span className="min-w-0">
             <span className="block font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Yozish ritmi</span>
             <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="font-serif text-[21px] leading-none text-primary">Pomodoro</span>
+              <span className="font-serif text-[21px] leading-none text-primary">Diqqat taymeri</span>
               <span className="text-[11px] text-muted-foreground">{modeDetails.label}</span>
             </span>
           </span>
@@ -206,7 +206,7 @@ export function PomodoroTimer() {
 
       {expanded && (
         <div id="pomodoro-timer-panel" className="border-t border-[#e2d4ad] px-5 pb-5 pt-4 dark:border-[#5a4d38] sm:px-6 sm:pb-6">
-          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Pomodoro rejimlari">
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="Taymer rejimlari">
             {(Object.keys(MODES) as PomodoroMode[]).map((item) => (
               <button
                 key={item}

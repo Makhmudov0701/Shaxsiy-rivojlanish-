@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Redirect, Link, useLocation, useParams } from 'wouter';
-import { useAuth, useSignIn, useSignUp } from '@clerk/react';
+import { useAuth, useSignIn, useSignUp, useUser } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, Bold, CalendarDays, Check, ChevronDown, CircleAlert, Download, Eye, FileJson, FileText, FolderOpen, Heart, ImagePlus, Italic, List, LoaderCircle, LockKeyhole, Mic, MicOff, Pencil, Quote, Search, ShieldCheck, Star, Upload, X } from 'lucide-react';
 import {
@@ -38,6 +38,8 @@ import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRich
 import { OnThisDayAndHeatmap } from '@/components/diary-modules';
 import { PomodoroTimer } from '@/components/pomodoro-timer';
 import { ActiveTimeSettings } from '@/components/active-time-limit';
+import { EnergySelector } from '@/components/energy-selector';
+import { readEnergyLog, saveDailyEnergy } from '@/lib/local-module-storage';
 
 const moods = Object.values(Mood);
 const defaultFolders = ['Shaxsiy', 'Ish', 'G‘oyalar', 'Kitoblar'];
@@ -324,6 +326,10 @@ type EntryFormLayoutProps = {
   setContent: (value: string) => void;
   mood: Mood;
   setMood: (value: Mood) => void;
+  energyLevel: number | null;
+  setEnergyLevel: (value: number | null) => void;
+  energyError: string;
+  saveReady: boolean;
   folder: string;
   setFolder: (value: string) => void;
   entryDate: string;
@@ -357,7 +363,7 @@ type EntryFormLayoutProps = {
 function EntryFormLayout(props: EntryFormLayoutProps) {
   const [showPreview, setShowPreview] = useState(false);
   const {
-    entry, isNew, title, setTitle, content, setContent, mood, setMood, folder, setFolder, entryDate, setEntryDate,
+    entry, isNew, title, setTitle, content, setContent, mood, setMood, energyLevel, setEnergyLevel, energyError, saveReady, folder, setFolder, entryDate, setEntryDate,
     tags, setTags, favorite, setFavorite, notice, error, photoError, photoList, removedPhotoIds, setRemovedPhotoIds,
     pendingFiles, setPendingFiles, photoPreviews, fileInputRef, addPhotos, isListening, voiceSupported, voicePreview,
     voiceError, toggleVoiceInput, pending, save, exportPdf, exportingPdf,
@@ -399,9 +405,11 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
         <div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div>
       </div>
       <aside className="space-y-6 lg:pt-14">
-        <div className="rounded-2xl border border-card-border bg-card p-5"><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyat</p><div className="mt-4 grid grid-cols-2 gap-2">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`rounded-xl px-2 py-2.5 text-left text-[11px] transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div>
+         <div className="rounded-2xl border border-card-border bg-card p-5"><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyat</p><div className="mt-4 grid grid-cols-2 gap-2">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`rounded-xl px-2 py-2.5 text-left text-[11px] transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div>
+         <EnergySelector value={energyLevel} onChange={setEnergyLevel} disabled={!saveReady || pending || Boolean(energyError)} />
+         {energyError && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert" data-testid="status-energy-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{energyError}</p>}
         <div className="rounded-2xl border border-card-border bg-card p-5"><label className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground" htmlFor="entry-folder">Toifa</label><input id="entry-folder" list="folder-options" value={folder} onChange={(event) => setFolder(event.target.value)} placeholder="Masalan, Ish" maxLength={40} className="mt-3 w-full border-b border-border bg-transparent pb-2 text-[12px] outline-none placeholder:text-muted-foreground/55 focus:border-[#b89c5c]" data-testid="input-entry-folder" /><datalist id="folder-options">{defaultFolders.map((item) => <option key={item} value={item} />)}</datalist><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Yozuvni Shaxsiy, Ish, G‘oyalar yoki Kitoblar bo‘limiga ajrating.</p><label className="mt-5 block font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground" htmlFor="entry-tags">Hashtaglar</label><input id="entry-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="#oila, #ish yoki #shaxsiy" className="mt-3 w-full border-b border-border bg-transparent pb-2 text-[12px] outline-none placeholder:text-muted-foreground/55 focus:border-[#b89c5c]" data-testid="input-entry-tags" /><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vergul yoki bo‘sh joy bilan ajrating.</p><button type="button" onClick={() => setFavorite(!favorite)} className={`mt-5 flex items-center gap-2 text-[11px] ${favorite ? 'text-[#a66a13]' : 'text-muted-foreground'}`} data-testid="button-entry-favorite"><Star size={15} fill={favorite ? 'currentColor' : 'none'} /> Sevimlilarga saqlash</button></div>
-        <button type="button" onClick={save} disabled={pending} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-[12px] font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-save-entry">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <Check size={15} />}{pending ? 'Saqlanmoqda...' : 'Saqlash'}</button>{error && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" data-testid="status-form-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}<p className="text-center font-mono text-[9px] uppercase leading-relaxed tracking-[.1em] text-muted-foreground/70">Faqat siz uchun · har doim</p>
+        <button type="button" onClick={save} disabled={pending || !saveReady} className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3.5 text-[12px] font-semibold text-primary-foreground transition-all hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60" data-testid="button-save-entry">{pending ? <LoaderCircle className="animate-spin" size={15} /> : <Check size={15} />}{pending ? 'Saqlanmoqda...' : saveReady ? 'Saqlash' : 'Quvvat qaydi yuklanmoqda...'}</button>{error && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" data-testid="status-form-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{error}</p>}<p className="text-center font-mono text-[9px] uppercase leading-relaxed tracking-[.1em] text-muted-foreground/70">Faqat siz uchun · har doim</p>
       </aside>
     </div>
    </div></DiaryShell>;
@@ -409,10 +417,14 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
 
 function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
   const [, setLocation] = useLocation();
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(entry?.title ?? '');
   const [content, setContent] = useState(entry?.content ?? '');
   const [mood, setMood] = useState<Mood>(entry?.mood ?? Mood.thoughtful);
+  const [energyLevel, setEnergyLevel] = useState<number | null>(null);
+  const [energyError, setEnergyError] = useState('');
+  const [energyReady, setEnergyReady] = useState(false);
   const [folder, setFolder] = useState(entry?.folder ?? defaultFolders[0]);
   const [entryDate, setEntryDate] = useState(entry?.entryDate ?? new Date().toISOString().slice(0, 10));
   const [tags, setTags] = useState(entry?.tags.join(', ') ?? '');
@@ -438,6 +450,20 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
   const photoPreviews = useMemo(() => pendingFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [pendingFiles]);
 
   useEffect(() => () => photoPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [photoPreviews]);
+
+  useEffect(() => {
+    setEnergyReady(false);
+    if (!user?.id) return;
+    try {
+      const log = readEnergyLog(user.id);
+      setEnergyLevel(log[entryDate] ?? null);
+      setEnergyError('');
+      setEnergyReady(true);
+    } catch (cause) {
+      setEnergyError(cause instanceof Error ? cause.message : 'Energiya qaydini o‘qib bo‘lmadi.');
+      setEnergyReady(true);
+    }
+  }, [entryDate, user?.id]);
 
   useEffect(() => {
     setVoiceSupported(Boolean(getSpeechRecognitionConstructor()));
@@ -517,10 +543,19 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
 
   const save = async () => {
     if (!title.trim() || !content.trim() || !entryDate) { setError('Sarlavha, matn va sanani to‘ldiring.'); return; }
+    if (!user?.id) { setError('Hisob ma’lumotlari yuklanmadi. Sahifani qayta oching.'); return; }
     setError('');
     setPhotoError('');
     setSaving(true);
     try {
+      if (!energyError) {
+        try {
+          saveDailyEnergy(user.id, entryDate, energyLevel);
+          setEnergyError('');
+        } catch (cause) {
+          setEnergyError(cause instanceof Error ? cause.message : 'Energiya qaydini saqlab bo‘lmadi.');
+        }
+      }
       const normalizedTags = normalizeTags(tags);
       const saved = isNew
         ? await create.mutateAsync({ data: { title: title.trim(), content: content.trim(), mood, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryInput })
@@ -566,7 +601,7 @@ function EntryForm({ entry, isNew }: { entry?: DiaryEntry; isNew: boolean }) {
     }
   };
   const pending = saving || create.isPending || update.isPending || deletePhoto.isPending;
-  return <EntryFormLayout entry={entry} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} tags={tags} setTags={setTags} favorite={favorite} setFavorite={setFavorite} notice={notice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
+  return <EntryFormLayout entry={entry} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} energyError={energyError} saveReady={energyReady} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} tags={tags} setTags={setTags} favorite={favorite} setFavorite={setFavorite} notice={notice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
   return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>
     <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-4 rounded-2xl border border-[#d8cdaF] bg-[#fbf6e9] p-4 dark:border-[#5d523f] dark:bg-[#2d291f]" data-testid="voice-input-panel"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Ovozli yozish</p><p className="mt-1 text-[11px] text-muted-foreground">{isListening ? 'Sizni tinglayapman. Gapiring.' : 'Gapiring — so‘zlaringiz matnga aylanadi.'}</p></div><button type="button" onClick={toggleVoiceInput} disabled={pending || (!voiceSupported && !isListening)} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-55 ${isListening ? 'border-[#b75539] bg-[#f4ddd4] text-[#9d432d] shadow-sm' : 'border-[#cdbd8e] bg-card text-foreground hover:border-[#b89c5c] hover:bg-[#f8e9bf]'}`} aria-label={isListening ? 'Ovozli yozishni to‘xtatish' : 'Ovoz orqali yozish'} data-testid="button-voice-input">{isListening ? <MicOff size={15} /> : <Mic size={15} />}{isListening ? 'To‘xtatish' : 'Ovoz orqali yozish'}</button></div>{isListening && <p className="mt-3 flex items-center gap-2 text-[11px] text-[#9d432d]" aria-live="polite"><span className="size-2 animate-pulse rounded-full bg-[#b75539]" />{voicePreview || 'Tinglanmoqda...'}</p>}{!voiceSupported && <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.</p>}{voiceError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert"><CircleAlert size={14} className="mt-0.5 shrink-0" />{voiceError}</p>}</div><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>

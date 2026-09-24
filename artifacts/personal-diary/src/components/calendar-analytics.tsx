@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'wouter';
+import { useUser } from '@clerk/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,6 +9,7 @@ import { getListDiaryEntriesQueryKey, Mood, useListDiaryEntries } from '@workspa
 import type { DiaryEntry } from '@workspace/api-client-react';
 import { moodMeta, MoodBadge } from '@/components/diary-ui';
 import { formatUzbekDate, parseDateValue } from '@/lib/date-utils';
+import { EMPTY_ENERGY_LOG, energyStorageKey, isEnergyLog, useLocalModuleStorage, type EnergyLog } from '@/lib/local-module-storage';
 
 type AnalyticsMode = 'calendar' | 'analytics';
 
@@ -114,13 +116,62 @@ function MoodAnalytics({ entries, visibleMonth, setVisibleMonth }: { entries: Di
   );
 }
 
+function EnergyTrendChart({ energyLog, status, error, visibleMonth }: { energyLog: EnergyLog; status: string; error: string; visibleMonth: Date }) {
+  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+  const values = Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1;
+    const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day);
+    const level = energyLog[dateKey(date)];
+    return level ? { day, level } : null;
+  }).filter((value): value is { day: number; level: number } => value !== null);
+  const average = values.length ? (values.reduce((sum, item) => sum + item.level, 0) / values.length).toFixed(1) : '';
+  const points = values.map((item) => ({
+    ...item,
+    x: 42 + ((item.day - 1) / Math.max(1, daysInMonth - 1)) * 552,
+    y: 140 - ((item.level - 1) / 9) * 110,
+  }));
+  const line = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
+  const area = points.length ? `${line} L ${points[points.length - 1].x} 151 L ${points[0].x} 151 Z` : '';
+
+  return (
+    <section className="mt-5 rounded-[24px] border border-card-border bg-card p-5 sm:p-7" data-testid="energy-trend-chart" aria-labelledby="energy-chart-title">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#47796c]">Kunlik kuzatuv</p><h3 id="energy-chart-title" className="mt-2 font-serif text-[25px] leading-tight">Quvvat darajasi</h3><p className="mt-1 text-[11px] text-muted-foreground">{monthLabel(visibleMonth)} · 1 dan 10 gacha</p></div>
+        {values.length > 0 && <div className="text-right"><p className="font-serif text-[30px] leading-none text-[#47796c]">{average}</p><p className="mt-1 text-[9px] text-muted-foreground">oylik o‘rtacha</p></div>}
+      </div>
+      {status === 'loading' ? <div className="mt-5 h-[190px] rounded-xl skeleton" aria-label="Quvvat qaydlari yuklanmoqda" /> : status === 'error' ? <p className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-[11px] text-destructive" role="alert">{error}</p> : values.length ? (
+        <div className="mt-5">
+          <svg viewBox="0 0 620 180" className="h-auto w-full overflow-visible" role="img" aria-label={`${monthLabel(visibleMonth)} oyida qayd etilgan quvvat darajasi grafigi`}>
+            {[1, 5, 10].map((level) => {
+              const y = 140 - ((level - 1) / 9) * 110;
+              return <g key={level}><line x1="38" x2="604" y1={y} y2={y} stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 5" /><text x="7" y={y + 4} fill="currentColor" opacity=".55" fontSize="10">{level}</text></g>;
+            })}
+            {area && <path d={area} fill="#8fb59b" fillOpacity=".16" />}
+            {line && <path d={line} fill="none" stroke="#5f9271" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
+            {points.map((point) => <g key={point.day}><circle cx={point.x} cy={point.y} r="5" fill="#5f9271" stroke="var(--card)" strokeWidth="2"><title>{point.day}-kun · quvvat {point.level}/10</title></circle></g>)}
+            {Array.from({ length: Math.ceil(daysInMonth / 5) }, (_, index) => index * 5 + 1).filter((day) => day <= daysInMonth).map((day) => <text key={day} x={42 + ((day - 1) / Math.max(1, daysInMonth - 1)) * 552} y="171" textAnchor="middle" fill="currentColor" opacity=".55" fontSize="9">{day}</text>)}
+          </svg>
+          <p className="mt-1 text-[10px] text-muted-foreground">Belgilar ustiga olib borib, kunlik qiymatni ko‘ring.</p>
+        </div>
+      ) : (
+        <div className="mt-5 rounded-2xl border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-5 py-7 text-center dark:border-[#584c37] dark:bg-[#2b271f]">
+          <p className="font-serif text-[22px]">Bu oyda quvvat qaydi yo‘q.</p><p className="mx-auto mt-2 max-w-sm text-[11px] leading-relaxed text-muted-foreground">Yangi kundalik yozuvida quvvat darajasini belgilang. Qaydlar shu yerda sana bo‘yicha ko‘rinadi.</p><Link href="/entry/new" className="mt-4 inline-flex rounded-xl bg-primary px-4 py-2.5 text-[10px] font-semibold text-primary-foreground">Yangi yozuv</Link>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
+  const { user } = useUser();
+  const energyKey = user?.id ? energyStorageKey(user.id) : 'kundalik-energiya-kutilyapti';
+  const energy = useLocalModuleStorage(energyKey, EMPTY_ENERGY_LOG, isEnergyLog, 'Energiya');
   const entriesQuery = useListDiaryEntries(undefined, { query: { queryKey: getListDiaryEntriesQueryKey() } });
   const entries = entriesQuery.data ?? [];
 
   if (entriesQuery.isLoading) return <section className="mt-10 rounded-[28px] border border-card-border bg-card/70 p-5 sm:p-7" aria-label={mode === 'calendar' ? 'Taqvim yuklanmoqda' : 'Kayfiyat tahlili yuklanmoqda'}><div className="skeleton h-3 w-32 rounded-full" /><div className="mt-3 skeleton h-9 w-72 max-w-full rounded-lg" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><CalendarSkeleton /><div className="skeleton h-56 rounded-2xl" /></div></section>;
   if (entriesQuery.isError) return <section className="mt-10 rounded-[28px] border border-[#ecc6bd] bg-[#fff0ec] p-7" aria-label="Tahlil xatosi"><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Kuzatuvlar</p><h2 className="mt-3 font-serif text-[30px]">Tahlilni hozircha ochib bo‘lmadi.</h2><p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">Yozuvlaringiz yuklangach, shu yerda kunlar ritmi va kayfiyatlar ko‘rinadi.</p><button type="button" onClick={() => entriesQuery.refetch()} className="mt-5 rounded-xl border border-destructive/30 bg-card px-4 py-2.5 text-[11px] font-semibold text-destructive" data-testid="button-retry-analytics">Qayta urinish</button></section>;
 
-  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} />}</section>;
+  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <><MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /><EnergyTrendChart energyLog={energy.value} status={energy.status} error={energy.error} visibleMonth={visibleMonth} /></>}</section>;
 }

@@ -1,10 +1,11 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookOpen, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, FolderOpen, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Sparkles, Star, Sun, Timer, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Flag, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Sparkles, Star, Sun, Timer, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } from '@/components/rich-text';
+import { AmbientSoundControl } from '@/components/ambient-sound';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -186,7 +187,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   return (
     <div className="paper-grain min-h-[100dvh] bg-background text-foreground">
       {mobileOpen && <button type="button" onClick={closeMobile} className="fixed inset-0 z-30 bg-[#1f1830]/45 backdrop-blur-[2px] md:hidden" aria-label="Yon menyuni yopish" />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col justify-between bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-[width,transform] duration-300 md:translate-x-0 md:shadow-none ${sidebarCollapsed ? 'md:w-[82px]' : 'md:w-[258px]'} ${mobileOpen ? 'translate-x-0' : ''}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col justify-between overflow-y-auto overscroll-contain bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-[width,transform] duration-300 md:translate-x-0 md:shadow-none ${sidebarCollapsed ? 'md:w-[82px]' : 'md:w-[258px]'} ${mobileOpen ? 'translate-x-0' : ''}`}>
         <div>
           <div className={`flex items-center ${sidebarCollapsed ? 'md:justify-center' : 'justify-between'}`}>
             <LogoMark compact={sidebarCollapsed} />
@@ -201,19 +202,23 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/user-portal" label="Bosh sahifa / Kundalik" icon={<BookOpen size={16} strokeWidth={1.8} />} active={mainDiarySelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-portal" />
               <SidebarNavLink href="/user-portal?view=calendar" label="Kalendar" icon={<CalendarDays size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'calendar'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-calendar" />
               <SidebarNavLink href="/user-portal?view=folders" label="Papkalar va Teglar" icon={<FolderOpen size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'folders'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-folders-tags" />
-              <SidebarNavLink href="/user-portal?view=analytics" label="Tahlil va Kayfiyat" icon={<BarChart3 size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'analytics'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-analytics" />
-              <SidebarNavLink href="/pomodoro" label="Pomodoro va Vazifalar" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
+              <SidebarNavLink href="/user-portal?view=analytics" label="Kayfiyat va energiya" icon={<BarChart3 size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'analytics'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-analytics" />
+              <SidebarNavLink href="/pomodoro" label="Diqqat taymeri va vazifalar" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
               <SidebarNavLink href="/settings" label="Sozlamalar va Zaxira" icon={<Settings size={16} strokeWidth={1.8} />} active={pathname === '/settings'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-settings" />
             </nav>
             <p className={`mb-3 mt-8 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Shaxsiy vositalar</p>
             <nav className="space-y-1">
               <SidebarNavLink href="/entry/new" label="Yangi yozuv" icon={<Plus size={16} strokeWidth={1.8} />} active={pathname === '/entry/new' && !pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-new-entry" />
+              <SidebarNavLink href="/ideas" label="G‘oyalar qutisi" icon={<Lightbulb size={16} strokeWidth={1.8} />} active={pathname === '/ideas'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-ideas" />
+              <SidebarNavLink href="/goals" label="Maqsadlar paneli" icon={<Flag size={16} strokeWidth={1.8} />} active={pathname === '/goals'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-goals" />
+              <SidebarNavLink href="/books" label="Kitoblar va iqtiboslar" icon={<BookMarked size={16} strokeWidth={1.8} />} active={pathname === '/books'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-books" />
               <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={16} strokeWidth={1.8} />} active={pathname === '/habits'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-habits" />
               <SidebarNavLink href="/vault" label="Maxfiy jild" icon={<LockKeyhole size={16} strokeWidth={1.8} />} active={pathname === '/vault'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-vault" />
             </nav>
           </div>
         </div>
         <div className={sidebarCollapsed ? 'md:flex md:flex-col md:items-center' : ''}>
+          <AmbientSoundControl collapsed={sidebarCollapsed} />
           <div className="mb-4 rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-4">
             <Sparkles size={16} className={sidebarCollapsed ? 'md:mb-0' : 'mb-3'} />
             <p className={sidebarCollapsed ? 'md:hidden' : 'font-serif text-[18px] leading-tight text-sidebar-foreground'}>Siz uchun yaratilgan sokin makon.</p>

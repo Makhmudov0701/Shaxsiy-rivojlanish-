@@ -4,7 +4,7 @@ import { CalendarCheck2, ChevronLeft, LockKeyhole } from 'lucide-react';
 import { DiaryShell } from '@/components/diary-ui';
 import { HabitTracker, PrivateVault } from '@/components/diary-modules';
 
-function ModulePageFrame({
+export function ModulePageFrame({
   eyebrow,
   title,
   description,
@@ -37,7 +37,7 @@ function ModulePageFrame({
   );
 }
 
-function UserStoragePage({ children }: { children: (userId: string) => React.ReactNode }) {
+export function UserStoragePage({ children }: { children: (userId: string) => React.ReactNode }) {
   const { isLoaded, user } = useUser();
   if (!isLoaded || !user) {
     return <DiaryShell><div className="mx-auto max-w-[1120px] px-5 py-16 sm:px-8"><div className="skeleton h-8 w-48 rounded-xl" /><div className="skeleton mt-8 h-72 rounded-[26px]" /></div></DiaryShell>;
