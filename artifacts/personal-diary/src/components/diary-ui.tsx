@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, NotebookPen, Plus, Settings, Star, Sun, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Star, Sun, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -193,8 +193,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
           <div className="mt-8">
             <p className="mb-3 px-3 text-[12px] font-semibold text-sidebar-foreground/55">Asosiy bo‘limlar</p>
             <nav className="space-y-1">
-              <SidebarNavLink href="/user-portal" label="Kundalik" icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected && pathname !== '/entry/new'} onNavigate={closeMobile} testId="link-portal" />
-              <SidebarNavLink href="/entry/new" label="Yangi xotira" icon={<NotebookPen size={20} strokeWidth={1.8} />} active={pathname === '/entry/new'} onNavigate={closeMobile} testId="link-new-entry" />
+              <SidebarNavLink href="/user-portal" label="Kundalik" icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected} onNavigate={closeMobile} testId="link-portal" />
               <SidebarNavLink href="/pomodoro" label="Diqqat" icon={<Clock3 size={20} strokeWidth={1.8} />} active={pomodoroSelected} onNavigate={closeMobile} testId="link-pomodoro" />
               <SidebarNavLink href="/goals" label="Maqsadlar" icon={<Star size={20} strokeWidth={1.8} />} active={pathname === '/goals'} onNavigate={closeMobile} testId="link-goals" />
               <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
