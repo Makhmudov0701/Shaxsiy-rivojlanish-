@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { KeyboardAwareScrollViewCompat } from '@/components/KeyboardAwareScrollViewCompat';
+import { DailyUsageSettings } from '@/components/daily-usage-limit';
 import { LimitCard } from '@/components/LimitCard';
 import { PermissionPanel } from '@/components/PermissionPanel';
 import { useColors } from '@/hooks/useColors';
@@ -352,6 +353,8 @@ export default function AppBlockerScreen() {
               Tanlangan ilovalarga vaqt belgilang. Chegara tugasa, ilova
               bloklanadi; hisob har kuni 00:00 da yangilanadi.
             </Text>
+
+            <DailyUsageSettings />
 
             {!appBlockerNative ? (
               <NativeUnavailable colors={colors} />

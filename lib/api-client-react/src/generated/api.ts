@@ -20,6 +20,10 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ActiveTimeHeartbeat,
+  ActiveTimeLimit,
+  ActiveTimeLimitUpdate,
+  ActiveTimeOverrideInput,
   BadRequestResponse,
   DiaryBackup,
   DiaryEntry,
@@ -29,9 +33,11 @@ import type {
   DiarySettings,
   DiarySummary,
   DiaryWeeklySummary,
+  Error,
   ExportDiary200One,
   ExportDiaryParams,
   FavoriteUpdate,
+  GetActiveTimeLimitParams,
   HealthStatus,
   ListDiaryEntriesParams,
   NotFoundResponse,
@@ -1237,7 +1243,7 @@ export const removeDiaryPin = async ( options?: Parameters<typeof customFetch>[1
 
 export const getRemoveDiaryPinMutationKey = () => ['removeDiaryPin'] as const;
 
-export const getRemoveDiaryPinMutationOptions = <TError = ErrorType<UnauthorizedResponse>,
+export const getRemoveDiaryPinMutationOptions = <TError = ErrorType<UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext> => {
 
@@ -1266,13 +1272,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type RemoveDiaryPinMutationResult = NonNullable<Awaited<ReturnType<typeof removeDiaryPin>>>
 
-    export type RemoveDiaryPinMutationError = ErrorType<UnauthorizedResponse>
+    export type RemoveDiaryPinMutationError = ErrorType<UnauthorizedResponse | Error>
 
 
     /**
  * @summary Remove the diary PIN
  */
-export const useRemoveDiaryPin = <TError = ErrorType<UnauthorizedResponse>,
+export const useRemoveDiaryPin = <TError = ErrorType<UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeDiaryPin>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof removeDiaryPin>>,
@@ -1325,7 +1331,7 @@ return customFetch<PinVerification>(getVerifyDiaryPinUrl(),
 
 export const getVerifyDiaryPinMutationKey = () => ['verifyDiaryPin'] as const;
 
-export const getVerifyDiaryPinMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getVerifyDiaryPinMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext> => {
 
@@ -1354,13 +1360,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type VerifyDiaryPinMutationResult = NonNullable<Awaited<ReturnType<typeof verifyDiaryPin>>>
     export type VerifyDiaryPinMutationBody = BodyType<PinInput>
-    export type VerifyDiaryPinMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type VerifyDiaryPinMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
     export type VerifyDiaryPinMutationVariables = {data: BodyType<PinInput>}
 
     /**
  * @summary Verify the four digit diary PIN
  */
-export const useVerifyDiaryPin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useVerifyDiaryPin = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyDiaryPin>>, TError,VerifyDiaryPinMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof verifyDiaryPin>>,
@@ -1369,6 +1375,354 @@ export const useVerifyDiaryPin = <TError = ErrorType<BadRequestResponse | Unauth
         TContext
       > => {
       return useMutation(getVerifyDiaryPinMutationOptions(options));
+    }
+
+export const getGetActiveTimeLimitUrl = (params: GetActiveTimeLimitParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/diary/active-time?${stringifiedParams}` : `/api/diary/active-time`
+}
+
+/**
+ * @summary Get this account's daily active-time limit and usage
+ */
+export const getActiveTimeLimit = async (params: GetActiveTimeLimitParams, options?: Parameters<typeof customFetch>[1]): Promise<ActiveTimeLimit> => {
+
+  return customFetch<ActiveTimeLimit>(getGetActiveTimeLimitUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetActiveTimeLimitQueryKey = (params?: GetActiveTimeLimitParams,) => {
+    return [
+    `/api/diary/active-time`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetActiveTimeLimitQueryOptions = <TData = Awaited<ReturnType<typeof getActiveTimeLimit>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(params: GetActiveTimeLimitParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveTimeLimit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetActiveTimeLimitQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActiveTimeLimit>>> = ({ signal }) => getActiveTimeLimit(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getActiveTimeLimit>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetActiveTimeLimitQueryResult = NonNullable<Awaited<ReturnType<typeof getActiveTimeLimit>>>
+export type GetActiveTimeLimitQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+
+/**
+ * @summary Get this account's daily active-time limit and usage
+ */
+
+export function useGetActiveTimeLimit<TData = Awaited<ReturnType<typeof getActiveTimeLimit>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(
+ params: GetActiveTimeLimitParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActiveTimeLimit>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetActiveTimeLimitQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateActiveTimeLimitUrl = () => {
+
+
+
+
+  return `/api/diary/active-time`
+}
+
+/**
+ * @summary Update this account's daily active-time limit
+ */
+export const updateActiveTimeLimit = async (activeTimeLimitUpdate: ActiveTimeLimitUpdate, options?: Parameters<typeof customFetch>[1]): Promise<ActiveTimeLimit> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActiveTimeLimit>(getUpdateActiveTimeLimitUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activeTimeLimitUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateActiveTimeLimitMutationKey = () => ['updateActiveTimeLimit'] as const;
+
+export const getUpdateActiveTimeLimitMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActiveTimeLimit>>, TError,UpdateActiveTimeLimitMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateActiveTimeLimit>>, TError,UpdateActiveTimeLimitMutationVariables, TContext> => {
+
+const mutationKey = getUpdateActiveTimeLimitMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateActiveTimeLimit>>, UpdateActiveTimeLimitMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  updateActiveTimeLimit(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateActiveTimeLimitMutationResult = NonNullable<Awaited<ReturnType<typeof updateActiveTimeLimit>>>
+    export type UpdateActiveTimeLimitMutationBody = BodyType<ActiveTimeLimitUpdate>
+    export type UpdateActiveTimeLimitMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type UpdateActiveTimeLimitMutationVariables = {data: BodyType<ActiveTimeLimitUpdate>}
+
+    /**
+ * @summary Update this account's daily active-time limit
+ */
+export const useUpdateActiveTimeLimit = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateActiveTimeLimit>>, TError,UpdateActiveTimeLimitMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateActiveTimeLimit>>,
+        TError,
+        UpdateActiveTimeLimitMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateActiveTimeLimitMutationOptions(options));
+    }
+
+export const getHeartbeatActiveTimeUrl = () => {
+
+
+
+
+  return `/api/diary/active-time`
+}
+
+/**
+ * @summary Record a foreground active-time heartbeat
+ */
+export const heartbeatActiveTime = async (activeTimeHeartbeat: ActiveTimeHeartbeat, options?: Parameters<typeof customFetch>[1]): Promise<ActiveTimeLimit> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActiveTimeLimit>(getHeartbeatActiveTimeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activeTimeHeartbeat)
+  }
+);}
+
+
+
+
+
+export const getHeartbeatActiveTimeMutationKey = () => ['heartbeatActiveTime'] as const;
+
+export const getHeartbeatActiveTimeMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof heartbeatActiveTime>>, TError,HeartbeatActiveTimeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof heartbeatActiveTime>>, TError,HeartbeatActiveTimeMutationVariables, TContext> => {
+
+const mutationKey = getHeartbeatActiveTimeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof heartbeatActiveTime>>, HeartbeatActiveTimeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  heartbeatActiveTime(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HeartbeatActiveTimeMutationResult = NonNullable<Awaited<ReturnType<typeof heartbeatActiveTime>>>
+    export type HeartbeatActiveTimeMutationBody = BodyType<ActiveTimeHeartbeat>
+    export type HeartbeatActiveTimeMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type HeartbeatActiveTimeMutationVariables = {data: BodyType<ActiveTimeHeartbeat>}
+
+    /**
+ * @summary Record a foreground active-time heartbeat
+ */
+export const useHeartbeatActiveTime = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof heartbeatActiveTime>>, TError,HeartbeatActiveTimeMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof heartbeatActiveTime>>,
+        TError,
+        HeartbeatActiveTimeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHeartbeatActiveTimeMutationOptions(options));
+    }
+
+export const getOverrideActiveTimeLimitUrl = () => {
+
+
+
+
+  return `/api/diary/active-time/override`
+}
+
+/**
+ * @summary Extend or reset today's active-time access after PIN verification
+ */
+export const overrideActiveTimeLimit = async (activeTimeOverrideInput: ActiveTimeOverrideInput, options?: Parameters<typeof customFetch>[1]): Promise<ActiveTimeLimit> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ActiveTimeLimit>(getOverrideActiveTimeLimitUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(activeTimeOverrideInput)
+  }
+);}
+
+
+
+
+
+export const getOverrideActiveTimeLimitMutationKey = () => ['overrideActiveTimeLimit'] as const;
+
+export const getOverrideActiveTimeLimitMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideActiveTimeLimit>>, TError,OverrideActiveTimeLimitMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof overrideActiveTimeLimit>>, TError,OverrideActiveTimeLimitMutationVariables, TContext> => {
+
+const mutationKey = getOverrideActiveTimeLimitMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof overrideActiveTimeLimit>>, OverrideActiveTimeLimitMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  overrideActiveTimeLimit(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type OverrideActiveTimeLimitMutationResult = NonNullable<Awaited<ReturnType<typeof overrideActiveTimeLimit>>>
+    export type OverrideActiveTimeLimitMutationBody = BodyType<ActiveTimeOverrideInput>
+    export type OverrideActiveTimeLimitMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>
+    export type OverrideActiveTimeLimitMutationVariables = {data: BodyType<ActiveTimeOverrideInput>}
+
+    /**
+ * @summary Extend or reset today's active-time access after PIN verification
+ */
+export const useOverrideActiveTimeLimit = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | Error>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof overrideActiveTimeLimit>>, TError,OverrideActiveTimeLimitMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof overrideActiveTimeLimit>>,
+        TError,
+        OverrideActiveTimeLimitMutationVariables,
+        TContext
+      > => {
+      return useMutation(getOverrideActiveTimeLimitMutationOptions(options));
     }
 
 export const getExportDiaryUrl = (params: ExportDiaryParams,) => {

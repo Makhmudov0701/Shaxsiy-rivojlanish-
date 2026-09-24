@@ -37,6 +37,7 @@ import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
 import { OnThisDayAndHeatmap } from '@/components/diary-modules';
 import { PomodoroTimer } from '@/components/pomodoro-timer';
+import { ActiveTimeSettings } from '@/components/active-time-limit';
 
 const moods = Object.values(Mood);
 const defaultFolders = ['Shaxsiy', 'Ish', 'G‘oyalar', 'Kitoblar'];
@@ -679,7 +680,8 @@ export function SettingsPage() {
       </section>
       <aside className="rounded-[24px] border border-[#d8ccb0] bg-[#f7f0df] p-6"><LockKeyhole size={20} className="text-[#9a6b23]" /><h2 className="mt-5 font-serif text-[24px] leading-tight">Faqat siz uchun</h2><p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">PIN kodi serverda ochiq matn sifatida saqlanmaydi. Kirish kodi faqat sizning kundaligingizni ochish uchun ishlatiladi.</p></aside>
     </div>
-     <section className="mt-5 rounded-[24px] border border-card-border bg-card p-6 sm:p-8">
+      <ActiveTimeSettings />
+      <section className="mt-5 rounded-[24px] border border-card-border bg-card p-6 sm:p-8">
        <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#eee8d5] text-[#8f601a]"><FolderOpen size={21} strokeWidth={1.6} /></span><div><h2 className="font-serif text-[27px]">Zaxira va tiklash</h2><p className="mt-2 max-w-xl text-[13px] leading-relaxed text-muted-foreground">Barcha yozuvlar, toifalar, sevimlilar va biriktirilgan suratlar bitta JSON fayliga saqlanadi.</p></div></div></div><div className="flex flex-wrap gap-2"><button type="button" onClick={downloadBackup} disabled={pending} className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3.5 py-3 text-[11px] font-semibold transition-colors hover:border-[#b89c5c] disabled:opacity-60" data-testid="button-download-backup"><Download size={15} /> Zaxirani yuklash</button><button type="button" onClick={() => restoreInputRef.current?.click()} disabled={pending} className="inline-flex items-center gap-2 rounded-xl bg-primary px-3.5 py-3 text-[11px] font-semibold text-primary-foreground disabled:opacity-60" data-testid="button-restore-backup"><Upload size={15} /> {restoreBackupMutation.isPending ? 'Tiklanmoqda...' : 'Zaxirani tiklash'}</button><input ref={restoreInputRef} type="file" accept="application/json,.json" onChange={restoreBackup} className="sr-only" /></div></div>
        <p className="mt-5 border-t border-border pt-4 text-[11px] leading-relaxed text-muted-foreground">Tiklashdan oldin joriy kundalik ma’lumotlari o‘chiriladi. Davom etishdan oldin kerak bo‘lsa yangi zaxira yuklab oling.</p>
      </section>

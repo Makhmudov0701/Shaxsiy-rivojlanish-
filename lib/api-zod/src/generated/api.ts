@@ -404,6 +404,120 @@ export const VerifyDiaryPinResponse = zod.object({
 
 
 /**
+ * @summary Get this account's daily active-time limit and usage
+ */
+export const getActiveTimeLimitQueryTimeZoneMax = 64;
+
+
+
+export const GetActiveTimeLimitQueryParams = zod.object({
+  "timeZone": zod.coerce.string().min(1).max(getActiveTimeLimitQueryTimeZoneMax)
+})
+
+export const GetActiveTimeLimitResponse = zod.object({
+  "enabled": zod.boolean(),
+  "limitSeconds": zod.number().int(),
+  "usedSeconds": zod.number().int(),
+  "extensionSeconds": zod.number().int(),
+  "effectiveLimitSeconds": zod.number().int(),
+  "remainingSeconds": zod.number().int(),
+  "locked": zod.boolean(),
+  "language": zod.enum(['uz', 'ru', 'en', 'ko']),
+  "pinEnabled": zod.boolean(),
+  "timeZone": zod.string(),
+  "today": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update this account's daily active-time limit
+ */
+export const updateActiveTimeLimitBodyLimitSecondsMin = 900;
+export const updateActiveTimeLimitBodyLimitSecondsMax = 86400;
+export const updateActiveTimeLimitBodyLimitSecondsMultipleOf = 900;
+
+export const updateActiveTimeLimitBodyTimeZoneMax = 64;
+
+
+
+export const UpdateActiveTimeLimitBody = zod.object({
+  "enabled": zod.boolean(),
+  "limitSeconds": zod.number().int().min(updateActiveTimeLimitBodyLimitSecondsMin).max(updateActiveTimeLimitBodyLimitSecondsMax).multipleOf(updateActiveTimeLimitBodyLimitSecondsMultipleOf),
+  "language": zod.enum(['uz', 'ru', 'en', 'ko']),
+  "timeZone": zod.string().min(1).max(updateActiveTimeLimitBodyTimeZoneMax)
+})
+
+export const UpdateActiveTimeLimitResponse = zod.object({
+  "enabled": zod.boolean(),
+  "limitSeconds": zod.number().int(),
+  "usedSeconds": zod.number().int(),
+  "extensionSeconds": zod.number().int(),
+  "effectiveLimitSeconds": zod.number().int(),
+  "remainingSeconds": zod.number().int(),
+  "locked": zod.boolean(),
+  "language": zod.enum(['uz', 'ru', 'en', 'ko']),
+  "pinEnabled": zod.boolean(),
+  "timeZone": zod.string(),
+  "today": zod.coerce.date()
+})
+
+
+/**
+ * @summary Record a foreground active-time heartbeat
+ */
+export const heartbeatActiveTimeBodyTimeZoneMax = 64;
+
+
+
+export const HeartbeatActiveTimeBody = zod.object({
+  "timeZone": zod.string().min(1).max(heartbeatActiveTimeBodyTimeZoneMax)
+})
+
+export const HeartbeatActiveTimeResponse = zod.object({
+  "enabled": zod.boolean(),
+  "limitSeconds": zod.number().int(),
+  "usedSeconds": zod.number().int(),
+  "extensionSeconds": zod.number().int(),
+  "effectiveLimitSeconds": zod.number().int(),
+  "remainingSeconds": zod.number().int(),
+  "locked": zod.boolean(),
+  "language": zod.enum(['uz', 'ru', 'en', 'ko']),
+  "pinEnabled": zod.boolean(),
+  "timeZone": zod.string(),
+  "today": zod.coerce.date()
+})
+
+
+/**
+ * @summary Extend or reset today's active-time access after PIN verification
+ */
+export const overrideActiveTimeLimitBodyPinRegExp = new RegExp('^[0-9]{4}$');
+export const overrideActiveTimeLimitBodyTimeZoneMax = 64;
+
+
+
+export const OverrideActiveTimeLimitBody = zod.object({
+  "action": zod.enum(['extend', 'reset']),
+  "pin": zod.string().regex(overrideActiveTimeLimitBodyPinRegExp),
+  "timeZone": zod.string().min(1).max(overrideActiveTimeLimitBodyTimeZoneMax)
+})
+
+export const OverrideActiveTimeLimitResponse = zod.object({
+  "enabled": zod.boolean(),
+  "limitSeconds": zod.number().int(),
+  "usedSeconds": zod.number().int(),
+  "extensionSeconds": zod.number().int(),
+  "effectiveLimitSeconds": zod.number().int(),
+  "remainingSeconds": zod.number().int(),
+  "locked": zod.boolean(),
+  "language": zod.enum(['uz', 'ru', 'en', 'ko']),
+  "pinEnabled": zod.boolean(),
+  "timeZone": zod.string(),
+  "today": zod.coerce.date()
+})
+
+
+/**
  * @summary Export diary entries as JSON or PDF
  */
 

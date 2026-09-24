@@ -2,3 +2,4 @@
 - [Diary insights scope](diary-insights.md) — calendar and mood analytics intentionally use the complete private diary, independent of list filters.
 - [Diary portability](diary-portability.md) — full backups use authenticated JSON with embedded base64 media; rich text remains local markdown without paid services.
 - [Expo Android module linking](expo-android-module-linking.md) — a local module config is not enough; verify Android project resolution, not just module search.
+- [Active-time heartbeat boundaries](active-time-heartbeats.md) — close foreground intervals on hide/background so capped accrual does not charge suspended time.

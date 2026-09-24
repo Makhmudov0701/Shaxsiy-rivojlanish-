@@ -63,6 +63,82 @@ export interface PinVerification {
   verified: boolean;
 }
 
+export type ActiveTimeLimitLanguage = typeof ActiveTimeLimitLanguage[keyof typeof ActiveTimeLimitLanguage];
+
+
+export const ActiveTimeLimitLanguage = {
+  uz: 'uz',
+  ru: 'ru',
+  en: 'en',
+  ko: 'ko',
+} as const;
+
+export interface ActiveTimeLimit {
+  enabled: boolean;
+  limitSeconds: number;
+  usedSeconds: number;
+  extensionSeconds: number;
+  effectiveLimitSeconds: number;
+  remainingSeconds: number;
+  locked: boolean;
+  language: ActiveTimeLimitLanguage;
+  pinEnabled: boolean;
+  timeZone: string;
+  today: string;
+}
+
+export type ActiveTimeLimitUpdateLanguage = typeof ActiveTimeLimitUpdateLanguage[keyof typeof ActiveTimeLimitUpdateLanguage];
+
+
+export const ActiveTimeLimitUpdateLanguage = {
+  uz: 'uz',
+  ru: 'ru',
+  en: 'en',
+  ko: 'ko',
+} as const;
+
+export interface ActiveTimeLimitUpdate {
+  enabled: boolean;
+  /**
+     * @minimum 900
+     * @maximum 86400
+     */
+  limitSeconds: number;
+  language: ActiveTimeLimitUpdateLanguage;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  timeZone: string;
+}
+
+export interface ActiveTimeHeartbeat {
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  timeZone: string;
+}
+
+export type ActiveTimeOverrideInputAction = typeof ActiveTimeOverrideInputAction[keyof typeof ActiveTimeOverrideInputAction];
+
+
+export const ActiveTimeOverrideInputAction = {
+  extend: 'extend',
+  reset: 'reset',
+} as const;
+
+export interface ActiveTimeOverrideInput {
+  action: ActiveTimeOverrideInputAction;
+  /** @pattern ^[0-9]{4}$ */
+  pin: string;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  timeZone: string;
+}
+
 export interface DiaryEntryInput {
   /**
      * @minLength 1
@@ -228,6 +304,14 @@ export const ListDiaryEntriesSort = {
   newest: 'newest',
   oldest: 'oldest',
 } as const;
+
+export type GetActiveTimeLimitParams = {
+/**
+ * @minLength 1
+ * @maxLength 64
+ */
+timeZone: string;
+};
 
 export type ExportDiaryParams = {
 format: ExportDiaryFormat;

@@ -339,6 +339,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DiarySettings"
+        "409":
+          description: The PIN is still required by an enabled daily usage limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           $ref: "#/components/responses/Unauthorized"
   /diary/settings/pin/verify:
@@ -363,6 +369,124 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          description: Too many incorrect PIN attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /diary/active-time:
+    get:
+      operationId: getActiveTimeLimit
+      tags: [diary]
+      summary: Get this account's daily active-time limit and usage
+      parameters:
+        - name: timeZone
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 64
+      responses:
+        "200":
+          description: Current account daily active-time state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTimeLimit"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateActiveTimeLimit
+      tags: [diary]
+      summary: Update this account's daily active-time limit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveTimeLimitUpdate"
+      responses:
+        "200":
+          description: Updated daily active-time state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTimeLimit"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          description: A PIN must be enabled before turning on the daily limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: heartbeatActiveTime
+      tags: [diary]
+      summary: Record a foreground active-time heartbeat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveTimeHeartbeat"
+      responses:
+        "200":
+          description: Updated daily active-time state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTimeLimit"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/active-time/override:
+    post:
+      operationId: overrideActiveTimeLimit
+      tags: [diary]
+      summary: Extend or reset today's active-time access after PIN verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActiveTimeOverrideInput"
+      responses:
+        "200":
+          description: Updated daily active-time state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveTimeLimit"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The supplied PIN is incorrect or not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The daily limit is not currently locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many incorrect PIN attempts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /diary/export:
     get:
       operationId: exportDiary
@@ -575,6 +699,85 @@ components:
       properties:
         verified:
           type: boolean
+    ActiveTimeLimit:
+      type: object
+      required:
+        - enabled
+        - limitSeconds
+        - usedSeconds
+        - extensionSeconds
+        - effectiveLimitSeconds
+        - remainingSeconds
+        - locked
+        - language
+        - pinEnabled
+        - timeZone
+        - today
+      properties:
+        enabled:
+          type: boolean
+        limitSeconds:
+          type: integer
+        usedSeconds:
+          type: integer
+        extensionSeconds:
+          type: integer
+        effectiveLimitSeconds:
+          type: integer
+        remainingSeconds:
+          type: integer
+        locked:
+          type: boolean
+        language:
+          type: string
+          enum: [uz, ru, en, ko]
+        pinEnabled:
+          type: boolean
+        timeZone:
+          type: string
+        today:
+          type: string
+          format: date
+    ActiveTimeLimitUpdate:
+      type: object
+      required: [enabled, limitSeconds, language, timeZone]
+      properties:
+        enabled:
+          type: boolean
+        limitSeconds:
+          type: integer
+          minimum: 900
+          maximum: 86400
+          multipleOf: 900
+        language:
+          type: string
+          enum: [uz, ru, en, ko]
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+    ActiveTimeHeartbeat:
+      type: object
+      required: [timeZone]
+      properties:
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
+    ActiveTimeOverrideInput:
+      type: object
+      required: [action, pin, timeZone]
+      properties:
+        action:
+          type: string
+          enum: [extend, reset]
+        pin:
+          type: string
+          pattern: "^[0-9]{4}$"
+        timeZone:
+          type: string
+          minLength: 1
+          maxLength: 64
     DiaryEntryInput:
       type: object
       required: [title, content, mood, entryDate]
