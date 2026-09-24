@@ -449,6 +449,11 @@
   0%, 100% { opacity: .55; }
   50% { opacity: 1; }
 }
+.diary-cover {
+  background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
 .diary-rise { animation: diary-rise .55s cubic-bezier(.22,1,.36,1) both; }
 .diary-drift { animation: diary-drift .5s cubic-bezier(.22,1,.36,1) both; }
 .diary-delay-1 { animation-delay: .08s; }
