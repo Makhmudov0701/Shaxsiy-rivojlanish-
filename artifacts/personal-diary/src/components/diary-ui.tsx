@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronLeft, ChevronRight, Flag, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Sparkles, Star, Sun, Timer, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, NotebookPen, Plus, Settings, Star, Sun, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -122,7 +122,6 @@ function SidebarNavLink({
   label,
   icon,
   active,
-  collapsed,
   onNavigate,
   testId,
 }: {
@@ -130,7 +129,6 @@ function SidebarNavLink({
   label: string;
   icon: ReactNode;
   active: boolean;
-  collapsed: boolean;
   onNavigate: () => void;
   testId: string;
 }) {
@@ -138,14 +136,13 @@ function SidebarNavLink({
     <Link
       href={href}
       onClick={onNavigate}
-      title={collapsed ? label : undefined}
       aria-label={label}
-      className={`group flex items-center gap-3 rounded-xl px-3 py-3 text-[12px] transition-all ${collapsed ? 'md:justify-center md:px-2' : ''} ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}
+      className={`group flex min-h-12 items-center gap-3 rounded-2xl px-3.5 py-3 text-[14px] font-medium transition-all ${active ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-sm' : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'}`}
       data-testid={testId}
     >
-      <span className={`grid shrink-0 place-items-center rounded-lg ${active ? 'text-sidebar-primary' : 'text-sidebar-foreground/55 group-hover:text-sidebar-foreground'}`}>{icon}</span>
-      <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
-      {active && !collapsed && <span className="ml-auto size-1.5 rounded-full bg-sidebar-primary" />}
+      <span className={`grid size-6 shrink-0 place-items-center rounded-lg ${active ? 'text-sidebar-primary' : 'text-sidebar-foreground/60 group-hover:text-sidebar-foreground'}`}>{icon}</span>
+      <span className="min-w-0 flex-1">{label}</span>
+      {active && <span className="size-2 shrink-0 rounded-full bg-sidebar-primary" />}
     </Link>
   );
 }
@@ -157,16 +154,12 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const appBasePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
   const firstName = user?.firstName || 'Yozuvchi';
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== 'undefined' && window.localStorage.getItem('kundalik-sidebar-yig‘iq') === 'ha');
+  const [moreOpen, setMoreOpen] = useState(false);
   const pathname = location.split('?')[0];
   const query = location.split('?')[1]?.split('#')[0] ?? '';
-  const searchParams = new URLSearchParams(query);
   const portalView = portalViewFromLocation(location);
+  const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/vault' || (pathname === '/user-portal' && portalView !== 'entries');
   const pomodoroSelected = pathname === '/pomodoro';
-
-  useEffect(() => {
-    window.localStorage.setItem('kundalik-sidebar-yig‘iq', sidebarCollapsed ? 'ha' : 'yo‘q');
-  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -182,76 +175,71 @@ export function DiaryShell({ children }: { children: ReactNode }) {
     };
   }, [mobileOpen]);
 
+  useEffect(() => {
+    if (secondarySelected) setMoreOpen(true);
+  }, [secondarySelected]);
+
   const closeMobile = () => setMobileOpen(false);
   const mainDiarySelected = (pathname === '/user-portal' && portalView === 'entries') || (pathname.startsWith('/entry') && !pomodoroSelected);
   return (
     <div className="paper-grain min-h-[100dvh] bg-background text-foreground">
       {mobileOpen && <button type="button" onClick={closeMobile} className="fixed inset-0 z-30 bg-[#1f1830]/45 backdrop-blur-[2px] md:hidden" aria-label="Yon menyuni yopish" />}
-      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[272px] -translate-x-full flex-col justify-between overflow-y-auto overscroll-contain bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-[width,transform] duration-300 md:translate-x-0 md:shadow-none ${sidebarCollapsed ? 'md:w-[82px]' : 'md:w-[258px]'} ${mobileOpen ? 'translate-x-0' : ''}`}>
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-[288px] -translate-x-full flex-col justify-between overflow-y-auto overscroll-contain bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-transform duration-300 md:translate-x-0 md:w-[264px] md:shadow-none ${mobileOpen ? 'translate-x-0' : ''}`}>
         <div>
-          <div className={`flex items-center ${sidebarCollapsed ? 'md:justify-center' : 'justify-between'}`}>
-            <LogoMark compact={sidebarCollapsed} />
+          <div className="flex items-center justify-between">
+            <LogoMark />
             <button type="button" onClick={() => setMobileOpen(false)} className="grid size-9 place-items-center rounded-xl text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden" aria-label="Yon menyuni yopish" title="Yon menyuni yopish"><X size={17} /></button>
-            <button type="button" onClick={() => setSidebarCollapsed((value) => !value)} className="hidden size-9 place-items-center rounded-xl text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground md:grid" aria-label={sidebarCollapsed ? 'Yon menyuni kengaytirish' : 'Yon menyuni yig‘ish'} title={sidebarCollapsed ? 'Yon menyuni kengaytirish' : 'Yon menyuni yig‘ish'}>
-              {sidebarCollapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
-            </button>
           </div>
-          <div className="mt-10">
-            <p className={`mb-3 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Asosiy menyu</p>
+          <div className="mt-8">
+            <p className="mb-3 px-3 text-[12px] font-semibold text-sidebar-foreground/55">Asosiy bo‘limlar</p>
             <nav className="space-y-1">
-              <SidebarNavLink href="/user-portal" label="Bosh sahifa / Kundalik" icon={<BookOpen size={16} strokeWidth={1.8} />} active={mainDiarySelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-portal" />
-              <SidebarNavLink href="/user-portal?view=calendar" label="Kalendar" icon={<CalendarDays size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'calendar'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-calendar" />
-              <SidebarNavLink href="/user-portal?view=folders" label="Papkalar va Teglar" icon={<FolderOpen size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'folders'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-folders-tags" />
-              <SidebarNavLink href="/user-portal?view=analytics" label="Kayfiyat va energiya" icon={<BarChart3 size={16} strokeWidth={1.8} />} active={pathname === '/user-portal' && portalView === 'analytics'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-analytics" />
-              <SidebarNavLink href="/pomodoro" label="Diqqat taymeri va vazifalar" icon={<Timer size={16} strokeWidth={1.8} />} active={pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-pomodoro" />
-              <SidebarNavLink href="/settings" label="Sozlamalar va Zaxira" icon={<Settings size={16} strokeWidth={1.8} />} active={pathname === '/settings'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-settings" />
+              <SidebarNavLink href="/user-portal" label="Kundalik" icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected && pathname !== '/entry/new'} onNavigate={closeMobile} testId="link-portal" />
+              <SidebarNavLink href="/entry/new" label="Yangi xotira" icon={<NotebookPen size={20} strokeWidth={1.8} />} active={pathname === '/entry/new'} onNavigate={closeMobile} testId="link-new-entry" />
+              <SidebarNavLink href="/pomodoro" label="Diqqat" icon={<Clock3 size={20} strokeWidth={1.8} />} active={pomodoroSelected} onNavigate={closeMobile} testId="link-pomodoro" />
+              <SidebarNavLink href="/goals" label="Maqsadlar" icon={<Star size={20} strokeWidth={1.8} />} active={pathname === '/goals'} onNavigate={closeMobile} testId="link-goals" />
+              <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
             </nav>
-            <p className={`mb-3 mt-8 px-3 font-mono text-[9px] uppercase tracking-[0.18em] text-sidebar-foreground/45 ${sidebarCollapsed ? 'md:hidden' : ''}`}>Shaxsiy vositalar</p>
-            <nav className="space-y-1">
-              <SidebarNavLink href="/entry/new" label="Yangi yozuv" icon={<Plus size={16} strokeWidth={1.8} />} active={pathname === '/entry/new' && !pomodoroSelected} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-new-entry" />
-              <SidebarNavLink href="/ideas" label="G‘oyalar qutisi" icon={<Lightbulb size={16} strokeWidth={1.8} />} active={pathname === '/ideas'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-ideas" />
-              <SidebarNavLink href="/goals" label="Maqsadlar paneli" icon={<Flag size={16} strokeWidth={1.8} />} active={pathname === '/goals'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-goals" />
-              <SidebarNavLink href="/books" label="Kitoblar va iqtiboslar" icon={<BookMarked size={16} strokeWidth={1.8} />} active={pathname === '/books'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-books" />
-              <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={16} strokeWidth={1.8} />} active={pathname === '/habits'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-habits" />
-              <SidebarNavLink href="/vault" label="Maxfiy jild" icon={<LockKeyhole size={16} strokeWidth={1.8} />} active={pathname === '/vault'} collapsed={sidebarCollapsed} onNavigate={closeMobile} testId="link-vault" />
-            </nav>
+            <button type="button" onClick={() => setMoreOpen((value) => !value)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-[14px] font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" aria-expanded={moreOpen} aria-controls="secondary-navigation" data-testid="button-more-navigation">
+              <span className="grid size-6 place-items-center"><ChevronDown size={19} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} /></span>
+              <span className="flex-1">Boshqa bo‘limlar</span>
+              <span className="text-[12px] text-sidebar-foreground/50">{moreOpen ? 'Yopish' : 'Ochish'}</span>
+            </button>
+            {moreOpen && <nav id="secondary-navigation" className="mt-1 space-y-1 border-l border-sidebar-border pl-2">
+              <SidebarNavLink href="/user-portal?view=calendar" label="Taqvim" icon={<CalendarDays size={20} />} active={pathname === '/user-portal' && portalView === 'calendar'} onNavigate={closeMobile} testId="link-calendar" />
+              <SidebarNavLink href="/user-portal?view=folders" label="Mavzular" icon={<FolderOpen size={20} />} active={pathname === '/user-portal' && portalView === 'folders'} onNavigate={closeMobile} testId="link-folders-tags" />
+              <SidebarNavLink href="/user-portal?view=analytics" label="Kayfiyat" icon={<BarChart3 size={20} />} active={pathname === '/user-portal' && portalView === 'analytics'} onNavigate={closeMobile} testId="link-analytics" />
+              <SidebarNavLink href="/ideas" label="G‘oyalar" icon={<Lightbulb size={20} />} active={pathname === '/ideas'} onNavigate={closeMobile} testId="link-ideas" />
+              <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={20} />} active={pathname === '/habits'} onNavigate={closeMobile} testId="link-habits" />
+              <SidebarNavLink href="/vault" label="Maxfiy jild" icon={<LockKeyhole size={20} />} active={pathname === '/vault'} onNavigate={closeMobile} testId="link-vault" />
+              <SidebarNavLink href="/settings" label="Sozlamalar" icon={<Settings size={20} />} active={pathname === '/settings'} onNavigate={closeMobile} testId="link-settings" />
+            </nav>}
           </div>
         </div>
-        <div className={sidebarCollapsed ? 'md:flex md:flex-col md:items-center' : ''}>
-          <AmbientSoundControl collapsed={sidebarCollapsed} />
-          <div className="mb-4 rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-4">
-            <Sparkles size={16} className={sidebarCollapsed ? 'md:mb-0' : 'mb-3'} />
-            <p className={sidebarCollapsed ? 'md:hidden' : 'font-serif text-[18px] leading-tight text-sidebar-foreground'}>Siz uchun yaratilgan sokin makon.</p>
-          </div>
-          <div className={`flex items-center justify-between border-t border-sidebar-border pt-4 ${sidebarCollapsed ? 'md:flex-col md:gap-3' : ''}`}>
-            <div className={`min-w-0 ${sidebarCollapsed ? 'md:hidden' : ''}`}>
-              <p className="truncate text-[12px] font-medium">{firstName}</p>
-              <p className="mt-0.5 truncate font-mono text-[9px] uppercase tracking-[0.12em] text-sidebar-foreground/45">shaxsiy kundalik</p>
-            </div>
-            <div className={`flex items-center gap-1 ${sidebarCollapsed ? 'md:flex-col' : ''}`}>
+        <div>
+          <AmbientSoundControl collapsed={false} />
+          <div className="flex items-center justify-between gap-3 border-t border-sidebar-border pt-4">
+            <div className="min-w-0"><p className="truncate text-[13px] font-semibold">{firstName}</p><p className="mt-0.5 text-[11px] text-sidebar-foreground/55">Shaxsiy kundalik</p></div>
+            <div className="flex shrink-0 items-center gap-2">
               <ThemeToggle />
-              <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="rounded-lg p-2 text-sidebar-foreground/50 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Chiqish" title="Chiqish" data-testid="button-sign-out"><LogOut size={15} /></button>
+              <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="grid size-11 place-items-center rounded-xl text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Hisobdan chiqish" title="Hisobdan chiqish" data-testid="button-sign-out"><LogOut size={19} /></button>
             </div>
           </div>
         </div>
       </aside>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/90 px-4 py-2.5 backdrop-blur md:hidden">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setMobileOpen(true)} className="grid size-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Yon menyuni ochish" title="Yon menyuni ochish" data-testid="button-mobile-menu"><Menu size={18} /></button>
+          <button type="button" onClick={() => setMobileOpen(true)} className="grid size-11 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Menyuni ochish" title="Menyuni ochish" data-testid="button-mobile-menu"><Menu size={20} /></button>
           <LogoMark compact />
         </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/entry/new" className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground" aria-label="Yangi yozuv" data-testid="link-mobile-new"><Plus size={17} /></Link>
-        </div>
+        <Link href="/entry/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-sm" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} />Yozish</Link>
       </header>
-      <main className={`min-h-[100dvh] transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-[82px]' : 'md:pl-[258px]'}`}>{children}</main>
+      <main className="min-h-[100dvh] md:pl-[264px]">{children}</main>
     </div>
   );
 }
 
 export function FlashNotice({ message, tone = 'success' }: { message: string; tone?: 'success' | 'error' }) {
-  return <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 text-[12px] shadow-lg diary-rise ${tone === 'success' ? 'border-[#c3ddcf] bg-[#edf6f0] text-[#35614f]' : 'border-[#ecc6bd] bg-[#fff0ec] text-[#8f3f2d]'}`} role="status" data-testid="status-feedback"><span className="size-1.5 rounded-full bg-current" />{message}</div>;
+  return <div className={`fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-50 flex min-h-12 items-center justify-center gap-3 rounded-2xl border px-5 py-3 text-center text-[14px] font-medium shadow-lg diary-rise sm:inset-x-auto sm:right-5 sm:max-w-[min(28rem,calc(100vw-2.5rem))] ${tone === 'success' ? 'border-[#c3ddcf] bg-[#edf6f0] text-[#35614f]' : 'border-[#ecc6bd] bg-[#fff0ec] text-[#8f3f2d]'}`} role="status" data-testid="status-feedback"><span className="size-2 shrink-0 rounded-full bg-current" />{message}</div>;
 }
 
 export function EmptyEntries({ filtered, onCreate }: { filtered: boolean; onCreate: () => void }) {
@@ -262,7 +250,7 @@ export function EmptyEntries({ filtered, onCreate }: { filtered: boolean; onCrea
       <span className="relative mx-auto grid size-14 place-items-center rounded-2xl bg-[#30243f] text-[#f8f3e9]"><BookOpen size={23} strokeWidth={1.5} /></span>
       <h2 className="relative mt-6 font-serif text-[30px] tracking-[-0.03em]">{filtered ? 'Bu qidiruvga mos yozuv topilmadi.' : 'Birinchi yozuvingizni kutmoqda.'}</h2>
       <p className="relative mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">{filtered ? 'Boshqa so‘z bilan qidiring yoki filterlarni tozalang.' : 'Bugun deyarli unutgan kichik bir narsadan boshlang. Boshlashning to‘g‘ri yoki noto‘g‘ri usuli yo‘q.'}</p>
-      <button type="button" onClick={onCreate} className="relative mt-7 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5" data-testid="button-empty-create"><Plus size={15} /> Yozuv yaratish</button>
+      <button type="button" onClick={onCreate} className="relative mt-7 inline-flex min-h-14 items-center gap-3 rounded-2xl bg-primary px-6 py-4 text-[16px] font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5" data-testid="button-empty-create"><Plus size={21} /> Yangi xotira yozish</button>
     </div>
   );
 }

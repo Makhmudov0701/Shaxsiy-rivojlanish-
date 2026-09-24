@@ -30,6 +30,9 @@ export function FocusTodoPage() {
             <span className="hidden sm:inline">Shaxsiy diqqat vaqti</span>
           </div>
         </div>
+        <p className="px-5 py-3 text-[13px] leading-relaxed text-muted-foreground sm:px-8 lg:px-12">
+          Vazifani tanlang, so‘ng taymerni boshlang.
+        </p>
         <div>
           <FocusTodoWorkspace storageKey={`kundalik-focus-todo-${user.id}`} />
         </div>

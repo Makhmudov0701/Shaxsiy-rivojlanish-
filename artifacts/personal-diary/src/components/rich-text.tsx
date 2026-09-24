@@ -141,10 +141,10 @@ export const VisualRichTextEditor = forwardRef<HTMLDivElement, {
       role="textbox"
       aria-multiline="true"
       aria-label="Matn muharriri"
-      data-placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang."
+      data-placeholder="Bugun nima yodingizda qoldi? Shu yerga yozing..."
       data-testid="editor-entry-content"
       onInput={(event) => onChange(serializeEditorContent(event.currentTarget))}
-      className="rich-editor min-h-[380px] w-full bg-transparent py-5 font-serif text-[23px] leading-[1.55] text-foreground outline-none"
+      className="rich-editor min-h-[240px] w-full bg-transparent py-5 font-serif text-[21px] leading-[1.55] text-foreground outline-none sm:min-h-[300px] sm:text-[23px]"
     />
   );
 });

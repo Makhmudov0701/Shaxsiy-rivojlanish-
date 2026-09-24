@@ -61,7 +61,7 @@ function playGentleAlert(audioContextRef: React.MutableRefObject<AudioContext | 
 }
 
 export function PomodoroTimer() {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [mode, setMode] = useState<PomodoroMode>('focus');
   const [remainingSeconds, setRemainingSeconds] = useState(MODES.focus.seconds);
   const [isRunning, setIsRunning] = useState(false);
@@ -192,10 +192,11 @@ export function PomodoroTimer() {
           </span>
           <span className="min-w-0">
             <span className="block font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Yozish ritmi</span>
-            <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <span className="font-serif text-[21px] leading-none text-primary">Diqqat taymeri</span>
               <span className="text-[11px] text-muted-foreground">{modeDetails.label}</span>
             </span>
+              {!expanded && <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">Bir ishni tanlang, 25 daqiqa diqqat qiling, so‘ng dam oling.</span>}
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
@@ -241,7 +242,7 @@ export function PomodoroTimer() {
               <button
                 type="button"
                 onClick={isRunning ? pauseTimer : startTimer}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[12px] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-[14px] font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
                 data-testid="button-pomodoro-start-pause"
               >
                 {isRunning ? <Pause size={15} /> : <Play size={15} />}
@@ -260,15 +261,15 @@ export function PomodoroTimer() {
 
           <div className="mt-5 flex flex-col gap-3 border-t border-[#e2d4ad] pt-4 dark:border-[#5a4d38] sm:flex-row sm:items-center sm:justify-between">
             <p className="min-h-4 text-[11px] leading-relaxed text-[#755f2f] dark:text-[#d6c18c]" aria-live="polite">
-              {completionMessage || (isRunning ? 'Vaqt ketmoqda. Yozishda davom eting.' : 'Taymer tayyor. Boshlashga tayyormisiz?')}
+              {completionMessage || (isRunning ? 'Taymer boshlandi. Xotirangizni yozishda davom eting.' : 'Taymer tayyor. Boshlash uchun bosing.')}
             </p>
             {notificationPermission === 'unsupported' ? (
               <span className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground"><BellOff size={13} /> Bildirishnoma mavjud emas</span>
             ) : notificationPermission === 'granted' ? (
               <span className="inline-flex items-center gap-1.5 text-[10px] text-[#47796c]"><Bell size={13} /> Bildirishnomalar yoqilgan</span>
             ) : (
-              <button type="button" onClick={requestNotifications} className="inline-flex items-center gap-1.5 self-start text-[10px] font-semibold text-[#8f601a] underline decoration-[#cdbd8e] underline-offset-4 transition-colors hover:text-primary sm:self-auto" data-testid="button-pomodoro-notifications">
-                <Bell size={13} /> Bildirishnomani yoqish
+              <button type="button" onClick={requestNotifications} className="inline-flex min-h-11 items-center gap-1.5 self-start text-[12px] font-semibold text-[#8f601a] underline decoration-[#cdbd8e] underline-offset-4 transition-colors hover:text-primary sm:self-auto" data-testid="button-pomodoro-notifications">
+                <Bell size={15} /> Eslatmani yoqish
               </button>
             )}
           </div>
