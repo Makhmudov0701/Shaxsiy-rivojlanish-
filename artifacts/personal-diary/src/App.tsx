@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { PinLockGate } from '@/components/security-ui';
 import { ActiveTimeGate } from '@/components/active-time-limit';
 import { AmbientSoundProvider } from '@/components/ambient-sound';
+import { DiaryCoverProvider } from '@/components/diary-cover';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
@@ -182,12 +183,14 @@ function ClerkProviderWithRoutes() {
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
         <TooltipProvider>
-          <ActiveTimeGate>
-            <AmbientSoundProvider>
-              <Router />
-            </AmbientSoundProvider>
-          </ActiveTimeGate>
-          <Toaster />
+          <DiaryCoverProvider>
+            <ActiveTimeGate>
+              <AmbientSoundProvider>
+                <Router />
+              </AmbientSoundProvider>
+            </ActiveTimeGate>
+            <Toaster />
+          </DiaryCoverProvider>
         </TooltipProvider>
       </QueryClientProvider>
     </ClerkProvider>
