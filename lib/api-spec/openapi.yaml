@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: diary
     description: Private diary operations
+  - name: tasks
+    description: Private task management operations
   - name: repetition
     description: Private spaced-repetition cards
 paths:
@@ -593,6 +595,82 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List the signed-in user's tasks
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /tasks/{id}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task or mark it complete
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - $ref: "#/components/parameters/TaskId"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /repetition/decks:
     get:
       operationId: listRepetitionDecks
@@ -799,6 +877,13 @@ paths:
 components:
   parameters:
     DiaryEntryId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    TaskId:
       name: id
       in: path
       required: true
@@ -1202,6 +1287,72 @@ components:
         photosRestored:
           type: integer
           minimum: 0
+    Task:
+      type: object
+      required: [id, title, description, category, dueDate, completed, completedAt, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+          maxLength: 160
+        description:
+          type: ["string", "null"]
+          maxLength: 1000
+        category:
+          $ref: "#/components/schemas/TaskCategory"
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        completed:
+          type: boolean
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    TaskInput:
+      type: object
+      additionalProperties: false
+      required: [title, category]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: ["string", "null"]
+          maxLength: 1000
+        category:
+          $ref: "#/components/schemas/TaskCategory"
+        dueDate:
+          type: ["string", "null"]
+          format: date
+    TaskUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        description:
+          type: ["string", "null"]
+          maxLength: 1000
+        category:
+          $ref: "#/components/schemas/TaskCategory"
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        completed:
+          type: boolean
+    TaskCategory:
+      type: string
+      enum: [important, this_week, this_month, this_year, free_time]
     RepetitionCard:
       type: object
       required: [id, deckId, deckName, front, back, dueAt, intervalDays, easeFactor, repetitions, lapses, learnedAt, lastReviewedAt, createdAt, updatedAt]
