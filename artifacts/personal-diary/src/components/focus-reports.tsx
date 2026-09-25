@@ -252,7 +252,7 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
   }, [reportSessions, periodStart, periodEnd]);
 
   return (
-    <section className="space-y-5" data-testid="focus-reports">
+    <section className="w-full min-w-0 max-w-full space-y-5" data-testid="focus-reports">
       <div className="space-y-4">
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin hisob</p>
@@ -319,7 +319,7 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid min-w-0 gap-4 md:grid-cols-3">
         <div className="rounded-2xl bg-[#e6efe8] p-5 dark:bg-[#283c32]" data-testid="metric-focus-time">
           <p className="text-[10px] text-[#527463] dark:text-[#b8d6c3]">Tanlangan davr · diqqat vaqti</p>
           <p className="mt-2 font-mono text-[30px] leading-none text-[#315d4e] dark:text-[#d1ebd9]">{Math.floor(focusMinutes / 60)}<span className="ml-1 text-[13px]">soat</span> {focusMinutes % 60}<span className="ml-1 text-[13px]">daq</span></p>
@@ -337,8 +337,8 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-        <div className="rounded-2xl border border-border/70 bg-card p-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,.8fr)]">
+        <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
           <div className="flex items-center gap-2">
             <BarChart3 size={16} className="text-[#47796c]" />
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Diqqat taqsimoti</p>
@@ -358,7 +358,7 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
             </div>
           </div>
         </div>
-        <div className="rounded-2xl border border-border/70 bg-card p-5">
+        <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
           <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Loyihalar taqsimoti</p>
           <p className="mt-1 text-[9px] text-muted-foreground">Tanlangan davr · daqiqalar</p>
           <div className="mt-5 space-y-4">
@@ -373,13 +373,13 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border border-border/70 bg-card p-5">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
+        <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Sessiya issiqlik xaritasi</p>
             <span className="text-[9px] text-muted-foreground">{periodLabel}</span>
           </div>
-          <div className="mt-4 overflow-x-auto pb-1" aria-label={`Tanlangan davrdagi sessiyalar: ${periodLabel}`}>
+          <div className="mt-4 max-w-full overflow-x-auto pb-1" aria-label={`Tanlangan davrdagi sessiyalar: ${periodLabel}`}>
             <div className="grid w-max auto-cols-[10px] grid-flow-col grid-rows-7 gap-1.5">
               {heatmapCells.map((cell, index) => (
                 <span
@@ -396,7 +396,7 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
             <span>kam</span><span className="size-2.5 rounded-[3px] bg-[#ecebe4] dark:bg-[#3a3d36]" /><span className="size-2.5 rounded-[3px] bg-[#bed2c4]" /><span className="size-2.5 rounded-[3px] bg-[#82a995]" /><span className="size-2.5 rounded-[3px] bg-[#47796c]" /><span>ko‘p</span>
           </div>
         </div>
-        <div className="rounded-2xl border border-border/70 bg-card p-5">
+        <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
           <div className="flex items-center gap-2">
             <Clock3 size={15} className="text-[#9b6543]" />
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Bajarilgan sessiyalar</p>

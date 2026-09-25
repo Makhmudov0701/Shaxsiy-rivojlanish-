@@ -186,7 +186,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const closeMobile = () => setMobileOpen(false);
   const mainDiarySelected = (pathname === '/user-portal' && portalView === 'entries') || (pathname.startsWith('/entry') && !pomodoroSelected);
   return (
-    <div className="paper-grain min-h-[100dvh] bg-background text-foreground">
+    <div className="paper-grain box-border min-h-[100dvh] w-full max-w-[100vw] overflow-x-hidden bg-background text-foreground">
       {mobileOpen && <button type="button" onClick={closeMobile} className="fixed inset-0 z-30 bg-[#1f1830]/45 backdrop-blur-[2px] md:hidden" aria-label="Yon menyuni yopish" />}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[288px] -translate-x-full flex-col justify-between overflow-y-auto overscroll-contain bg-sidebar px-4 py-5 text-sidebar-foreground shadow-2xl transition-transform duration-300 md:translate-x-0 md:w-[264px] md:shadow-none ${mobileOpen ? 'translate-x-0' : ''}`}>
         <div>
@@ -238,7 +238,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
         </div>
         <Link href="/entry/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-sm" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} />Yozish</Link>
       </header>
-      <main className="min-h-[100dvh] md:pl-[264px]">
+      <main className="box-border min-h-[100dvh] w-full min-w-0 max-w-full md:pl-[264px]">
         {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} userId={user?.id ?? 'anonymous'} />}
         {children}
       </main>

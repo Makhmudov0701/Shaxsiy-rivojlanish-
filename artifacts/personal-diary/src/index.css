@@ -261,6 +261,7 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
 
   body {
@@ -421,12 +422,17 @@
 }
 
 @layer base {
-  html {
+  html,
+  body,
+  #root {
     background: hsl(var(--background));
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+    box-sizing: border-box;
   }
   body {
-    min-width: 320px;
-    overflow-x: hidden;
+    min-width: 0;
   }
   button, a, input, textarea, select {
     -webkit-tap-highlight-color: transparent;

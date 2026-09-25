@@ -118,15 +118,15 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
   };
 
   return (
-    <section className="mx-auto w-full max-w-[1360px] px-4 pt-4 sm:px-8 sm:pt-6 lg:px-12" data-testid={`section-info-card-${sectionId}`}>
+    <section className="mx-auto box-border w-full min-w-0 max-w-[100vw] px-4 pt-4 sm:px-8 sm:pt-6 lg:px-12" data-testid={`section-info-card-${sectionId}`}>
       <div
-        className="overflow-hidden rounded-[24px] border bg-card shadow-sm"
+        className="box-border w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border bg-card shadow-sm"
         style={{
           backgroundImage: `linear-gradient(125deg, ${section.accent}22 0%, hsl(var(--card)) 55%, ${section.accent}12 100%)`,
           borderColor: `${section.accent}48`,
         }}
       >
-        <div className="flex items-center gap-3 px-4 py-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-3 px-4 py-4 sm:px-6">
           <span
             className="grid size-11 shrink-0 place-items-center rounded-2xl border"
             style={{
@@ -139,8 +139,8 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Bo‘lim haqida</p>
-            <h2 className="mt-0.5 truncate font-serif text-[22px] leading-tight text-foreground sm:text-[25px]">{section.title}</h2>
-            {!expanded && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{section.eyebrow}</p>}
+            <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{section.title}</h2>
+            {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{section.eyebrow}</p>}
           </div>
           <button
             type="button"
@@ -161,24 +161,24 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
           aria-hidden={!expanded}
         >
           <div className="overflow-hidden">
-            <div className={`grid gap-4 px-4 pb-4 transition-[opacity,transform] duration-300 ease-out sm:px-6 sm:pb-6 lg:grid-cols-[1fr_0.95fr] ${expanded ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"}`}>
-              <div className="flex flex-col justify-center rounded-[20px] border border-border/50 bg-background/40 p-4 sm:p-5">
-                <p className="text-[13px] leading-relaxed text-foreground/85" data-testid={`text-section-purpose-${sectionId}`}>{section.purpose}</p>
+            <div className={`grid min-w-0 gap-4 px-4 pb-4 transition-[opacity,transform] duration-300 ease-out sm:px-6 sm:pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,.95fr)] ${expanded ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"}`}>
+              <div className="flex min-w-0 max-w-full flex-col justify-center rounded-[20px] border border-border/50 bg-background/40 p-4 sm:p-5">
+                <p className="break-words text-[13px] leading-relaxed text-foreground/85 [overflow-wrap:anywhere]" data-testid={`text-section-purpose-${sectionId}`}>{section.purpose}</p>
                 <h3 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Foydasi</h3>
                 <ul className="mt-2.5 space-y-2">
                   {section.benefits.map((benefit, index) => (
-                    <li key={benefit} className="flex items-start gap-2.5 text-[12px] leading-relaxed text-muted-foreground" data-testid={`text-section-benefit-${sectionId}-${index + 1}`}>
+                    <li key={benefit} className="flex min-w-0 items-start gap-2.5 text-[12px] leading-relaxed text-muted-foreground" data-testid={`text-section-benefit-${sectionId}-${index + 1}`}>
                       <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
                         <Check size={10} strokeWidth={2.5} />
                       </span>
-                      <span>{benefit}</span>
+                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{benefit}</span>
                     </li>
                   ))}
                 </ul>
               </div>
 
               <article
-                className="relative flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[20px] border p-4 sm:min-h-[340px] sm:p-5"
+                className="relative flex min-h-[320px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-[20px] border p-4 sm:min-h-[340px] sm:p-5"
                 style={{
                   backgroundImage: `linear-gradient(145deg, ${section.accent}2b 0%, hsl(var(--background) / 0.72) 72%, ${section.accent}20 100%)`,
                   borderColor: `${section.accent}55`,
@@ -194,7 +194,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                     <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bugungi motivatsiya</p>
                   </div>
                 </div>
-                <div className="relative flex min-h-[220px] flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
+                <div className="relative flex min-h-[220px] min-w-0 flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
                   <span
                     aria-hidden="true"
                     className="mb-4 grid size-12 place-items-center rounded-2xl border text-[25px] shadow-sm"
@@ -206,14 +206,14 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                   >
                     {currentEntry.emoji}
                   </span>
-                  <p className="max-w-[38rem] font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground" data-testid={`text-daily-quote-${sectionId}`}>
+                  <p className="min-w-0 max-w-full break-words font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
                     “{currentEntry.text}”
                   </p>
-                  <p className="mt-4 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  <p className="mt-4 min-w-0 break-words font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
                     {section.motivationLabel} · {currentIndex + 1}/{poolSize}
                   </p>
                 </div>
-                <div className="relative mt-5 flex items-center justify-between gap-3">
+                <div className="relative mt-5 flex min-w-0 items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
                     {section.eyebrow}
                   </span>
