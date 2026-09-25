@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Settings, Star, Sun, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -160,6 +160,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const portalView = portalViewFromLocation(location);
   const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/vault' || (pathname === '/user-portal' && portalView !== 'entries');
   const pomodoroSelected = pathname === '/pomodoro';
+  const repetitionSelected = pathname === '/repetition';
 
   useEffect(() => {
     if (!mobileOpen) return undefined;
@@ -197,6 +198,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/pomodoro" label="Diqqat" icon={<Clock3 size={20} strokeWidth={1.8} />} active={pomodoroSelected} onNavigate={closeMobile} testId="link-pomodoro" />
               <SidebarNavLink href="/goals" label="Maqsadlar" icon={<Star size={20} strokeWidth={1.8} />} active={pathname === '/goals'} onNavigate={closeMobile} testId="link-goals" />
               <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
+              <SidebarNavLink href="/repetition" label="Takrorlash" icon={<Repeat2 size={20} strokeWidth={1.8} />} active={repetitionSelected} onNavigate={closeMobile} testId="link-repetition" />
             </nav>
             <button type="button" onClick={() => setMoreOpen((value) => !value)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-[14px] font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" aria-expanded={moreOpen} aria-controls="secondary-navigation" data-testid="button-more-navigation">
               <span className="grid size-6 place-items-center"><ChevronDown size={19} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} /></span>

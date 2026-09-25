@@ -25,6 +25,7 @@ import type {
   ActiveTimeLimitUpdate,
   ActiveTimeOverrideInput,
   BadRequestResponse,
+  ConflictResponse,
   DiaryBackup,
   DiaryEntry,
   DiaryEntryInput,
@@ -38,11 +39,18 @@ import type {
   ExportDiaryParams,
   FavoriteUpdate,
   GetActiveTimeLimitParams,
+  GetRepetitionStatsParams,
   HealthStatus,
   ListDiaryEntriesParams,
   NotFoundResponse,
   PinInput,
   PinVerification,
+  RepetitionCard,
+  RepetitionCardInput,
+  RepetitionDeck,
+  RepetitionDeckInput,
+  RepetitionReviewInput,
+  RepetitionStats,
   RestoreDiaryBackupResult,
   UnauthorizedResponse
 } from './api.schemas';
@@ -435,7 +443,7 @@ return customFetch<DiaryEntry>(getCreateDiaryEntryUrl(),
 
 export const getCreateDiaryEntryMutationKey = () => ['createDiaryEntry'] as const;
 
-export const getCreateDiaryEntryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const getCreateDiaryEntryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDiaryEntry>>, TError,CreateDiaryEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createDiaryEntry>>, TError,CreateDiaryEntryMutationVariables, TContext> => {
 
@@ -464,13 +472,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateDiaryEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createDiaryEntry>>>
     export type CreateDiaryEntryMutationBody = BodyType<DiaryEntryInput>
-    export type CreateDiaryEntryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateDiaryEntryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>
     export type CreateDiaryEntryMutationVariables = {data: BodyType<DiaryEntryInput>}
 
     /**
  * @summary Create diary entry
  */
-export const useCreateDiaryEntry = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+export const useCreateDiaryEntry = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDiaryEntry>>, TError,CreateDiaryEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createDiaryEntry>>,
@@ -601,7 +609,7 @@ return customFetch<DiaryEntry>(getUpdateDiaryEntryUrl(id),
 
 export const getUpdateDiaryEntryMutationKey = () => ['updateDiaryEntry'] as const;
 
-export const getUpdateDiaryEntryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const getUpdateDiaryEntryMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDiaryEntry>>, TError,UpdateDiaryEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof updateDiaryEntry>>, TError,UpdateDiaryEntryMutationVariables, TContext> => {
 
@@ -630,13 +638,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type UpdateDiaryEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateDiaryEntry>>>
     export type UpdateDiaryEntryMutationBody = BodyType<DiaryEntryUpdate>
-    export type UpdateDiaryEntryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateDiaryEntryMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>
     export type UpdateDiaryEntryMutationVariables = {id: number;data: BodyType<DiaryEntryUpdate>}
 
     /**
  * @summary Update diary entry
  */
-export const useUpdateDiaryEntry = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+export const useUpdateDiaryEntry = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse | ConflictResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateDiaryEntry>>, TError,UpdateDiaryEntryMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof updateDiaryEntry>>,
@@ -1974,5 +1982,835 @@ export const useRestoreDiaryBackup = <TError = ErrorType<BadRequestResponse | Un
         TContext
       > => {
       return useMutation(getRestoreDiaryBackupMutationOptions(options));
+    }
+
+export const getListRepetitionDecksUrl = () => {
+
+
+
+
+  return `/api/repetition/decks`
+}
+
+/**
+ * @summary List spaced-repetition decks
+ */
+export const listRepetitionDecks = async ( options?: Parameters<typeof customFetch>[1]): Promise<RepetitionDeck[]> => {
+
+  return customFetch<RepetitionDeck[]>(getListRepetitionDecksUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRepetitionDecksQueryKey = () => {
+    return [
+    `/api/repetition/decks`
+    ] as const;
+    }
+
+
+export const getListRepetitionDecksQueryOptions = <TData = Awaited<ReturnType<typeof listRepetitionDecks>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRepetitionDecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRepetitionDecksQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRepetitionDecks>>> = ({ signal }) => listRepetitionDecks({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRepetitionDecks>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRepetitionDecksQueryResult = NonNullable<Awaited<ReturnType<typeof listRepetitionDecks>>>
+export type ListRepetitionDecksQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List spaced-repetition decks
+ */
+
+export function useListRepetitionDecks<TData = Awaited<ReturnType<typeof listRepetitionDecks>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRepetitionDecks>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRepetitionDecksQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateRepetitionDeckUrl = () => {
+
+
+
+
+  return `/api/repetition/decks`
+}
+
+/**
+ * @summary Create a spaced-repetition deck
+ */
+export const createRepetitionDeck = async (repetitionDeckInput: RepetitionDeckInput, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionDeck> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RepetitionDeck>(getCreateRepetitionDeckUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(repetitionDeckInput)
+  }
+);}
+
+
+
+
+
+export const getCreateRepetitionDeckMutationKey = () => ['createRepetitionDeck'] as const;
+
+export const getCreateRepetitionDeckMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepetitionDeck>>, TError,CreateRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRepetitionDeck>>, TError,CreateRepetitionDeckMutationVariables, TContext> => {
+
+const mutationKey = getCreateRepetitionDeckMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRepetitionDeck>>, CreateRepetitionDeckMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRepetitionDeck(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRepetitionDeckMutationResult = NonNullable<Awaited<ReturnType<typeof createRepetitionDeck>>>
+    export type CreateRepetitionDeckMutationBody = BodyType<RepetitionDeckInput>
+    export type CreateRepetitionDeckMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateRepetitionDeckMutationVariables = {data: BodyType<RepetitionDeckInput>}
+
+    /**
+ * @summary Create a spaced-repetition deck
+ */
+export const useCreateRepetitionDeck = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepetitionDeck>>, TError,CreateRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRepetitionDeck>>,
+        TError,
+        CreateRepetitionDeckMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateRepetitionDeckMutationOptions(options));
+    }
+
+export const getUpdateRepetitionDeckUrl = (id: number,) => {
+
+
+
+
+  return `/api/repetition/decks/${id}`
+}
+
+/**
+ * @summary Rename a spaced-repetition deck
+ */
+export const updateRepetitionDeck = async (id: number,
+    repetitionDeckInput: RepetitionDeckInput, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionDeck> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RepetitionDeck>(getUpdateRepetitionDeckUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(repetitionDeckInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateRepetitionDeckMutationKey = () => ['updateRepetitionDeck'] as const;
+
+export const getUpdateRepetitionDeckMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionDeck>>, TError,UpdateRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionDeck>>, TError,UpdateRepetitionDeckMutationVariables, TContext> => {
+
+const mutationKey = getUpdateRepetitionDeckMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRepetitionDeck>>, UpdateRepetitionDeckMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRepetitionDeck(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRepetitionDeckMutationResult = NonNullable<Awaited<ReturnType<typeof updateRepetitionDeck>>>
+    export type UpdateRepetitionDeckMutationBody = BodyType<RepetitionDeckInput>
+    export type UpdateRepetitionDeckMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateRepetitionDeckMutationVariables = {id: number;data: BodyType<RepetitionDeckInput>}
+
+    /**
+ * @summary Rename a spaced-repetition deck
+ */
+export const useUpdateRepetitionDeck = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionDeck>>, TError,UpdateRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRepetitionDeck>>,
+        TError,
+        UpdateRepetitionDeckMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateRepetitionDeckMutationOptions(options));
+    }
+
+export const getDeleteRepetitionDeckUrl = (id: number,) => {
+
+
+
+
+  return `/api/repetition/decks/${id}`
+}
+
+/**
+ * @summary Delete a spaced-repetition deck and its cards
+ */
+export const deleteRepetitionDeck = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteRepetitionDeckUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteRepetitionDeckMutationKey = () => ['deleteRepetitionDeck'] as const;
+
+export const getDeleteRepetitionDeckMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionDeck>>, TError,DeleteRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionDeck>>, TError,DeleteRepetitionDeckMutationVariables, TContext> => {
+
+const mutationKey = getDeleteRepetitionDeckMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteRepetitionDeck>>, DeleteRepetitionDeckMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteRepetitionDeck(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteRepetitionDeckMutationResult = NonNullable<Awaited<ReturnType<typeof deleteRepetitionDeck>>>
+
+    export type DeleteRepetitionDeckMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteRepetitionDeckMutationVariables = {id: number}
+
+    /**
+ * @summary Delete a spaced-repetition deck and its cards
+ */
+export const useDeleteRepetitionDeck = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionDeck>>, TError,DeleteRepetitionDeckMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteRepetitionDeck>>,
+        TError,
+        DeleteRepetitionDeckMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteRepetitionDeckMutationOptions(options));
+    }
+
+export const getListRepetitionCardsUrl = () => {
+
+
+
+
+  return `/api/repetition/cards`
+}
+
+/**
+ * Returns all spaced-repetition cards belonging to the signed-in user.
+ * @summary List spaced-repetition cards
+ */
+export const listRepetitionCards = async ( options?: Parameters<typeof customFetch>[1]): Promise<RepetitionCard[]> => {
+
+  return customFetch<RepetitionCard[]>(getListRepetitionCardsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRepetitionCardsQueryKey = () => {
+    return [
+    `/api/repetition/cards`
+    ] as const;
+    }
+
+
+export const getListRepetitionCardsQueryOptions = <TData = Awaited<ReturnType<typeof listRepetitionCards>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRepetitionCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRepetitionCardsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRepetitionCards>>> = ({ signal }) => listRepetitionCards({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRepetitionCards>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListRepetitionCardsQueryResult = NonNullable<Awaited<ReturnType<typeof listRepetitionCards>>>
+export type ListRepetitionCardsQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List spaced-repetition cards
+ */
+
+export function useListRepetitionCards<TData = Awaited<ReturnType<typeof listRepetitionCards>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listRepetitionCards>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListRepetitionCardsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateRepetitionCardUrl = () => {
+
+
+
+
+  return `/api/repetition/cards`
+}
+
+/**
+ * @summary Create a spaced-repetition card
+ */
+export const createRepetitionCard = async (repetitionCardInput: RepetitionCardInput, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionCard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RepetitionCard>(getCreateRepetitionCardUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(repetitionCardInput)
+  }
+);}
+
+
+
+
+
+export const getCreateRepetitionCardMutationKey = () => ['createRepetitionCard'] as const;
+
+export const getCreateRepetitionCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepetitionCard>>, TError,CreateRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRepetitionCard>>, TError,CreateRepetitionCardMutationVariables, TContext> => {
+
+const mutationKey = getCreateRepetitionCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRepetitionCard>>, CreateRepetitionCardMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createRepetitionCard(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRepetitionCardMutationResult = NonNullable<Awaited<ReturnType<typeof createRepetitionCard>>>
+    export type CreateRepetitionCardMutationBody = BodyType<RepetitionCardInput>
+    export type CreateRepetitionCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type CreateRepetitionCardMutationVariables = {data: BodyType<RepetitionCardInput>}
+
+    /**
+ * @summary Create a spaced-repetition card
+ */
+export const useCreateRepetitionCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRepetitionCard>>, TError,CreateRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createRepetitionCard>>,
+        TError,
+        CreateRepetitionCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateRepetitionCardMutationOptions(options));
+    }
+
+export const getGetRepetitionStatsUrl = (params: GetRepetitionStatsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/repetition/stats?${stringifiedParams}` : `/api/repetition/stats`
+}
+
+/**
+ * @summary Get spaced-repetition progress
+ */
+export const getRepetitionStats = async (params: GetRepetitionStatsParams, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionStats> => {
+
+  return customFetch<RepetitionStats>(getGetRepetitionStatsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetRepetitionStatsQueryKey = (params?: GetRepetitionStatsParams,) => {
+    return [
+    `/api/repetition/stats`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetRepetitionStatsQueryOptions = <TData = Awaited<ReturnType<typeof getRepetitionStats>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(params: GetRepetitionStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRepetitionStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetRepetitionStatsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRepetitionStats>>> = ({ signal }) => getRepetitionStats(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRepetitionStats>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetRepetitionStatsQueryResult = NonNullable<Awaited<ReturnType<typeof getRepetitionStats>>>
+export type GetRepetitionStatsQueryError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+
+
+/**
+ * @summary Get spaced-repetition progress
+ */
+
+export function useGetRepetitionStats<TData = Awaited<ReturnType<typeof getRepetitionStats>>, TError = ErrorType<BadRequestResponse | UnauthorizedResponse>>(
+ params: GetRepetitionStatsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRepetitionStats>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetRepetitionStatsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateRepetitionCardUrl = (id: number,) => {
+
+
+
+
+  return `/api/repetition/cards/${id}`
+}
+
+/**
+ * @summary Update a spaced-repetition card
+ */
+export const updateRepetitionCard = async (id: number,
+    repetitionCardInput: RepetitionCardInput, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionCard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RepetitionCard>(getUpdateRepetitionCardUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(repetitionCardInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateRepetitionCardMutationKey = () => ['updateRepetitionCard'] as const;
+
+export const getUpdateRepetitionCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionCard>>, TError,UpdateRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionCard>>, TError,UpdateRepetitionCardMutationVariables, TContext> => {
+
+const mutationKey = getUpdateRepetitionCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateRepetitionCard>>, UpdateRepetitionCardMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateRepetitionCard(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateRepetitionCardMutationResult = NonNullable<Awaited<ReturnType<typeof updateRepetitionCard>>>
+    export type UpdateRepetitionCardMutationBody = BodyType<RepetitionCardInput>
+    export type UpdateRepetitionCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type UpdateRepetitionCardMutationVariables = {id: number;data: BodyType<RepetitionCardInput>}
+
+    /**
+ * @summary Update a spaced-repetition card
+ */
+export const useUpdateRepetitionCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateRepetitionCard>>, TError,UpdateRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateRepetitionCard>>,
+        TError,
+        UpdateRepetitionCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateRepetitionCardMutationOptions(options));
+    }
+
+export const getDeleteRepetitionCardUrl = (id: number,) => {
+
+
+
+
+  return `/api/repetition/cards/${id}`
+}
+
+/**
+ * @summary Delete a spaced-repetition card
+ */
+export const deleteRepetitionCard = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteRepetitionCardUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteRepetitionCardMutationKey = () => ['deleteRepetitionCard'] as const;
+
+export const getDeleteRepetitionCardMutationOptions = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionCard>>, TError,DeleteRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionCard>>, TError,DeleteRepetitionCardMutationVariables, TContext> => {
+
+const mutationKey = getDeleteRepetitionCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteRepetitionCard>>, DeleteRepetitionCardMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteRepetitionCard(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteRepetitionCardMutationResult = NonNullable<Awaited<ReturnType<typeof deleteRepetitionCard>>>
+
+    export type DeleteRepetitionCardMutationError = ErrorType<UnauthorizedResponse | NotFoundResponse>
+    export type DeleteRepetitionCardMutationVariables = {id: number}
+
+    /**
+ * @summary Delete a spaced-repetition card
+ */
+export const useDeleteRepetitionCard = <TError = ErrorType<UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteRepetitionCard>>, TError,DeleteRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteRepetitionCard>>,
+        TError,
+        DeleteRepetitionCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteRepetitionCardMutationOptions(options));
+    }
+
+export const getReviewRepetitionCardUrl = (id: number,) => {
+
+
+
+
+  return `/api/repetition/cards/${id}/review`
+}
+
+/**
+ * @summary Record a spaced-repetition review
+ */
+export const reviewRepetitionCard = async (id: number,
+    repetitionReviewInput: RepetitionReviewInput, options?: Parameters<typeof customFetch>[1]): Promise<RepetitionCard> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<RepetitionCard>(getReviewRepetitionCardUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(repetitionReviewInput)
+  }
+);}
+
+
+
+
+
+export const getReviewRepetitionCardMutationKey = () => ['reviewRepetitionCard'] as const;
+
+export const getReviewRepetitionCardMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewRepetitionCard>>, TError,ReviewRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewRepetitionCard>>, TError,ReviewRepetitionCardMutationVariables, TContext> => {
+
+const mutationKey = getReviewRepetitionCardMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewRepetitionCard>>, ReviewRepetitionCardMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  reviewRepetitionCard(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewRepetitionCardMutationResult = NonNullable<Awaited<ReturnType<typeof reviewRepetitionCard>>>
+    export type ReviewRepetitionCardMutationBody = BodyType<RepetitionReviewInput>
+    export type ReviewRepetitionCardMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>
+    export type ReviewRepetitionCardMutationVariables = {id: number;data: BodyType<RepetitionReviewInput>}
+
+    /**
+ * @summary Record a spaced-repetition review
+ */
+export const useReviewRepetitionCard = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse | NotFoundResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewRepetitionCard>>, TError,ReviewRepetitionCardMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof reviewRepetitionCard>>,
+        TError,
+        ReviewRepetitionCardMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewRepetitionCardMutationOptions(options));
     }
 

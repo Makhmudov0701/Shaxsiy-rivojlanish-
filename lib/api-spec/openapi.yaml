@@ -135,6 +135,8 @@ paths:
                 $ref: "#/components/schemas/DiaryEntry"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "401":
           $ref: "#/components/responses/Unauthorized"
   /diary/entries/{id}:
@@ -176,6 +178,8 @@ paths:
                 $ref: "#/components/schemas/DiaryEntry"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "404":
@@ -682,6 +686,27 @@ paths:
                   $ref: "#/components/schemas/RepetitionCard"
         "401":
           $ref: "#/components/responses/Unauthorized"
+    post:
+      operationId: createRepetitionCard
+      tags: [repetition]
+      summary: Create a spaced-repetition card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RepetitionCardInput"
+      responses:
+        "201":
+          description: Created card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RepetitionCard"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /repetition/stats:
     get:
       operationId: getRepetitionStats
@@ -702,27 +727,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RepetitionStats"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-    post:
-      operationId: createRepetitionCard
-      tags: [repetition]
-      summary: Create a spaced-repetition card
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RepetitionCardInput"
-      responses:
-        "201":
-          description: Created card
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RepetitionCard"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -818,6 +822,12 @@ components:
   responses:
     BadRequest:
       description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Conflict:
+      description: The resource conflicts with an existing record
       content:
         application/json:
           schema:

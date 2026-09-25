@@ -661,3 +661,290 @@ export const RestoreDiaryBackupResponse = zod.object({
 })
 
 
+/**
+ * @summary List spaced-repetition decks
+ */
+export const ListRepetitionDecksResponseItem = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListRepetitionDecksResponse = zod.array(ListRepetitionDecksResponseItem)
+
+
+/**
+ * @summary Create a spaced-repetition deck
+ */
+export const createRepetitionDeckBodyNameMax = 60;
+
+
+
+export const CreateRepetitionDeckBody = zod.object({
+  "name": zod.string().min(1).max(createRepetitionDeckBodyNameMax)
+})
+
+export const CreateRepetitionDeckResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Rename a spaced-repetition deck
+ */
+
+
+
+export const UpdateRepetitionDeckParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateRepetitionDeckBodyNameMax = 60;
+
+
+
+export const UpdateRepetitionDeckBody = zod.object({
+  "name": zod.string().min(1).max(updateRepetitionDeckBodyNameMax)
+})
+
+export const UpdateRepetitionDeckResponse = zod.object({
+  "id": zod.number().int(),
+  "name": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a spaced-repetition deck and its cards
+ */
+
+
+
+export const DeleteRepetitionDeckParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteRepetitionDeckResponse = zod.void()
+
+
+/**
+ * Returns all spaced-repetition cards belonging to the signed-in user.
+ * @summary List spaced-repetition cards
+ */
+export const listRepetitionCardsResponseIntervalDaysMin = 0;
+
+export const listRepetitionCardsResponseEaseFactorMin = 1.3;
+
+export const listRepetitionCardsResponseRepetitionsMin = 0;
+
+export const listRepetitionCardsResponseLapsesMin = 0;
+
+
+
+export const ListRepetitionCardsResponseItem = zod.object({
+  "id": zod.number().int(),
+  "deckId": zod.number().int(),
+  "deckName": zod.string(),
+  "front": zod.string(),
+  "back": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "intervalDays": zod.number().int().min(listRepetitionCardsResponseIntervalDaysMin),
+  "easeFactor": zod.number().min(listRepetitionCardsResponseEaseFactorMin),
+  "repetitions": zod.number().int().min(listRepetitionCardsResponseRepetitionsMin),
+  "lapses": zod.number().int().min(listRepetitionCardsResponseLapsesMin),
+  "learnedAt": zod.coerce.date().nullable(),
+  "lastReviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListRepetitionCardsResponse = zod.array(ListRepetitionCardsResponseItem)
+
+
+/**
+ * @summary Create a spaced-repetition card
+ */
+
+export const createRepetitionCardBodyFrontMax = 5000;
+
+export const createRepetitionCardBodyBackMax = 5000;
+
+
+
+export const CreateRepetitionCardBody = zod.object({
+  "deckId": zod.number().int().min(1),
+  "front": zod.string().min(1).max(createRepetitionCardBodyFrontMax),
+  "back": zod.string().min(1).max(createRepetitionCardBodyBackMax)
+})
+
+export const createRepetitionCardResponseIntervalDaysMin = 0;
+
+export const createRepetitionCardResponseEaseFactorMin = 1.3;
+
+export const createRepetitionCardResponseRepetitionsMin = 0;
+
+export const createRepetitionCardResponseLapsesMin = 0;
+
+
+
+export const CreateRepetitionCardResponse = zod.object({
+  "id": zod.number().int(),
+  "deckId": zod.number().int(),
+  "deckName": zod.string(),
+  "front": zod.string(),
+  "back": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "intervalDays": zod.number().int().min(createRepetitionCardResponseIntervalDaysMin),
+  "easeFactor": zod.number().min(createRepetitionCardResponseEaseFactorMin),
+  "repetitions": zod.number().int().min(createRepetitionCardResponseRepetitionsMin),
+  "lapses": zod.number().int().min(createRepetitionCardResponseLapsesMin),
+  "learnedAt": zod.coerce.date().nullable(),
+  "lastReviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get spaced-repetition progress
+ */
+export const getRepetitionStatsQueryTimeZoneMax = 64;
+
+
+
+export const GetRepetitionStatsQueryParams = zod.object({
+  "timeZone": zod.coerce.string().min(1).max(getRepetitionStatsQueryTimeZoneMax)
+})
+
+export const getRepetitionStatsResponseCardsDueTodayMin = 0;
+
+export const getRepetitionStatsResponseTotalCardsMin = 0;
+
+export const getRepetitionStatsResponseTotalLearnedMin = 0;
+
+export const getRepetitionStatsResponseDailyStreakMin = 0;
+
+
+
+export const GetRepetitionStatsResponse = zod.object({
+  "cardsDueToday": zod.number().int().min(getRepetitionStatsResponseCardsDueTodayMin),
+  "totalCards": zod.number().int().min(getRepetitionStatsResponseTotalCardsMin),
+  "totalLearned": zod.number().int().min(getRepetitionStatsResponseTotalLearnedMin),
+  "dailyStreak": zod.number().int().min(getRepetitionStatsResponseDailyStreakMin)
+})
+
+
+/**
+ * @summary Update a spaced-repetition card
+ */
+
+
+
+export const UpdateRepetitionCardParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+export const updateRepetitionCardBodyFrontMax = 5000;
+
+export const updateRepetitionCardBodyBackMax = 5000;
+
+
+
+export const UpdateRepetitionCardBody = zod.object({
+  "deckId": zod.number().int().min(1),
+  "front": zod.string().min(1).max(updateRepetitionCardBodyFrontMax),
+  "back": zod.string().min(1).max(updateRepetitionCardBodyBackMax)
+})
+
+export const updateRepetitionCardResponseIntervalDaysMin = 0;
+
+export const updateRepetitionCardResponseEaseFactorMin = 1.3;
+
+export const updateRepetitionCardResponseRepetitionsMin = 0;
+
+export const updateRepetitionCardResponseLapsesMin = 0;
+
+
+
+export const UpdateRepetitionCardResponse = zod.object({
+  "id": zod.number().int(),
+  "deckId": zod.number().int(),
+  "deckName": zod.string(),
+  "front": zod.string(),
+  "back": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "intervalDays": zod.number().int().min(updateRepetitionCardResponseIntervalDaysMin),
+  "easeFactor": zod.number().min(updateRepetitionCardResponseEaseFactorMin),
+  "repetitions": zod.number().int().min(updateRepetitionCardResponseRepetitionsMin),
+  "lapses": zod.number().int().min(updateRepetitionCardResponseLapsesMin),
+  "learnedAt": zod.coerce.date().nullable(),
+  "lastReviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a spaced-repetition card
+ */
+
+
+
+export const DeleteRepetitionCardParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteRepetitionCardResponse = zod.void()
+
+
+/**
+ * @summary Record a spaced-repetition review
+ */
+
+
+
+export const ReviewRepetitionCardParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const reviewRepetitionCardBodyTimeZoneMax = 64;
+
+
+
+export const ReviewRepetitionCardBody = zod.object({
+  "rating": zod.enum(['again', 'hard', 'good', 'easy']),
+  "timeZone": zod.string().min(1).max(reviewRepetitionCardBodyTimeZoneMax)
+})
+
+export const reviewRepetitionCardResponseIntervalDaysMin = 0;
+
+export const reviewRepetitionCardResponseEaseFactorMin = 1.3;
+
+export const reviewRepetitionCardResponseRepetitionsMin = 0;
+
+export const reviewRepetitionCardResponseLapsesMin = 0;
+
+
+
+export const ReviewRepetitionCardResponse = zod.object({
+  "id": zod.number().int(),
+  "deckId": zod.number().int(),
+  "deckName": zod.string(),
+  "front": zod.string(),
+  "back": zod.string(),
+  "dueAt": zod.coerce.date(),
+  "intervalDays": zod.number().int().min(reviewRepetitionCardResponseIntervalDaysMin),
+  "easeFactor": zod.number().min(reviewRepetitionCardResponseEaseFactorMin),
+  "repetitions": zod.number().int().min(reviewRepetitionCardResponseRepetitionsMin),
+  "lapses": zod.number().int().min(reviewRepetitionCardResponseLapsesMin),
+  "learnedAt": zod.coerce.date().nullable(),
+  "lastReviewedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+

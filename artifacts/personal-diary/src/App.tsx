@@ -17,6 +17,7 @@ import { HabitsPage, VaultPage } from '@/pages/local-module-pages';
 import { IdeasPage } from '@/pages/ideas-page';
 import { GoalsPage } from '@/pages/goals-page';
 import { BooksPage } from '@/pages/books-page';
+import RepetitionPage from '@/pages/repetition-page';
 import {
   Redirect,
   Route,
@@ -153,6 +154,9 @@ function Router() {
         </Route>
         <Route path="/books">
           <ProtectedPage><BooksPage /></ProtectedPage>
+        </Route>
+        <Route path="/repetition">
+          <ProtectedPage><RepetitionPage /></ProtectedPage>
         </Route>
         <Route path="/pomodoro">
           <ProtectedPage><FocusTodoPage /></ProtectedPage>

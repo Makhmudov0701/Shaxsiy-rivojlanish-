@@ -269,10 +269,98 @@ export interface RestoreDiaryBackupResult {
   photosRestored: number;
 }
 
+export interface RepetitionCard {
+  id: number;
+  deckId: number;
+  deckName: string;
+  front: string;
+  back: string;
+  dueAt: string;
+  /** @minimum 0 */
+  intervalDays: number;
+  /** @minimum 1.3 */
+  easeFactor: number;
+  /** @minimum 0 */
+  repetitions: number;
+  /** @minimum 0 */
+  lapses: number;
+  /** @nullable */
+  learnedAt: string | null;
+  /** @nullable */
+  lastReviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RepetitionDeck {
+  id: number;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RepetitionDeckInput {
+  /**
+     * @minLength 1
+     * @maxLength 60
+     */
+  name: string;
+}
+
+export interface RepetitionCardInput {
+  /** @minimum 1 */
+  deckId: number;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  front: string;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
+  back: string;
+}
+
+export type RepetitionRating = typeof RepetitionRating[keyof typeof RepetitionRating];
+
+
+export const RepetitionRating = {
+  again: 'again',
+  hard: 'hard',
+  good: 'good',
+  easy: 'easy',
+} as const;
+
+export interface RepetitionReviewInput {
+  rating: RepetitionRating;
+  /**
+     * @minLength 1
+     * @maxLength 64
+     */
+  timeZone: string;
+}
+
+export interface RepetitionStats {
+  /** @minimum 0 */
+  cardsDueToday: number;
+  /** @minimum 0 */
+  totalCards: number;
+  /** @minimum 0 */
+  totalLearned: number;
+  /** @minimum 0 */
+  dailyStreak: number;
+}
+
 /**
  * Invalid request
  */
 export type BadRequestResponse = Error;
+
+/**
+ * The resource conflicts with an existing record
+ */
+export type ConflictResponse = Error;
 
 /**
  * Authentication required
@@ -336,5 +424,13 @@ export const ExportDiaryFormat = {
 export type ExportDiary200One = {
   exportedAt: string;
   entries: DiaryEntry[];
+};
+
+export type GetRepetitionStatsParams = {
+/**
+ * @minLength 1
+ * @maxLength 64
+ */
+timeZone: string;
 };
 
