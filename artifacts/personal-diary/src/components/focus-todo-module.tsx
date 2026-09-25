@@ -68,6 +68,7 @@ type FocusSession = {
 
 type TimerSnapshot = {
   mode: TimerMode;
+  durationMinutes: number;
   remaining: number;
   running: boolean;
   endAt: number | null;
@@ -98,6 +99,7 @@ const DURATION_PRESETS: Record<DurationSettingKey, number[]> = {
 
 const EMPTY_TIMER: TimerSnapshot = {
   mode: 'focus',
+  durationMinutes: DEFAULT_SETTINGS.focusMinutes,
   remaining: DEFAULT_SETTINGS.focusMinutes * 60,
   running: false,
   endAt: null,
@@ -209,11 +211,14 @@ function safeWorkspace(value: unknown): WorkspaceData {
     : [];
   const rawTimer = isObject(value.timer) ? value.timer : {};
   const mode: TimerMode = rawTimer.mode === 'shortBreak' || rawTimer.mode === 'longBreak' ? rawTimer.mode : 'focus';
+  const modeDuration = mode === 'focus' ? settings.focusMinutes : mode === 'shortBreak' ? settings.shortBreakMinutes : settings.longBreakMinutes;
+  const durationMinutes = safeDuration(rawTimer.durationMinutes, modeDuration);
   const endAt = Number(rawTimer.endAt);
   const running = Boolean(rawTimer.running) && endAt > Date.now();
   const timer: TimerSnapshot = {
     mode,
-    remaining: running ? Math.max(0, Math.ceil((endAt - Date.now()) / 1000)) : Math.max(0, Number(rawTimer.remaining) || secondsForMode(mode, settings)),
+    durationMinutes,
+    remaining: running ? Math.max(0, Math.ceil((endAt - Date.now()) / 1000)) : Math.max(0, Number(rawTimer.remaining) || durationMinutes * 60),
     running,
     endAt: running ? endAt : null,
     activeTaskId: typeof rawTimer.activeTaskId === 'string' ? rawTimer.activeTaskId : null,
@@ -445,23 +450,28 @@ function FocusTimer({
   settings,
   onTimerChange,
   onSession,
+  onOpenSettings,
 }: {
   timer: TimerSnapshot;
   tasks: FocusTask[];
   settings: FocusSettings;
   onTimerChange: (next: TimerSnapshot) => void;
   onSession: (mode: TimerMode, taskId: string | null, minutes: number) => void;
+  onOpenSettings: () => void;
 }) {
   const [notice, setNotice] = useState('');
+  const [editingDuration, setEditingDuration] = useState(false);
+  const [durationDraft, setDurationDraft] = useState(String(timer.durationMinutes));
   const timerRef = useRef(timer);
   const changeRef = useRef(onTimerChange);
   const sessionRef = useRef(onSession);
   const completionRef = useRef('');
+  const cancelDurationBlurRef = useRef(false);
   timerRef.current = timer;
   changeRef.current = onTimerChange;
   sessionRef.current = onSession;
 
-  const modeInfo = { label: MODE_LABELS[timer.mode], seconds: secondsForMode(timer.mode, settings), color: MODE_COLORS[timer.mode] };
+  const modeInfo = { label: MODE_LABELS[timer.mode], seconds: timer.durationMinutes * 60, color: MODE_COLORS[timer.mode] };
   const remaining = timer.running && timer.endAt ? Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000)) : timer.remaining;
   const progress = Math.min(1, Math.max(0, 1 - remaining / modeInfo.seconds));
   const radius = 112;
@@ -485,15 +495,45 @@ function FocusTimer({
       const completedMode = current.mode;
       const nextCycle = completedMode === 'focus' ? current.cycle + 1 : current.cycle;
       const nextMode: TimerMode = completedMode === 'focus' ? (nextCycle % 4 === 0 ? 'longBreak' : 'shortBreak') : 'focus';
-      if (completedMode === 'focus') sessionRef.current('focus', current.activeTaskId, settings.focusMinutes);
+      if (completedMode === 'focus') sessionRef.current('focus', current.activeTaskId, current.durationMinutes);
       if (settings.notificationSound) playNotification();
-      changeRef.current({ mode: nextMode, remaining: secondsForMode(nextMode, settings), running: false, endAt: null, activeTaskId: current.activeTaskId, cycle: nextCycle });
+      const nextDurationMinutes = secondsForMode(nextMode, settings) / 60;
+      changeRef.current({ mode: nextMode, durationMinutes: nextDurationMinutes, remaining: nextDurationMinutes * 60, running: false, endAt: null, activeTaskId: current.activeTaskId, cycle: nextCycle });
       setNotice(completedMode === 'focus' ? 'Diqqat davri tugadi. Endi tanaffus vaqti.' : 'Tanaffus tugadi. Yana bir davrga tayyormisiz?');
     };
     tick();
     const interval = window.setInterval(tick, 250);
     return () => window.clearInterval(interval);
   }, [timer.running, timer.endAt, timer.mode, settings]);
+
+  useEffect(() => {
+    setDurationDraft(String(timer.durationMinutes));
+  }, [timer.durationMinutes]);
+
+  const applyDuration = (minutes: number) => {
+    const durationMinutes = Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(minutes)));
+    const remaining = durationMinutes * 60;
+    setDurationDraft(String(durationMinutes));
+    setEditingDuration(false);
+    onTimerChange({
+      ...timer,
+      durationMinutes,
+      remaining,
+      endAt: timer.running ? Date.now() + remaining * 1000 : null,
+    });
+    setNotice('Joriy taymer yangilandi; odatiy sozlamalar saqlandi.');
+  };
+
+  const commitDurationDraft = () => {
+    const minutes = parseDurationInput(durationDraft);
+    if (minutes === null) {
+      setDurationDraft(String(timer.durationMinutes));
+      setEditingDuration(false);
+      setNotice('1–180 daqiqa orasida butun son kiriting.');
+      return;
+    }
+    applyDuration(minutes);
+  };
 
   const startOrPause = () => {
     if (timer.running && timer.endAt) {
@@ -507,7 +547,7 @@ function FocusTimer({
   };
 
   const reset = () => {
-    onTimerChange({ ...timer, remaining: secondsForMode(timer.mode, settings), running: false, endAt: null });
+    onTimerChange({ ...timer, remaining: timer.durationMinutes * 60, running: false, endAt: null });
     setNotice('');
   };
 
@@ -518,24 +558,31 @@ function FocusTimer({
     }
     const nextCycle = timer.mode === 'focus' ? timer.cycle + 1 : timer.cycle;
     const nextMode: TimerMode = timer.mode === 'focus' ? (nextCycle % 4 === 0 ? 'longBreak' : 'shortBreak') : 'focus';
-    onTimerChange({ ...timer, mode: nextMode, remaining: secondsForMode(nextMode, settings), running: false, endAt: null, cycle: nextCycle });
+    const nextDurationMinutes = secondsForMode(nextMode, settings) / 60;
+    onTimerChange({ ...timer, mode: nextMode, durationMinutes: nextDurationMinutes, remaining: nextDurationMinutes * 60, running: false, endAt: null, cycle: nextCycle });
     setNotice('Keyingi davr tayyor.');
   };
 
   const selectMode = (mode: TimerMode) => {
     if (timer.running) return;
-    onTimerChange({ ...timer, mode, remaining: secondsForMode(mode, settings), endAt: null });
+    const durationMinutes = secondsForMode(mode, settings) / 60;
+    onTimerChange({ ...timer, mode, durationMinutes, remaining: durationMinutes * 60, endAt: null });
     setNotice('');
   };
 
   return (
-    <section className="flex min-h-[min(700px,calc(100dvh-15rem))] flex-col items-center justify-center px-0 py-4 sm:py-8" data-testid="focus-timer">
+    <section className="relative flex min-h-[min(700px,calc(100dvh-15rem))] flex-col items-center justify-center px-0 py-4 sm:py-8" data-testid="focus-timer">
       <div className="flex w-full items-center justify-between gap-4 px-1">
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Hozirgi davr</p>
           <p className="mt-1 text-[12px] font-semibold text-[#493c2b] dark:text-[#f1e4c3]">{modeInfo.label}</p>
         </div>
-        <div className="font-mono text-[10px] text-[#8e6d34] dark:text-[#dcc78d]" data-testid="text-cycle-count">{timer.cycle} davr yakunlangan</div>
+        <div className="flex items-center gap-2">
+          <div className="font-mono text-[10px] text-[#8e6d34] dark:text-[#dcc78d]" data-testid="text-cycle-count">{timer.cycle} davr yakunlangan</div>
+          <button type="button" onClick={onOpenSettings} aria-label="Ilg‘or taymer sozlamalarini ochish" title="Ilg‘or sozlamalar" className="grid size-9 place-items-center rounded-xl border border-[#d8c795] bg-[#fff9e9]/70 text-[#67563a] transition-colors hover:bg-[#f4e8c9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b6543]/50 dark:border-[#665837] dark:bg-[#3a3023] dark:text-[#ead9aa]" data-testid="button-timer-settings">
+            <Settings2 size={15} />
+          </button>
+        </div>
       </div>
       <div className="mt-5 flex flex-col items-center">
         <div className="relative size-[300px] sm:size-[360px] lg:size-[390px]">
@@ -546,11 +593,77 @@ function FocusTimer({
           <div className="absolute inset-0 grid place-items-center text-center">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[.18em]" style={{ color: modeInfo.color }}>{modeInfo.label}</p>
-              <p className="mt-2 font-mono text-[clamp(2.8rem,8vw,4rem)] leading-none tracking-[-.08em] text-[#493c2b] dark:text-[#f1e4c3]" data-testid="text-timer">{formatClock(remaining)}</p>
+              {editingDuration ? (
+                <label className="mt-2 flex items-center justify-center gap-2">
+                  <input
+                    autoFocus
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={MAX_TIMER_MINUTES}
+                    step={1}
+                    value={durationDraft}
+                    onChange={(event) => setDurationDraft(event.target.value)}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onBlur={() => {
+                      if (cancelDurationBlurRef.current) {
+                        cancelDurationBlurRef.current = false;
+                        return;
+                      }
+                      commitDurationDraft();
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        event.currentTarget.blur();
+                      }
+                      if (event.key === 'Escape') {
+                        event.preventDefault();
+                        cancelDurationBlurRef.current = true;
+                        setDurationDraft(String(timer.durationMinutes));
+                        setEditingDuration(false);
+                        setNotice('');
+                      }
+                    }}
+                    aria-label="Taymer davomiyligi daqiqalarda"
+                    className="w-[5ch] rounded-lg border border-[#d8c795] bg-[#fff9e9] px-1 py-1 text-center font-mono text-[clamp(2.2rem,7vw,3.6rem)] leading-none tracking-[-.08em] text-[#493c2b] outline-none focus:ring-2 focus:ring-[#a56c34]/30 dark:border-[#665837] dark:bg-[#3b3224] dark:text-[#f1e4c3]"
+                    data-testid="input-main-timer-duration"
+                  />
+                  <span className="text-[10px] text-[#88775b] dark:text-[#cdbf9c]">daq</span>
+                </label>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDurationDraft(String(timer.durationMinutes));
+                    setEditingDuration(true);
+                  }}
+                  title="Davomiylikni o‘zgartirish"
+                  aria-label={`Taymer davomiyligini o‘zgartirish, hozir ${timer.durationMinutes} daqiqa`}
+                  className="mt-2 rounded-md font-mono text-[clamp(2.8rem,8vw,4rem)] leading-none tracking-[-.08em] text-[#493c2b] underline decoration-dotted underline-offset-8 transition-colors hover:text-[#47796c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b6543]/50 dark:text-[#f1e4c3]"
+                  data-testid="button-edit-main-timer-duration"
+                >
+                  {formatClock(remaining)}
+                </button>
+              )}
               <p className="mt-3 max-w-[180px] truncate text-[11px] text-[#88775b] dark:text-[#cdbf9c]" data-testid="text-active-task">{activeTask ? activeTask.title : 'Vazifa tanlanmagan'}</p>
             </div>
           </div>
         </div>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2" role="group" aria-label="Taymer davomiyligini tez tanlash" data-testid="main-timer-duration-presets">
+            {[15, 25, 30, 45, 60].map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                onClick={() => applyDuration(minutes)}
+                aria-pressed={timer.durationMinutes === minutes}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-medium transition-colors ${timer.durationMinutes === minutes ? 'bg-[#47796c] text-white shadow-sm' : 'bg-[#eee8d9] text-[#67563a] hover:bg-[#e4dac1] dark:bg-[#3b3b32] dark:text-[#d8cda9] dark:hover:bg-[#48483b]'}`}
+                data-testid={`button-main-duration-${minutes}`}
+              >
+                {minutes}m
+              </button>
+            ))}
+          </div>
         <div className="mt-4 flex flex-wrap justify-center gap-1.5" role="tablist" aria-label="Taymer rejimlari">
           {(['focus', 'shortBreak', 'longBreak'] as TimerMode[]).map((mode) => (
             <button key={mode} type="button" role="tab" aria-selected={timer.mode === mode} disabled={timer.running} onClick={() => selectMode(mode)} className={`rounded-full px-3 py-1.5 text-[10px] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${timer.mode === mode ? 'bg-[#493c2b] text-[#fff8e6] dark:bg-[#ead49c] dark:text-[#332b1e]' : 'text-[#89795d] hover:bg-[#eee2c3] dark:text-[#cfc09c] dark:hover:bg-[#433925]'}`} data-testid={`button-timer-mode-${mode}`}>{MODE_LABELS[mode]}</button>
@@ -573,7 +686,7 @@ function FocusTimer({
           </select>
         </label>
       </div>
-      <p className="mt-3 min-h-4 text-center text-[10px] text-[#876f41] dark:text-[#d6c18c]" aria-live="polite" data-testid="status-timer">{notice || (settings.strictMode && timer.mode === 'focus' ? 'Qat’iy rejim faol: diqqat davri tugamaguncha o‘tkazib bo‘lmaydi.' : timer.running ? 'Vaqt ketmoqda. Yozishda davom eting.' : 'Taymer boshlashga tayyor.')}</p>
+      <p className="mt-3 min-h-4 text-center text-[10px] text-[#876f41] dark:text-[#d6c18c]" aria-live="polite" data-testid="status-timer">{notice || (settings.strictMode && timer.mode === 'focus' ? 'Qat’iy rejim faol: diqqat davri tugamaguncha o‘tkazib bo‘lmaydi.' : timer.running ? 'Vaqt ketmoqda. Yozishda davom eting.' : 'Raqamni bosing yoki tez tanlovdan foydalaning.')}</p>
     </section>
   );
 }
@@ -692,6 +805,7 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
     const nextRemaining = secondsForMode(timer.mode, nextSettings);
     onTimerChange({
       ...timer,
+      durationMinutes: safeMinutes,
       remaining: nextRemaining,
       endAt: timer.running ? Date.now() + nextRemaining * 1000 : null,
     });
@@ -874,7 +988,7 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
       </div>
       <main className="px-5 py-6 sm:px-8 lg:px-12 lg:py-8">
         <div key={activeTab} className="diary-rise">
-          {activeTab === 'timer' && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,.7fr)]"><FocusTimer timer={workspace.timer} tasks={tasks} settings={workspace.settings} onTimerChange={updateTimer} onSession={addSession} /><div className="space-y-5"><section className="rounded-[24px] border border-[#d8d1bd] bg-card p-5 shadow-sm" data-testid="timer-task-preview"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Keyingi qadam</p><h2 className="mt-1 font-serif text-[26px] leading-none">Bugungi vazifa</h2></div><span className="grid size-9 place-items-center rounded-xl bg-[#e2eee7] text-[#47796c]"><ListChecks size={16} /></span></div><div className="mt-5 rounded-2xl bg-[#f5f3ea] p-4 dark:bg-[#30322c]">{activeTask ? <><p className="text-[13px] font-semibold">{activeTask.title}</p><p className="mt-2 text-[10px] text-muted-foreground">{activeTask.project} · {activeTask.completedPomodoros}/{activeTask.estimate} davr</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-open-tasks">Vazifalar ro‘yxatini ochish</button></> : <><p className="text-[13px] font-semibold">Taymer uchun vazifa tanlang</p><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vazifalar bo‘limidan ish tanlasangiz, sessiya loyihaga biriktiriladi.</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-choose-task"><Plus size={13} /> Vazifa qo‘shish</button></>}</div></section><AmbientSoundStudio /></div></div>}
+          {activeTab === 'timer' && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,.7fr)]"><FocusTimer timer={workspace.timer} tasks={tasks} settings={workspace.settings} onTimerChange={updateTimer} onSession={addSession} onOpenSettings={() => setActiveTab('settings')} /><div className="space-y-5"><section className="rounded-[24px] border border-[#d8d1bd] bg-card p-5 shadow-sm" data-testid="timer-task-preview"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Keyingi qadam</p><h2 className="mt-1 font-serif text-[26px] leading-none">Bugungi vazifa</h2></div><span className="grid size-9 place-items-center rounded-xl bg-[#e2eee7] text-[#47796c]"><ListChecks size={16} /></span></div><div className="mt-5 rounded-2xl bg-[#f5f3ea] p-4 dark:bg-[#30322c]">{activeTask ? <><p className="text-[13px] font-semibold">{activeTask.title}</p><p className="mt-2 text-[10px] text-muted-foreground">{activeTask.project} · {activeTask.completedPomodoros}/{activeTask.estimate} davr</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-open-tasks">Vazifalar ro‘yxatini ochish</button></> : <><p className="text-[13px] font-semibold">Taymer uchun vazifa tanlang</p><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vazifalar bo‘limidan ish tanlasangiz, sessiya loyihaga biriktiriladi.</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-choose-task"><Plus size={13} /> Vazifa qo‘shish</button></>}</div></section><AmbientSoundStudio /></div></div>}
           {activeTab === 'tasks' && <section className="space-y-5" data-testid="task-workspace"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Ishlar daftarim</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">Vazifalar<span className="text-[#a56c34]">.</span></h2><p className="mt-2 text-[11px] text-muted-foreground">{openCount} ta vazifa ochiq · {tasks.length} ta jami</p></div><div className="rounded-2xl bg-[#e6efe8] px-4 py-3 text-right dark:bg-[#283c32]"><p className="text-[9px] text-[#527463] dark:text-[#b8d6c3]">Pomodoro hisoboti</p><p className="mt-1 font-mono text-[17px] text-[#315d4e] dark:text-[#d1ebd9]">{completedPomodoros}/{estimatedPomodoros} <span className="text-[10px]">davr</span></p></div></div><div className="grid gap-5 xl:grid-cols-[minmax(300px,.7fr)_minmax(0,1.3fr)]"><form onSubmit={submitTask} className="h-fit rounded-2xl border border-border/70 bg-card p-4 shadow-sm" data-testid="form-add-task"><div className="flex items-center gap-2"><Plus size={15} className="text-[#47796c]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Yangi vazifa</p></div><input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="Vazifa nomi..." className="mt-4 w-full rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-3 text-[13px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Yangi vazifa nomi" data-testid="input-new-task-title" /><div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><input value={newProject} onChange={(event) => setNewProject(event.target.value)} placeholder="Loyiha nomi" className="min-w-0 rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-2.5 text-[11px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Loyiha nomi" data-testid="input-new-task-project" /><select value={newEstimate} onChange={(event) => setNewEstimate(event.target.value)} className="rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-2.5 text-[11px] outline-none dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Pomodoro taxmini" data-testid="select-new-task-estimate"><option value="1">1 davr · 25 daq</option><option value="2">2 davr · 50 daq</option><option value="3">3 davr · 75 daq</option><option value="4">4 davr · 100 daq</option><option value="8">8 davr · 200 daq</option></select></div><button type="submit" disabled={!newTitle.trim()} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-3 text-[11px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-add-task"><Plus size={14} /> Qo‘shish</button></form><div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5"><div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Loyiha filtrlari">{projects.map((project) => <button key={project} type="button" role="tab" aria-selected={filter === project} onClick={() => setFilter(project)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] transition-colors ${filter === project ? 'bg-[#47796c] text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`} data-testid={`filter-project-${project}`}>{project}</button>)}</div><div className="mt-4 flex items-center justify-between gap-3 border-b border-border/70 pb-3 text-[10px] text-muted-foreground"><span>{activeTask ? `Taymerda: ${activeTask.title}` : 'Taymer uchun vazifani tanlang'}</span><button type="button" onClick={() => setShowCompleted((value) => !value)} className="shrink-0 font-semibold text-[#47796c]" data-testid="button-toggle-completed">{showCompleted ? 'Bajarilganlarni yashirish' : 'Bajarilganlarni ko‘rsatish'}</button></div><div className="mt-4 space-y-5">{visibleTasks.length ? Array.from(new Set(visibleTasks.map((task) => task.project))).map((project) => <div key={project}><div className="mb-2 flex items-center justify-between"><p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground"><FolderOpen size={12} /> {project}</p><span className="text-[9px] text-muted-foreground">{visibleTasks.filter((task) => task.project === project).reduce((sum, task) => sum + task.completedPomodoros, 0)}/{visibleTasks.filter((task) => task.project === project).reduce((sum, task) => sum + task.estimate, 0)} davr</span></div><div className="space-y-2">{visibleTasks.filter((task) => task.project === project).map((task) => <TaskRow key={task.id} task={task} active={task.id === workspace.timer.activeTaskId} onToggle={() => toggleTask(task.id)} onDelete={() => deleteTask(task.id)} onSelect={() => selectTask(task.id)} onEdit={(title) => renameTask(task.id, title)} />)}</div></div>) : <div className="rounded-2xl border border-dashed border-[#d8d1bd] px-4 py-14 text-center dark:border-[#514e40]"><Circle size={20} className="mx-auto text-[#b7ae98]" /><p className="mt-3 font-serif text-[22px]">Bu yer hali ochiq.</p><p className="mt-1 text-[11px] text-muted-foreground">Birinchi vazifangizni yozib, kuningizga shakl bering.</p></div>}</div></div></div></section>}
           {activeTab === 'reports' && <FocusReports sessions={workspace.sessions} tasks={tasks} />}
           {activeTab === 'settings' && <SettingsPanel settings={workspace.settings} timer={workspace.timer} onSettingsChange={(settings) => setWorkspace((current) => ({ ...current, settings }))} onTimerChange={updateTimer} />}
