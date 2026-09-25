@@ -8,7 +8,9 @@ export type QuickIdea = {
   updatedAt: string;
 };
 
-export type GoalHorizon = 'month' | 'half-year' | 'year';
+export type GoalHorizon = 'week' | 'month' | 'half-year' | 'year' | 'free';
+export type GoalCategory = 'education' | 'fitness' | 'project' | 'personal';
+export type GoalMetric = 'milestones' | 'quantity' | 'time' | 'percentage';
 
 export type GoalTask = {
   id: string;
@@ -23,6 +25,12 @@ export type PersonalGoal = {
   horizon: GoalHorizon;
   targetDate: string;
   tasks: GoalTask[];
+  category?: GoalCategory;
+  motivation?: string;
+  metric?: GoalMetric;
+  metricTarget?: number;
+  metricCurrent?: number;
+  metricUnit?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -74,7 +82,9 @@ export function isQuickIdeaList(value: unknown): value is QuickIdea[] {
   );
 }
 
-const horizons: GoalHorizon[] = ['month', 'half-year', 'year'];
+const horizons: GoalHorizon[] = ['week', 'month', 'half-year', 'year', 'free'];
+const goalCategories: GoalCategory[] = ['education', 'fitness', 'project', 'personal'];
+const goalMetrics: GoalMetric[] = ['milestones', 'quantity', 'time', 'percentage'];
 
 export function isPersonalGoalList(value: unknown): value is PersonalGoal[] {
   return Array.isArray(value) && value.every((item) =>
@@ -92,6 +102,14 @@ export function isPersonalGoalList(value: unknown): value is PersonalGoal[] {
       && typeof task.text === 'string'
       && typeof task.done === 'boolean',
     )
+    && (item.category === undefined || goalCategories.includes(item.category as GoalCategory))
+    && (item.motivation === undefined || typeof item.motivation === 'string')
+    && (item.metric === undefined || goalMetrics.includes(item.metric as GoalMetric))
+    && (item.metricTarget === undefined || (typeof item.metricTarget === 'number' && Number.isFinite(item.metricTarget) && item.metricTarget > 0))
+    && (item.metricCurrent === undefined || (typeof item.metricCurrent === 'number' && Number.isFinite(item.metricCurrent) && item.metricCurrent >= 0))
+    && (item.metric !== 'time' || item.metricTarget === undefined || Number.isInteger(item.metricTarget))
+    && (item.metric !== 'time' || item.metricCurrent === undefined || Number.isInteger(item.metricCurrent))
+    && (item.metricUnit === undefined || typeof item.metricUnit === 'string')
     && isTimestamp(item.createdAt)
     && isTimestamp(item.updatedAt),
   );

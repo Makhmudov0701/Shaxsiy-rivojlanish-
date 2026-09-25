@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap');
+
+@theme inline {
+  --color-card-border: hsl(var(--card-border));
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+}
+
+:root {
+  --background: 38 44% 95%;
+  --foreground: 263 26% 20%;
+  --border: 35 25% 83%;
+  --card: 39 52% 98%;
+  --card-foreground: 263 26% 20%;
+  --card-border: 35 30% 87%;
+  --primary: 263 30% 26%;
+  --primary-foreground: 39 52% 98%;
+  --secondary: 38 37% 89%;
+  --secondary-foreground: 263 30% 26%;
+  --muted: 37 28% 91%;
+  --muted-foreground: 263 13% 45%;
+  --accent: 166 28% 74%;
+  --accent-foreground: 166 39% 19%;
+  --destructive: 4 55% 49%;
+  --destructive-foreground: 39 52% 98%;
+  --input: 35 25% 83%;
+  --ring: 39 77% 63%;
+  --app-font-sans: 'DM Sans', sans-serif;
+  --app-font-serif: 'Instrument Serif', Georgia, serif;
+  --app-font-mono: 'Space Mono', monospace;
+  --radius: 0.8rem;
+}
+
+.dark {
+  --background: 263 31% 12%;
+  --foreground: 38 44% 95%;
+  --border: 263 21% 26%;
+  --card: 263 27% 17%;
+  --card-foreground: 38 44% 95%;
+  --card-border: 263 21% 26%;
+  --primary: 39 77% 63%;
+  --primary-foreground: 263 30% 19%;
+  --secondary: 263 22% 23%;
+  --secondary-foreground: 38 44% 95%;
+  --muted: 263 22% 20%;
+  --muted-foreground: 38 20% 70%;
+  --accent: 166 28% 31%;
+  --accent-foreground: 166 44% 89%;
+  --destructive: 4 55% 58%;
+  --destructive-foreground: 263 31% 12%;
+  --input: 263 21% 30%;
+  --ring: 39 77% 63%;
+}
