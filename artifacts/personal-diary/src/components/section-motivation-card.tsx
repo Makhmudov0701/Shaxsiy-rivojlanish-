@@ -1,38 +1,21 @@
 import { Check, ChevronDown, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { motivationLibraries } from "@/components/section-motivation-library";
+import {
+  generateMotivationEntry,
+  getMotivationPoolSize,
+} from "@/components/section-motivation-generator";
 import {
   sectionMotivationContent,
-  type MotivationCategory,
   type SectionId,
 } from "@/components/section-motivation-content";
+import {
+  dailyMotivationIndex,
+  localDateKey,
+  randomMotivationIndex,
+} from "@/components/section-motivation-rotation";
 
 const collapsedStoragePrefix = "kundalik-section-info-collapsed-";
 const legacyDailyMemeStoragePrefix = "kundalik-section-daily-meme-";
-const millisecondsPerDay = 24 * 60 * 60 * 1000;
-const categoryRotationOffsets: Record<MotivationCategory, number> = {
-  diary: 3,
-  focus: 11,
-  repetition: 19,
-  tasks: 27,
-};
-
-function localDateKey() {
-  const date = new Date();
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function dayNumber(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return Math.floor(Date.UTC(year, month - 1, day) / millisecondsPerDay);
-}
-
-function dailyMotivationIndex(category: MotivationCategory, day: string, count: number) {
-  return (dayNumber(day) + categoryRotationOffsets[category]) % count;
-}
 
 function initialExpandedState(sectionId: SectionId) {
   try {
@@ -55,23 +38,27 @@ function clearLegacyMemeCache() {
   }
 }
 
-export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
+interface ManualQuoteSelection {
+  date: string;
+  userId: string;
+  sectionId: SectionId;
+  index: number;
+}
+
+export function SectionMotivationCard({ sectionId, userId }: { sectionId: SectionId; userId: string }) {
   const section = sectionMotivationContent[sectionId];
-  const library = motivationLibraries[section.motivationCategory];
+  const category = section.motivationCategory;
+  const poolSize = getMotivationPoolSize(category);
   const [today, setToday] = useState(localDateKey);
   const [expanded, setExpanded] = useState(() => initialExpandedState(sectionId));
-  const [manualCycle, setManualCycle] = useState(() => ({
-    day: localDateKey(),
-    sectionId,
-    offset: 0,
-  }));
+  const [manualSelection, setManualSelection] = useState<ManualQuoteSelection | null>(null);
   const Icon = section.icon;
-  const dailyIndex = dailyMotivationIndex(section.motivationCategory, today, library.entries.length);
-  const manualOffset = manualCycle.day === today && manualCycle.sectionId === sectionId
-    ? manualCycle.offset
-    : 0;
-  const currentIndex = (dailyIndex + manualOffset) % library.entries.length;
-  const currentEntry = library.entries[currentIndex];
+  const dailyIndex = dailyMotivationIndex(category, userId, today);
+  const manualSelectionIsCurrent = manualSelection?.date === today
+    && manualSelection.userId === userId
+    && manualSelection.sectionId === sectionId;
+  const currentIndex = manualSelectionIsCurrent ? manualSelection.index : dailyIndex;
+  const currentEntry = generateMotivationEntry(category, currentIndex);
   const panelId = `section-info-panel-${sectionId}`;
 
   useEffect(() => {
@@ -115,18 +102,18 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
 
   const showNextQuote = () => {
     const currentDate = localDateKey();
-    if (currentDate !== today) {
-      setToday(currentDate);
-      setManualCycle({ day: currentDate, sectionId, offset: 0 });
-      return;
-    }
-    setManualCycle((previous) => {
-      const sameCycle = previous.day === currentDate && previous.sectionId === sectionId;
-      return {
-        day: currentDate,
-        sectionId,
-        offset: sameCycle ? (previous.offset + 1) % library.entries.length : 1 % library.entries.length,
-      };
+    const dateIndex = dailyMotivationIndex(category, userId, currentDate);
+    const previousIndex = manualSelection?.date === currentDate
+      && manualSelection.userId === userId
+      && manualSelection.sectionId === sectionId
+      ? manualSelection.index
+      : dateIndex;
+    setToday(currentDate);
+    setManualSelection({
+      date: currentDate,
+      userId,
+      sectionId,
+      index: randomMotivationIndex(previousIndex, poolSize),
     });
   };
 
@@ -223,7 +210,7 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
                     “{currentEntry.text}”
                   </p>
                   <p className="mt-4 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-                    {section.motivationLabel} · {currentIndex + 1}/{library.entries.length}
+                    {section.motivationLabel} · {currentIndex + 1}/{poolSize}
                   </p>
                 </div>
                 <div className="relative mt-5 flex items-center justify-between gap-3">

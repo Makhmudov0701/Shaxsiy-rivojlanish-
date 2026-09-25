@@ -239,7 +239,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
         <Link href="/entry/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-sm" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} />Yozish</Link>
       </header>
       <main className="min-h-[100dvh] md:pl-[264px]">
-        {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} />}
+        {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} userId={user?.id ?? 'anonymous'} />}
         {children}
       </main>
     </div>
