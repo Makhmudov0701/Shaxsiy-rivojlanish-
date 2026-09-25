@@ -32,9 +32,9 @@ import {
   X,
 } from 'lucide-react';
 import { ambientSounds, useAmbientSound, type AmbientSound } from '@/components/ambient-sound';
+import { FocusReports } from '@/components/focus-reports';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
-type ReportRange = 'kun' | 'hafta' | 'oy';
 type WorkspaceTab = 'timer' | 'tasks' | 'reports' | 'settings';
 
 type FocusSettings = {
@@ -135,14 +135,6 @@ function dayKey(timestamp: number) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-function readableDay(timestamp: number) {
-  return new Intl.DateTimeFormat('uz-UZ', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(timestamp));
-}
-
-function readableTime(timestamp: number) {
-  return new Intl.DateTimeFormat('uz-UZ', { hour: '2-digit', minute: '2-digit' }).format(new Date(timestamp));
-}
-
 function formatClock(seconds: number) {
   const safe = Math.max(0, Math.round(seconds));
   return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
@@ -234,13 +226,6 @@ function safeWorkspace(value: unknown): WorkspaceData {
 
 function progressForTask(task: FocusTask) {
   return Math.min(100, Math.round((task.completedPomodoros / Math.max(1, task.estimate)) * 100));
-}
-
-function getPeriodStart(range: ReportRange) {
-  const date = new Date();
-  if (range === 'oy') return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
-  if (range === 'hafta') return new Date(date.getFullYear(), date.getMonth(), date.getDate() - 6).getTime();
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 }
 
 function playNotification() {
@@ -730,48 +715,6 @@ function TaskRow({
         </div>
       </div>
     </div>
-  );
-}
-
-function FocusReports({ sessions, tasks }: { sessions: FocusSession[]; tasks: FocusTask[] }) {
-  const [range, setRange] = useState<ReportRange>('hafta');
-  const start = getPeriodStart(range);
-  const focusSessions = sessions.filter((session) => session.mode === 'focus');
-  const reportSessions = focusSessions.filter((session) => session.startedAt >= start);
-  const minutes = reportSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
-  const todayMinutes = focusSessions.filter((session) => dayKey(session.startedAt) === dayKey(Date.now())).reduce((sum, session) => sum + session.durationMinutes, 0);
-  const projectData = useMemo(() => {
-    const totals = new Map<string, number>();
-    reportSessions.forEach((session) => totals.set(session.project || 'Shaxsiy', (totals.get(session.project || 'Shaxsiy') ?? 0) + session.durationMinutes));
-    return Array.from(totals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [reportSessions]);
-  const days = Array.from({ length: 7 }, (_, index) => Date.now() - (6 - index) * 86400000);
-  const dailyValues = days.map((timestamp) => focusSessions.filter((session) => dayKey(session.startedAt) === dayKey(timestamp)).reduce((sum, session) => sum + session.durationMinutes, 0));
-  const maxDaily = Math.max(25, ...dailyValues);
-  const maxProject = Math.max(1, ...projectData.map(([, value]) => value));
-  const logs = [...reportSessions].sort((a, b) => b.startedAt - a.startedAt).slice(0, 12);
-  return (
-    <section className="space-y-5" data-testid="focus-reports">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin hisob</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">Fokus hisobotlari</h2><p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">Diqqat vaqtingizni kuzating, qaysi ishlar kuningizni to‘ldirayotganini ko‘ring.</p></div>
-        <div className="flex rounded-xl bg-muted p-1" role="tablist" aria-label="Hisobot davri">
-          {([['kun', 'Bugun'], ['hafta', '7 kun'], ['oy', 'Oy']] as [ReportRange, string][]).map(([item, label]) => <button key={item} type="button" role="tab" aria-selected={range === item} onClick={() => setRange(item)} className={`rounded-lg px-3 py-1.5 text-[10px] transition-colors ${range === item ? 'bg-card font-semibold text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`} data-testid={`button-report-${item}`}>{label}</button>)}
-        </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl bg-[#e6efe8] p-5 dark:bg-[#283c32]" data-testid="metric-focus-time"><p className="text-[10px] text-[#527463] dark:text-[#b8d6c3]">Tanlangan davr</p><p className="mt-2 font-mono text-[30px] leading-none text-[#315d4e] dark:text-[#d1ebd9]">{Math.floor(minutes / 60)}<span className="ml-1 text-[13px]">soat</span> {minutes % 60}<span className="ml-1 text-[13px]">daq</span></p><p className="mt-4 text-[10px] text-[#527463] dark:text-[#b8d6c3]">{reportSessions.length} ta diqqat sessiyasi</p></div>
-        <div className="rounded-2xl bg-[#f5eee2] p-5" data-testid="metric-today"><p className="text-[10px] text-[#8d7047]">Bugungi diqqat</p><p className="mt-2 font-mono text-[30px] leading-none text-[#80583a]">{todayMinutes}<span className="ml-1 text-[13px]">daqiqa</span></p><p className="mt-4 text-[10px] text-[#8d7047]">Yozilgan vaqt</p></div>
-        <div className="rounded-2xl bg-[#eeebf3] p-5 dark:bg-[#34303d]" data-testid="metric-completed-tasks"><p className="text-[10px] text-[#706283] dark:text-[#cfc3dd]">Vazifalar holati</p><p className="mt-2 font-mono text-[30px] leading-none text-[#5b4c6f] dark:text-[#e2d8eb]">{tasks.filter((task) => task.completed).length}<span className="ml-1 text-[13px]">bajarildi</span></p><p className="mt-4 text-[10px] text-[#706283] dark:text-[#cfc3dd]">{tasks.filter((task) => !task.completed).length} ta ochiq vazifa</p></div>
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
-        <div className="rounded-2xl border border-border/70 bg-card p-5"><div className="flex items-center gap-2"><BarChart3 size={16} className="text-[#47796c]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Kunlik diqqat</p></div><div className="mt-5 flex h-[165px] items-end gap-2">{days.map((timestamp, index) => <div key={dayKey(timestamp)} className="flex min-w-0 flex-1 flex-col items-center gap-2"><span className="font-mono text-[9px] text-muted-foreground">{dailyValues[index] || ''}</span><div className="flex h-[112px] w-full items-end rounded-lg bg-[#f0eee5] dark:bg-[#34372f]"><div className="w-full rounded-lg bg-[#83a998] transition-[height]" style={{ height: `${Math.max(dailyValues[index] ? 8 : 3, (dailyValues[index] / maxDaily) * 100)}%` }} /></div><span className="text-[9px] text-muted-foreground">{new Intl.DateTimeFormat('uz-UZ', { weekday: 'short' }).format(new Date(timestamp)).slice(0, 2)}</span></div>)}</div></div>
-        <div className="rounded-2xl border border-border/70 bg-card p-5"><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Loyihalar taqsimoti</p><div className="mt-5 space-y-4">{projectData.length ? projectData.map(([project, value], index) => <div key={project} className="grid grid-cols-[minmax(80px,.6fr)_1fr_44px] items-center gap-3 text-[11px]"><span className="truncate">{project}</span><span className="h-2 overflow-hidden rounded-full bg-muted"><span className={`block h-full rounded-full ${index % 2 ? 'bg-[#b88b68]' : 'bg-[#6e9b87]'}`} style={{ width: `${(value / maxProject) * 100}%` }} /></span><span className="font-mono text-[9px] text-muted-foreground">{value} daq</span></div>) : <p className="rounded-xl bg-muted px-3 py-5 text-[11px] text-muted-foreground">Sessiyalar yozilgach, loyihalar shu yerda ko‘rinadi.</p>}</div></div>
-      </div>
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border border-border/70 bg-card p-5"><div className="flex items-center justify-between gap-3"><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Sessiya issiqlik xaritasi</p><span className="text-[9px] text-muted-foreground">So‘nggi 12 hafta</span></div><div className="mt-4 grid grid-cols-12 gap-1.5">{Array.from({ length: 84 }, (_, index) => { const timestamp = Date.now() - (83 - index) * 86400000; const value = focusSessions.filter((session) => dayKey(session.startedAt) === dayKey(timestamp)).length; return <span key={`${dayKey(timestamp)}-${index}`} title={`${readableDay(timestamp)}: ${value} sessiya`} className={`aspect-square rounded-[3px] ${value >= 3 ? 'bg-[#47796c]' : value === 2 ? 'bg-[#82a995]' : value === 1 ? 'bg-[#bed2c4]' : 'bg-[#ecebe4] dark:bg-[#3a3d36]'}`} data-testid={`heatmap-cell-${index}`} />; })}</div><div className="mt-3 flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground"><span>kam</span><span className="size-2.5 rounded-[3px] bg-[#ecebe4] dark:bg-[#3a3d36]" /><span className="size-2.5 rounded-[3px] bg-[#bed2c4]" /><span className="size-2.5 rounded-[3px] bg-[#82a995]" /><span className="size-2.5 rounded-[3px] bg-[#47796c]" /><span>ko‘p</span></div></div>
-        <div className="rounded-2xl border border-border/70 bg-card p-5"><div className="flex items-center gap-2"><Clock3 size={15} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Bajarilgan sessiyalar</p></div><div className="mt-4 space-y-2">{logs.length ? logs.map((session) => <div key={session.id} className="flex items-center justify-between gap-3 rounded-xl bg-muted/60 px-3 py-2.5 text-[10px]" data-testid={`session-log-${session.id}`}><div className="min-w-0"><p className="truncate font-medium">{session.project}</p><p className="mt-1 text-muted-foreground">{readableDay(session.startedAt)} · {readableTime(session.startedAt)}</p></div><span className="shrink-0 font-mono text-[#47796c]">{session.durationMinutes} daq</span></div>) : <p className="rounded-xl bg-muted px-3 py-5 text-[11px] text-muted-foreground">Birinchi sessiyangiz tugagach, jurnal shu yerda paydo bo‘ladi.</p>}</div></div>
-      </div>
-    </section>
   );
 }
 
