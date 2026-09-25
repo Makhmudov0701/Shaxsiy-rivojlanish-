@@ -11,9 +11,16 @@ export type AmbientSound =
   | 'ocean'
   | 'fireplace'
   | 'night-city'
-  | 'lofi-piano';
+  | 'lofi-piano'
+  | 'library'
+  | 'train'
+  | 'rain-tent'
+  | 'space-rumble'
+  | 'waterfall'
+  | 'lofi-beats';
 
 export type NoiseColor = 'white' | 'pink' | 'brown';
+export type AudioLayer = 'primary' | 'mix';
 
 export type AmbientSoundOption = {
   value: AmbientSound;
@@ -22,6 +29,8 @@ export type AmbientSoundOption = {
   duration: string;
   streamUrl: string | null;
   sourceUrl: string | null;
+  attribution?: string;
+  licenseUrl?: string;
 };
 
 export const ambientSounds: AmbientSoundOption[] = [
@@ -105,6 +114,60 @@ export const ambientSounds: AmbientSoundOption[] = [
     streamUrl: 'https://assets.mixkit.co/music/22/22.mp3',
     sourceUrl: 'https://mixkit.co/free-stock-music/piano/',
   },
+  {
+    value: 'library',
+    label: 'Kutubxona',
+    description: 'Sokin o‘quv zali muhiti',
+    duration: '10:47',
+    streamUrl: 'https://cdn.freesound.org/previews/173/173344_3226149-hq.mp3',
+    sourceUrl: 'https://freesound.org/people/morosopher/sounds/173344/',
+    attribution: 'Freesound · “Library ambience” by morosopher · CC0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+  },
+  {
+    value: 'train',
+    label: 'Poyezd yo‘li',
+    description: 'Eski poyezdning sokin jo‘nashi',
+    duration: '1:47',
+    streamUrl: 'https://assets.mixkit.co/active_storage/sfx/1628/1628-preview.mp3',
+    sourceUrl: 'https://mixkit.co/free-sound-effects/train/',
+  },
+  {
+    value: 'rain-tent',
+    label: 'Chodirdagi yomg‘ir',
+    description: 'Chodir matosiga urilgan yomg‘ir',
+    duration: '2:33',
+    streamUrl: 'https://cdn.freesound.org/previews/462/462845_670687-hq.mp3',
+    sourceUrl: 'https://freesound.org/people/Eelke/sounds/462845/',
+    attribution: 'Freesound · “rain on tent 01” by Eelke · CC BY 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+  },
+  {
+    value: 'space-rumble',
+    label: 'Fazo gumburi',
+    description: 'Past chastotali, sokin kosmik drone',
+    duration: '2:48',
+    streamUrl: 'https://cdn.freesound.org/previews/767/767355_4284820-hq.mp3',
+    sourceUrl: 'https://freesound.org/people/IsaacRC/sounds/767355/',
+    attribution: 'Freesound · “Deep Space Rumble - Low Frequency Background Noise - Ominous FX” by IsaacRC · CC BY 4.0',
+    licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+  },
+  {
+    value: 'waterfall',
+    label: 'Sharshara',
+    description: 'O‘rmondagi sharsharaning uzluksiz shovqini',
+    duration: '1:22',
+    streamUrl: 'https://assets.mixkit.co/active_storage/sfx/2517/2517-preview.mp3',
+    sourceUrl: 'https://mixkit.co/free-sound-effects/waterfall/',
+  },
+  {
+    value: 'lofi-beats',
+    label: 'Mayin lo-fi ritmlar',
+    description: 'Sokin ritm va yumshoq instrumental',
+    duration: '1:59',
+    streamUrl: 'https://assets.mixkit.co/music/135/135.mp3',
+    sourceUrl: 'https://mixkit.co/free-stock-music/lo-fi-beats/',
+  },
 ];
 
 const noiseColors: Array<{ value: NoiseColor; label: string }> = [
@@ -113,18 +176,26 @@ const noiseColors: Array<{ value: NoiseColor; label: string }> = [
   { value: 'brown', label: 'Jigarrang' },
 ];
 
-type SoundContextValue = {
-  selected: AmbientSound;
-  playing: boolean;
+type SlotPreferences = {
+  selected: AmbientSound | null;
   volume: number;
   noiseColor: NoiseColor;
+};
+
+type SoundSlotState = SlotPreferences & {
+  playing: boolean;
   error: string;
-  setSelected: (sound: AmbientSound) => void;
-  setVolume: (volume: number) => void;
-  setNoiseColor: (color: NoiseColor) => void;
-  play: (sound?: AmbientSound, color?: NoiseColor) => Promise<void>;
-  pause: () => void;
-  toggle: () => Promise<void>;
+};
+
+type SoundContextValue = {
+  primary: SoundSlotState;
+  mix: SoundSlotState;
+  setSelected: (layer: AudioLayer, sound: AmbientSound | null) => void;
+  setVolume: (layer: AudioLayer, volume: number) => void;
+  setNoiseColor: (layer: AudioLayer, color: NoiseColor) => void;
+  play: (layer: AudioLayer, sound?: AmbientSound, color?: NoiseColor) => Promise<void>;
+  pause: (layer: AudioLayer) => void;
+  toggle: (layer: AudioLayer) => Promise<void>;
 };
 
 type AudioPlayback = {
@@ -147,8 +218,8 @@ type AudioTransition = {
 };
 
 const SoundContext = createContext<SoundContextValue | null>(null);
-const settingsKey = 'kundalik-fon-tovushlari-v2';
-const legacySettingsKey = 'kundalik-fon-tovushlari-v1';
+const settingsKey = 'kundalik-fon-tovushlari-v3';
+const legacySettingsKeys = ['kundalik-fon-tovushlari-v2', 'kundalik-fon-tovushlari-v1'];
 
 function isAmbientSound(value: unknown): value is AmbientSound {
   return ambientSounds.some((sound) => sound.value === value);
@@ -158,20 +229,47 @@ function isNoiseColor(value: unknown): value is NoiseColor {
   return value === 'white' || value === 'pink' || value === 'brown';
 }
 
-function readSettings(): { selected: AmbientSound; volume: number; noiseColor: NoiseColor } {
+function defaultPreferences(layer: AudioLayer): SlotPreferences {
+  return {
+    selected: layer === 'primary' ? 'rain' : null,
+    volume: layer === 'primary' ? 28 : 24,
+    noiseColor: 'white',
+  };
+}
+
+function readSettings(): Record<AudioLayer, SlotPreferences> {
   try {
-    const raw = window.localStorage.getItem(settingsKey) ?? window.localStorage.getItem(legacySettingsKey);
-    if (!raw) return { selected: 'rain', volume: 28, noiseColor: 'white' };
+    const raw = [settingsKey, ...legacySettingsKeys]
+      .map((key) => window.localStorage.getItem(key))
+      .find((value) => value !== null);
+    if (!raw) return { primary: defaultPreferences('primary'), mix: defaultPreferences('mix') };
     const value: unknown = JSON.parse(raw);
-    if (!value || typeof value !== 'object') return { selected: 'rain', volume: 28, noiseColor: 'white' };
-    const candidate = value as { selected?: unknown; volume?: unknown; noiseColor?: unknown };
+    if (!value || typeof value !== 'object') return { primary: defaultPreferences('primary'), mix: defaultPreferences('mix') };
+    const candidate = value as {
+      primary?: unknown;
+      mix?: unknown;
+      selected?: unknown;
+      volume?: unknown;
+      noiseColor?: unknown;
+    };
+    const readLayer = (layer: AudioLayer, input: unknown): SlotPreferences => {
+      const fallback = defaultPreferences(layer);
+      if (!input || typeof input !== 'object') return fallback;
+      const stored = input as { selected?: unknown; volume?: unknown; noiseColor?: unknown };
+      return {
+        selected: isAmbientSound(stored.selected) ? stored.selected : fallback.selected,
+        volume: typeof stored.volume === 'number' && Number.isFinite(stored.volume)
+          ? Math.max(0, Math.min(100, stored.volume))
+          : fallback.volume,
+        noiseColor: isNoiseColor(stored.noiseColor) ? stored.noiseColor : fallback.noiseColor,
+      };
+    };
     return {
-      selected: isAmbientSound(candidate.selected) ? candidate.selected : 'rain',
-      volume: typeof candidate.volume === 'number' && Number.isFinite(candidate.volume) ? Math.max(0, Math.min(100, candidate.volume)) : 28,
-      noiseColor: isNoiseColor(candidate.noiseColor) ? candidate.noiseColor : 'white',
+      primary: readLayer('primary', candidate.primary ?? candidate),
+      mix: readLayer('mix', candidate.mix),
     };
   } catch {
-    return { selected: 'rain', volume: 28, noiseColor: 'white' };
+    return { primary: defaultPreferences('primary'), mix: defaultPreferences('mix') };
   }
 }
 
@@ -262,43 +360,145 @@ async function createPlayback(sound: AmbientSound, noiseColor: NoiseColor): Prom
 
   const option = ambientSounds.find((item) => item.value === sound);
   if (!option?.streamUrl) throw new Error('missing-source');
-  const audio = new Audio(option.streamUrl);
-  audio.loop = true;
-  audio.preload = 'auto';
-  audio.volume = 0;
-  audio.setAttribute('playsinline', 'true');
+  const streamUrl = option.streamUrl;
+  const firstAudio = new Audio(streamUrl);
+  firstAudio.loop = true;
+  firstAudio.preload = 'metadata';
+  firstAudio.volume = 0;
+  firstAudio.setAttribute('playsinline', 'true');
   let stopped = false;
   let level = 0;
   let errorHandler: () => void = () => undefined;
-  audio.addEventListener('error', () => {
-    if (!stopped) errorHandler();
-  });
-  try {
-    await audio.play();
-  } catch (error) {
+  let activeAudio = firstAudio;
+  let standbyAudio: HTMLAudioElement | null = null;
+  let loopProgress = 0;
+  let loopFrame: number | null = null;
+  let detachLoopMonitor: () => void = () => undefined;
+
+  const releaseAudio = (audio: HTMLAudioElement) => {
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
+  };
+
+  const updateLevels = () => {
+    activeAudio.volume = level * (standbyAudio ? 1 - loopProgress : 1);
+    if (standbyAudio) standbyAudio.volume = level * loopProgress;
+  };
+
+  const stopStandby = () => {
+    if (loopFrame !== null) window.cancelAnimationFrame(loopFrame);
+    loopFrame = null;
+    if (standbyAudio) releaseAudio(standbyAudio);
+    standbyAudio = null;
+    loopProgress = 0;
+    updateLevels();
+  };
+
+  const monitorLoop = (audio: HTMLAudioElement) => {
+    detachLoopMonitor();
+    let loopArmed = true;
+    const tryLoopCrossfade = () => {
+      if (stopped || audio !== activeAudio || standbyAudio || !Number.isFinite(audio.duration)) return;
+      if (audio.currentTime < audio.duration / 2) loopArmed = true;
+      if (!loopArmed || audio.duration < 8 || audio.duration - audio.currentTime > 2.25) return;
+      loopArmed = false;
+
+      const nextAudio = new Audio(streamUrl);
+      nextAudio.loop = true;
+      nextAudio.preload = 'metadata';
+      nextAudio.volume = 0;
+      nextAudio.setAttribute('playsinline', 'true');
+      standbyAudio = nextAudio;
+      const onStandbyError = () => {
+        if (standbyAudio !== nextAudio) return;
+        nextAudio.removeEventListener('error', onStandbyError);
+        stopStandby();
+      };
+      nextAudio.addEventListener('error', onStandbyError);
+      updateLevels();
+
+      void nextAudio.play().then(() => {
+        if (stopped || standbyAudio !== nextAudio) {
+          nextAudio.removeEventListener('error', onStandbyError);
+          releaseAudio(nextAudio);
+          return;
+        }
+        const startedAt = performance.now();
+        const fadeDuration = 1650;
+        const animate = (now: number) => {
+          if (stopped || standbyAudio !== nextAudio) return;
+          const linear = Math.min(1, (now - startedAt) / fadeDuration);
+          loopProgress = linear * linear * (3 - 2 * linear);
+          updateLevels();
+          if (linear < 1) {
+            loopFrame = window.requestAnimationFrame(animate);
+            return;
+          }
+
+          loopFrame = null;
+          const outgoing = activeAudio;
+          detachLoopMonitor();
+          nextAudio.removeEventListener('error', onStandbyError);
+          activeAudio = nextAudio;
+          standbyAudio = null;
+          loopProgress = 0;
+          releaseAudio(outgoing);
+          updateLevels();
+          monitorLoop(activeAudio);
+        };
+        loopFrame = window.requestAnimationFrame(animate);
+      }).catch(() => {
+        if (standbyAudio === nextAudio) stopStandby();
+      });
+    };
+
+    const onError = () => {
+      if (audio === activeAudio && !stopped) errorHandler();
+      else if (audio === standbyAudio) stopStandby();
+    };
+    audio.addEventListener('timeupdate', tryLoopCrossfade);
+    audio.addEventListener('error', onError);
+    detachLoopMonitor = () => {
+      audio.removeEventListener('timeupdate', tryLoopCrossfade);
+      audio.removeEventListener('error', onError);
+      detachLoopMonitor = () => undefined;
+    };
+  };
+
+  try {
+    await firstAudio.play();
+  } catch (error) {
+    releaseAudio(firstAudio);
     throw error;
   }
+  monitorLoop(firstAudio);
   return {
     sound,
     noiseColor,
     get level() { return level; },
-    set level(value: number) { level = value; },
+    set level(value) { level = value; },
     setLevel(value) {
       level = Math.max(0, Math.min(1, value));
-      audio.volume = level;
+      updateLevels();
     },
     setErrorHandler(handler) { errorHandler = handler; },
-    async resume() { await audio.play(); },
-    pause() { audio.pause(); },
+    async resume() {
+      await Promise.all([activeAudio.play(), ...(standbyAudio ? [standbyAudio.play()] : [])]);
+    },
+    pause() {
+      activeAudio.pause();
+      standbyAudio?.pause();
+    },
     stop() {
       if (stopped) return;
       stopped = true;
-      audio.pause();
-      audio.removeAttribute('src');
-      audio.load();
+      detachLoopMonitor();
+      if (loopFrame !== null) window.cancelAnimationFrame(loopFrame);
+      loopFrame = null;
+      releaseAudio(activeAudio);
+      if (standbyAudio) releaseAudio(standbyAudio);
+      standbyAudio = null;
       errorHandler = () => undefined;
     },
   };
@@ -310,47 +510,57 @@ function clampVolume(value: number) {
 
 export function AmbientSoundProvider({ children }: { children: ReactNode }) {
   const initialSettings = useMemo(readSettings, []);
-  const [selected, setSelectedState] = useState<AmbientSound>(initialSettings.selected);
-  const [volume, setVolumeState] = useState(initialSettings.volume);
-  const [noiseColor, setNoiseColorState] = useState<NoiseColor>(initialSettings.noiseColor);
-  const [playing, setPlayingState] = useState(false);
-  const [error, setError] = useState('');
-  const selectedRef = useRef(selected);
-  const volumeRef = useRef(volume);
-  const noiseColorRef = useRef(noiseColor);
-  const playingRef = useRef(playing);
-  const playbackRef = useRef<AudioPlayback | null>(null);
-  const transitionRef = useRef<AudioTransition | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const requestRef = useRef(0);
+  const initialSlots = useMemo<Record<AudioLayer, SoundSlotState>>(() => ({
+    primary: { ...initialSettings.primary, playing: false, error: '' },
+    mix: { ...initialSettings.mix, playing: false, error: '' },
+  }), [initialSettings]);
+  const [primary, setPrimaryState] = useState(initialSlots.primary);
+  const [mix, setMixState] = useState(initialSlots.mix);
+  const slotsRef = useRef(initialSlots);
+  const playbackRefs = useRef<Record<AudioLayer, AudioPlayback | null>>({ primary: null, mix: null });
+  const transitionRefs = useRef<Record<AudioLayer, AudioTransition | null>>({ primary: null, mix: null });
+  const animationRefs = useRef<Record<AudioLayer, number | null>>({ primary: null, mix: null });
+  const requestRefs = useRef<Record<AudioLayer, number>>({ primary: 0, mix: 0 });
+
+  const setSlotState = useCallback((layer: AudioLayer, patch: Partial<SoundSlotState>) => {
+    const next = { ...slotsRef.current[layer], ...patch };
+    slotsRef.current = { ...slotsRef.current, [layer]: next };
+    if (layer === 'primary') setPrimaryState(next);
+    else setMixState(next);
+  }, []);
 
   const persistSettings = useCallback(() => {
     try {
+      const { primary: primarySlot, mix: mixSlot } = slotsRef.current;
       window.localStorage.setItem(settingsKey, JSON.stringify({
-        selected: selectedRef.current,
-        volume: volumeRef.current,
-        noiseColor: noiseColorRef.current,
+        primary: {
+          selected: primarySlot.selected,
+          volume: primarySlot.volume,
+          noiseColor: primarySlot.noiseColor,
+        },
+        mix: {
+          selected: mixSlot.selected,
+          volume: mixSlot.volume,
+          noiseColor: mixSlot.noiseColor,
+        },
       }));
     } catch {
-      setError('Ovoz sozlamasini saqlab bo‘lmadi.');
+      setSlotState('primary', { error: 'Ovoz sozlamasini saqlab bo‘lmadi.' });
     }
-  }, []);
+  }, [setSlotState]);
 
-  const setPlaying = useCallback((next: boolean) => {
-    playingRef.current = next;
-    setPlayingState(next);
-  }, []);
-
-  const clearTransition = useCallback((keep: AudioPlayback | null) => {
-    if (animationRef.current !== null) window.cancelAnimationFrame(animationRef.current);
-    animationRef.current = null;
-    const transition = transitionRef.current;
+  const clearTransition = useCallback((layer: AudioLayer, keep: AudioPlayback | null) => {
+    const animation = animationRefs.current[layer];
+    if (animation !== null) window.cancelAnimationFrame(animation);
+    animationRefs.current[layer] = null;
+    const transition = transitionRefs.current[layer];
     if (transition?.from && transition.from !== keep) transition.from.stop();
     if (transition?.to && transition.to !== keep) transition.to.stop();
-    transitionRef.current = null;
+    transitionRefs.current[layer] = null;
   }, []);
 
   const fadeBetween = useCallback((
+    layer: AudioLayer,
     from: AudioPlayback | null,
     to: AudioPlayback | null,
     duration: number,
@@ -359,171 +569,190 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
     onComplete: () => void,
   ) => {
     const transition: AudioTransition = { from, to, fromFactor, toFactor, progress: 0 };
-    transitionRef.current = transition;
+    transitionRefs.current[layer] = transition;
     const startedAt = performance.now();
     const animate = (now: number) => {
-      if (transitionRef.current !== transition) return;
+      if (transitionRefs.current[layer] !== transition) return;
       const linear = Math.min(1, (now - startedAt) / duration);
       const progress = linear * linear * (3 - 2 * linear);
       transition.progress = progress;
-      const master = volumeRef.current / 100;
+      const master = slotsRef.current[layer].volume / 100;
       from?.setLevel(master * fromFactor * (1 - progress));
       to?.setLevel(master * toFactor * progress);
       if (linear < 1) {
-        animationRef.current = window.requestAnimationFrame(animate);
+        animationRefs.current[layer] = window.requestAnimationFrame(animate);
         return;
       }
-      transitionRef.current = null;
-      animationRef.current = null;
+      transitionRefs.current[layer] = null;
+      animationRefs.current[layer] = null;
       from?.setLevel(0);
       to?.setLevel(master * toFactor);
       onComplete();
     };
-    animationRef.current = window.requestAnimationFrame(animate);
+    animationRefs.current[layer] = window.requestAnimationFrame(animate);
   }, []);
 
-  const play = useCallback(async (sound?: AmbientSound, color?: NoiseColor) => {
-    const target = sound ?? selectedRef.current;
-    const targetColor = color ?? noiseColorRef.current;
-    const wasPlaying = playingRef.current;
-    const existing = playbackRef.current;
-    selectedRef.current = target;
-    noiseColorRef.current = targetColor;
-    setSelectedState(target);
-    setNoiseColorState(targetColor);
+  const play = useCallback(async (layer: AudioLayer, sound?: AmbientSound, color?: NoiseColor) => {
+    const current = slotsRef.current[layer];
+    const target = sound ?? current.selected;
+    if (!target) return;
+    const targetColor = color ?? current.noiseColor;
+    const wasPlaying = current.playing;
+    const existing = playbackRefs.current[layer];
+    setSlotState(layer, { selected: target, noiseColor: targetColor, error: '' });
     persistSettings();
-    setError('');
 
     if (wasPlaying && existing?.sound === target && existing.noiseColor === targetColor) return;
-    const request = ++requestRef.current;
-    clearTransition(existing);
+    const request = ++requestRefs.current[layer];
+    clearTransition(layer, existing);
 
     if (!wasPlaying && existing?.sound === target && existing.noiseColor === targetColor) {
       try {
         await existing.resume();
-        if (request !== requestRef.current) return;
-        setPlaying(true);
-        fadeBetween(null, existing, 320, 0, 1, () => undefined);
+        if (request !== requestRefs.current[layer]) return;
+        setSlotState(layer, { playing: true });
+        fadeBetween(layer, null, existing, 320, 0, 1, () => undefined);
         return;
       } catch {
-        if (request === requestRef.current) setError('Bu brauzer fon tovushini ishga tushira olmadi.');
+        if (request === requestRefs.current[layer]) {
+          setSlotState(layer, { error: 'Bu brauzer fon tovushini ishga tushira olmadi.' });
+        }
         return;
       }
     }
 
     if (!wasPlaying && existing) {
       existing.stop();
-      playbackRef.current = null;
+      playbackRefs.current[layer] = null;
     }
     const outgoing = wasPlaying ? existing : null;
-    const outgoingMaster = volumeRef.current / 100;
+    const outgoingMaster = current.volume / 100;
     const outgoingFactor = outgoing && outgoingMaster > 0 ? Math.min(1, outgoing.level / outgoingMaster) : 1;
     try {
       const incoming = await createPlayback(target, targetColor);
-      if (request !== requestRef.current) {
+      if (request !== requestRefs.current[layer]) {
         incoming.stop();
         return;
       }
       incoming.setErrorHandler(() => {
-        if (playbackRef.current !== incoming) return;
-        incoming.pause();
-        incoming.setLevel(0);
-        setPlaying(false);
-        setError('Ovoz oqimi uzildi. Internet aloqasini tekshirib qayta boshlang.');
+        if (playbackRefs.current[layer] !== incoming) return;
+        playbackRefs.current[layer] = null;
+        incoming.stop();
+        setSlotState(layer, {
+          playing: false,
+          error: 'Ovoz oqimi uzildi. Internet aloqasini tekshirib qayta boshlang.',
+        });
       });
-      playbackRef.current = incoming;
-      setPlaying(true);
-      fadeBetween(outgoing, incoming, 1200, outgoingFactor, 1, () => outgoing?.stop());
+      playbackRefs.current[layer] = incoming;
+      setSlotState(layer, { playing: true });
+      fadeBetween(layer, outgoing, incoming, 1200, outgoingFactor, 1, () => outgoing?.stop());
     } catch {
-      if (request !== requestRef.current) return;
+      if (request !== requestRefs.current[layer]) return;
       if (wasPlaying && outgoing) {
-        selectedRef.current = outgoing.sound;
-        noiseColorRef.current = outgoing.noiseColor;
-        setSelectedState(outgoing.sound);
-        setNoiseColorState(outgoing.noiseColor);
+        setSlotState(layer, {
+          selected: outgoing.sound,
+          noiseColor: outgoing.noiseColor,
+          playing: true,
+        });
         persistSettings();
-        setPlaying(true);
       } else {
-        playbackRef.current = null;
-        setPlaying(false);
+        playbackRefs.current[layer] = null;
+        setSlotState(layer, { playing: false });
       }
-      setError('Tovush yuklanmadi. Internet aloqasini tekshiring.');
+      setSlotState(layer, { error: 'Tovush yuklanmadi. Internet aloqasini tekshiring.' });
     }
-  }, [clearTransition, fadeBetween, persistSettings, setPlaying]);
+  }, [clearTransition, fadeBetween, persistSettings, setSlotState]);
 
-  const pause = useCallback(() => {
-    const current = playbackRef.current;
-    if (!current || !playingRef.current) {
-      setPlaying(false);
+  const pause = useCallback((layer: AudioLayer) => {
+    const current = slotsRef.current[layer];
+    const playback = playbackRefs.current[layer];
+    if (!playback || !current.playing) {
+      setSlotState(layer, { playing: false });
       return;
     }
-    requestRef.current += 1;
-    clearTransition(current);
-    const master = volumeRef.current / 100;
-    const factor = master > 0 ? Math.min(1, current.level / master) : 1;
-    setPlaying(false);
-    fadeBetween(current, null, 280, factor, 0, () => current.pause());
-  }, [clearTransition, fadeBetween, setPlaying]);
+    requestRefs.current[layer] += 1;
+    clearTransition(layer, playback);
+    const master = current.volume / 100;
+    const factor = master > 0 ? Math.min(1, playback.level / master) : 1;
+    setSlotState(layer, { playing: false });
+    fadeBetween(layer, playback, null, 280, factor, 0, () => playback.pause());
+  }, [clearTransition, fadeBetween, setSlotState]);
 
-  const toggle = useCallback(async () => {
-    if (playingRef.current) {
-      pause();
+  const toggle = useCallback(async (layer: AudioLayer) => {
+    if (slotsRef.current[layer].playing) {
+      pause(layer);
       return;
     }
-    await play();
+    await play(layer);
   }, [pause, play]);
 
-  const setSelected = useCallback((sound: AmbientSound) => {
-    if (playingRef.current) {
-      void play(sound);
+  const setSelected = useCallback((layer: AudioLayer, sound: AmbientSound | null) => {
+    if (layer === 'primary' && sound === null) return;
+    const current = slotsRef.current[layer];
+    if (sound !== null && current.playing) {
+      void play(layer, sound);
       return;
     }
-    selectedRef.current = sound;
-    setSelectedState(sound);
-    persistSettings();
-    requestRef.current += 1;
-    clearTransition(null);
-    playbackRef.current?.stop();
-    playbackRef.current = null;
-    setError('');
-  }, [clearTransition, persistSettings, play]);
+    if (sound === current.selected && !current.playing) return;
 
-  const setVolume = useCallback((nextVolume: number) => {
-    const safeVolume = clampVolume(nextVolume);
-    volumeRef.current = safeVolume;
-    setVolumeState(safeVolume);
+    requestRefs.current[layer] += 1;
+    const existing = playbackRefs.current[layer];
+    clearTransition(layer, existing);
+    if (sound === null && existing && current.playing) {
+      const master = current.volume / 100;
+      const factor = master > 0 ? Math.min(1, existing.level / master) : 1;
+      setSlotState(layer, { selected: null, playing: false, error: '' });
+      persistSettings();
+      fadeBetween(layer, existing, null, 240, factor, 0, () => {
+        existing.stop();
+        if (playbackRefs.current[layer] === existing) playbackRefs.current[layer] = null;
+      });
+      return;
+    }
+    existing?.stop();
+    playbackRefs.current[layer] = null;
+    setSlotState(layer, { selected: sound, playing: false, error: '' });
     persistSettings();
-    const transition = transitionRef.current;
+  }, [clearTransition, fadeBetween, persistSettings, play, setSlotState]);
+
+  const setVolume = useCallback((layer: AudioLayer, nextVolume: number) => {
+    const safeVolume = clampVolume(nextVolume);
+    setSlotState(layer, { volume: safeVolume });
+    persistSettings();
+    const transition = transitionRefs.current[layer];
     if (transition) {
       const master = safeVolume / 100;
       transition.from?.setLevel(master * transition.fromFactor * (1 - transition.progress));
       transition.to?.setLevel(master * transition.toFactor * transition.progress);
-    } else if (playingRef.current) {
-      playbackRef.current?.setLevel(safeVolume / 100);
+    } else if (slotsRef.current[layer].playing) {
+      playbackRefs.current[layer]?.setLevel(safeVolume / 100);
     }
-  }, [persistSettings]);
+  }, [persistSettings, setSlotState]);
 
-  const setNoiseColor = useCallback((color: NoiseColor) => {
-    if (noiseColorRef.current === color) return;
-    noiseColorRef.current = color;
-    setNoiseColorState(color);
+  const setNoiseColor = useCallback((layer: AudioLayer, color: NoiseColor) => {
+    const current = slotsRef.current[layer];
+    if (current.noiseColor === color) return;
+    setSlotState(layer, { noiseColor: color });
     persistSettings();
-    if (playingRef.current && selectedRef.current === 'white-noise') void play('white-noise', color);
-  }, [persistSettings, play]);
+    if (current.playing && current.selected === 'white-noise') void play(layer, 'white-noise', color);
+  }, [persistSettings, play, setSlotState]);
 
   useEffect(() => () => {
-    requestRef.current += 1;
-    if (animationRef.current !== null) window.cancelAnimationFrame(animationRef.current);
-    transitionRef.current?.from?.stop();
-    transitionRef.current?.to?.stop();
-    playbackRef.current?.stop();
-    transitionRef.current = null;
-    playbackRef.current = null;
+    for (const layer of ['primary', 'mix'] as const) {
+      requestRefs.current[layer] += 1;
+      const animation = animationRefs.current[layer];
+      if (animation !== null) window.cancelAnimationFrame(animation);
+      transitionRefs.current[layer]?.from?.stop();
+      transitionRefs.current[layer]?.to?.stop();
+      playbackRefs.current[layer]?.stop();
+      transitionRefs.current[layer] = null;
+      playbackRefs.current[layer] = null;
+    }
   }, []);
 
   const value = useMemo(
-    () => ({ selected, playing, volume, noiseColor, error, setSelected, setVolume, setNoiseColor, play, pause, toggle }),
-    [selected, playing, volume, noiseColor, error, setSelected, setVolume, setNoiseColor, play, pause, toggle],
+    () => ({ primary, mix, setSelected, setVolume, setNoiseColor, play, pause, toggle }),
+    [primary, mix, setSelected, setVolume, setNoiseColor, play, pause, toggle],
   );
   return <SoundContext.Provider value={value}>{children}</SoundContext.Provider>;
 }
@@ -535,32 +764,73 @@ export function useAmbientSound() {
 }
 
 export function AmbientSoundControl({ collapsed }: { collapsed: boolean }) {
-  const { selected, playing, volume, noiseColor, error, setSelected, setVolume, setNoiseColor, toggle } = useAmbientSound();
-  const selectedOption = ambientSounds.find((sound) => sound.value === selected);
-  const selectedLabel = selectedOption?.label ?? 'Mayin yomg‘ir';
+  const { primary, mix, setSelected, setVolume, setNoiseColor, toggle } = useAmbientSound();
+  const primaryOption = ambientSounds.find((sound) => sound.value === primary.selected);
+  const mixOption = ambientSounds.find((sound) => sound.value === mix.selected);
+  const primaryLabel = primaryOption?.label ?? 'Mayin yomg‘ir';
+  const mixLabel = mixOption?.label ?? 'Ikkinchi qatlam';
+  const sourceLink = (option: AmbientSoundOption | undefined, id: string) => option?.sourceUrl && (
+    <p className="text-[9px] text-sidebar-foreground/55">
+      <a href={option.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={id}>
+        Manba: {option.attribution ?? 'Mixkit'}
+      </a>
+      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${id}-license`}>litsenziya</a></>}
+    </p>
+  );
+
   return (
     <section className={`rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-3.5 ${collapsed ? 'md:border-0 md:bg-transparent md:p-0' : ''}`} aria-label="Fon tovushlari" data-testid="ambient-sound-control">
       <div className={`flex items-center gap-2 ${collapsed ? 'md:hidden' : ''}`}>
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary"><AudioLines size={15} /></span>
-        <div className="min-w-0 flex-1"><p className="font-mono text-[8px] uppercase tracking-[.15em] text-sidebar-foreground/55">Fon tovushlari</p><p className="truncate text-[11px] font-medium">{playing ? selectedLabel : 'Tinchlik rejimi'}</p></div>
-        <button type="button" onClick={() => { void toggle(); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-transform hover:scale-105" aria-label={playing ? 'Fon tovushini to‘xtatish' : 'Fon tovushini boshlash'} title={playing ? 'To‘xtatish' : 'Boshlash'} data-testid="button-ambient-toggle">{playing ? <Pause size={14} /> : <Play size={14} />}</button>
+        <div className="min-w-0 flex-1"><p className="font-mono text-[8px] uppercase tracking-[.15em] text-sidebar-foreground/55">Fon tovushlari</p><p className="truncate text-[11px] font-medium">{primary.playing ? primaryLabel : 'Tinchlik rejimi'}</p></div>
+        <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-transform hover:scale-105" aria-label={primary.playing ? 'Asosiy fon tovushini to‘xtatish' : 'Asosiy fon tovushini boshlash'} title={primary.playing ? 'To‘xtatish' : 'Boshlash'} data-testid="button-ambient-toggle">{primary.playing ? <Pause size={14} /> : <Play size={14} />}</button>
       </div>
       <div className={`mt-3 space-y-3 ${collapsed ? 'md:hidden' : ''}`}>
-        <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-sound-select">Tovush turi</label>
-        <select id="ambient-sound-select" value={selected} onChange={(event) => setSelected(event.target.value as AmbientSound)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-sound">{ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}</select>
-        {selected === 'white-noise' && (
-          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color">Shovqin turi
-            <select id="ambient-noise-color" value={noiseColor} onChange={(event) => setNoiseColor(event.target.value as NoiseColor)} className="mt-1 w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring">
+        <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-sound-select">Asosiy tovush</label>
+        <select id="ambient-sound-select" value={primary.selected ?? 'rain'} onChange={(event) => setSelected('primary', event.target.value as AmbientSound)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-sound">{ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}</select>
+        {primary.selected === 'white-noise' && (
+          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-primary">Shovqin turi
+            <select id="ambient-noise-color-primary" value={primary.noiseColor} onChange={(event) => setNoiseColor('primary', event.target.value as NoiseColor)} className="mt-1 w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring">
               {noiseColors.map((color) => <option key={color.value} value={color.value}>{color.label}</option>)}
             </select>
           </label>
         )}
-        <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume"><Volume2 size={13} /><span className="min-w-0 flex-1">Ovoz balandligi</span><span className="font-mono">{volume}%</span></label>
-        <input id="ambient-volume" type="range" min={0} max={100} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label="Ovoz balandligi" data-testid="input-ambient-volume" />
-        {selectedOption?.sourceUrl && <a href={selectedOption.sourceUrl} target="_blank" rel="noreferrer" className="block text-[9px] text-sidebar-foreground/55 underline underline-offset-2">Audio manbasi: Mixkit</a>}
-        {error && <p className="text-[9px] text-[#f1b6a8]" role="status" data-testid="status-ambient-error">{error}</p>}
+        <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-primary"><Volume2 size={13} /><span className="min-w-0 flex-1">Asosiy ovoz</span><span className="font-mono">{primary.volume}%</span></label>
+        <input id="ambient-volume-primary" type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume-primary-sidebar" />
+        {sourceLink(primaryOption, 'link-ambient-source-primary-sidebar')}
+        {primary.error && <p className="text-[9px] text-[#f1b6a8]" role="status" data-testid="status-ambient-error">{primary.error}</p>}
+
+        <div className="space-y-2 border-t border-sidebar-border/70 pt-3">
+          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-mix-select">Ikkinchi qatlam · ixtiyoriy</label>
+          <select id="ambient-mix-select" value={mix.selected ?? ''} onChange={(event) => setSelected('mix', event.target.value ? event.target.value as AmbientSound : null)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-mix">
+            <option value="">O‘chirilgan</option>
+            {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}
+          </select>
+          {mix.selected && (
+            <>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-7 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary" aria-label={mix.playing ? 'Ikkinchi tovushni to‘xtatish' : 'Ikkinchi tovushni boshlash'} data-testid="button-ambient-mix-toggle">{mix.playing ? <Pause size={12} /> : <Play size={12} />}</button>
+                <span className="min-w-0 flex-1 truncate text-[10px]">{mix.playing ? `Ijroda: ${mixLabel}` : mixLabel}</span>
+              </div>
+              {mix.selected === 'white-noise' && (
+                <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-mix">Shovqin turi
+                  <select id="ambient-noise-color-mix" value={mix.noiseColor} onChange={(event) => setNoiseColor('mix', event.target.value as NoiseColor)} className="mt-1 w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring">
+                    {noiseColors.map((color) => <option key={color.value} value={color.value}>{color.label}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-mix"><Volume2 size={13} /><span className="min-w-0 flex-1">Ikkinchi ovoz</span><span className="font-mono">{mix.volume}%</span></label>
+              <input id="ambient-volume-mix" type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label="Ikkinchi qatlam ovoz balandligi" data-testid="input-ambient-mix-volume-sidebar" />
+              {sourceLink(mixOption, 'link-ambient-source-mix-sidebar')}
+            </>
+          )}
+          {mix.error && <p className="text-[9px] text-[#f1b6a8]" role="status" data-testid="status-ambient-mix-error">{mix.error}</p>}
+        </div>
       </div>
-      {collapsed && <button type="button" onClick={() => { void toggle(); }} className="hidden size-10 w-full items-center justify-center rounded-xl text-sidebar-primary transition-colors hover:bg-sidebar-accent md:flex md:w-10" aria-label={playing ? `Fon tovushini to‘xtatish: ${selectedLabel}` : `Fon tovushini boshlash: ${selectedLabel}`} title={`${selectedLabel} · ${playing ? 'to‘xtatish' : 'boshlash'}`} data-testid="button-ambient-toggle-collapsed">{playing ? <Pause size={16} /> : <AudioLines size={17} />}</button>}
+      {collapsed && <div className="hidden items-center justify-center gap-1 md:flex">
+        <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-10 w-full place-items-center rounded-xl text-sidebar-primary transition-colors hover:bg-sidebar-accent md:w-10" aria-label={primary.playing ? `Asosiy tovushni to‘xtatish: ${primaryLabel}` : `Asosiy tovushni boshlash: ${primaryLabel}`} title={`${primaryLabel} · ${primary.playing ? 'to‘xtatish' : 'boshlash'}`} data-testid="button-ambient-toggle-collapsed">{primary.playing ? <Pause size={16} /> : <AudioLines size={17} />}</button>
+        {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-sidebar-accent ${mix.playing ? 'text-sidebar-primary' : 'text-sidebar-foreground/60'}`} aria-label={mix.playing ? `Ikkinchi tovushni to‘xtatish: ${mixLabel}` : `Ikkinchi tovushni boshlash: ${mixLabel}`} title={`${mixLabel} · ${mix.playing ? 'to‘xtatish' : 'boshlash'}`} data-testid="button-ambient-mix-toggle-collapsed">{mix.playing ? <Pause size={14} /> : <AudioLines size={15} />}</button>}
+      </div>}
     </section>
   );
 }

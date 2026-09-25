@@ -248,11 +248,18 @@ const SOUND_ICONS: Record<AmbientSound, ReactNode> = {
   fireplace: <Flame size={16} />,
   'night-city': <Building2 size={16} />,
   'lofi-piano': <Music2 size={16} />,
+  library: <Building2 size={16} />,
+  train: <Clock3 size={16} />,
+  'rain-tent': <CloudRain size={16} />,
+  'space-rumble': <AudioLines size={16} />,
+  waterfall: <Waves size={16} />,
+  'lofi-beats': <Music2 size={16} />,
 };
 
 function AmbientSoundStudio() {
-  const { selected, playing, volume, noiseColor, error, setVolume, setNoiseColor, play, pause, toggle } = useAmbientSound();
-  const selectedOption = ambientSounds.find((sound) => sound.value === selected);
+  const { primary, mix, setSelected, setVolume, setNoiseColor, play, toggle } = useAmbientSound();
+  const primaryOption = ambientSounds.find((sound) => sound.value === primary.selected);
+  const mixOption = ambientSounds.find((sound) => sound.value === mix.selected);
   const noiseOptions = [
     { value: 'white' as const, label: 'Oq' },
     { value: 'pink' as const, label: 'Pushti' },
@@ -260,12 +267,21 @@ function AmbientSoundStudio() {
   ];
 
   const choose = (kind: AmbientSound) => {
-    if (selected === kind && playing) {
-      pause();
+    if (primary.selected === kind && primary.playing) {
+      void toggle('primary');
       return;
     }
-    void play(kind);
+    void play('primary', kind);
   };
+
+  const sourceDetails = (option: typeof primaryOption, testId: string) => option?.sourceUrl && (
+    <p className="text-[9px] leading-relaxed text-muted-foreground">
+      <a href={option.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={testId}>
+        Manba: {option.attribution ?? 'Mixkit'}
+      </a>
+      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${testId}-license`}>litsenziya</a></>}
+    </p>
+  );
 
   return (
     <section className="border-t border-[#ddd6c5] pt-5 dark:border-[#41453d]" data-testid="ambient-sounds">
@@ -273,39 +289,42 @@ function AmbientSoundStudio() {
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin fon</p>
           <h2 className="mt-1 font-serif text-[26px] leading-none">Ovozli makon</h2>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">10 ta tabiiy muhit va fokus tovushidan birini tanlang.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">16 ta muhitdan tanlang yoki ikki tovushni alohida boshqaring.</p>
         </div>
-        <span className={`grid size-9 place-items-center rounded-xl ${playing ? 'bg-[#dcebe4] text-[#47796c]' : 'bg-[#e9e4d4] text-[#887d6b]'}`}><Headphones size={17} /></span>
+        <span className={`grid size-9 place-items-center rounded-xl ${primary.playing || mix.playing ? 'bg-[#dcebe4] text-[#47796c]' : 'bg-[#e9e4d4] text-[#887d6b]'}`}><Headphones size={17} /></span>
       </div>
 
       <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#f5f3ea] p-2.5 dark:bg-[#30322c]">
         <button
           type="button"
-          onClick={() => { void toggle(); }}
+          onClick={() => { void toggle('primary'); }}
           className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white transition-transform hover:scale-105"
-          aria-label={playing ? 'Fon tovushini to‘xtatish' : 'Fon tovushini boshlash'}
+          aria-label={primary.playing ? 'Asosiy fon tovushini to‘xtatish' : 'Asosiy fon tovushini boshlash'}
+          aria-pressed={primary.playing}
           data-testid="button-ambient-studio-toggle"
         >
-          {playing ? <Pause size={15} /> : <Play size={15} />}
+          {primary.playing ? <Pause size={15} /> : <Play size={15} />}
         </button>
-        <p className="min-w-0 flex-1 text-[10px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-ambient-studio">
-          {playing ? <>Ijroda: <span className="font-semibold text-foreground">{selectedOption?.label}</span></> : 'Tovush pauzada'}
-        </p>
-        {playing && <span className="size-2 animate-pulse rounded-full bg-[#47796c]" aria-label="Faol" />}
+        <div className="min-w-0 flex-1 text-[10px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-ambient-studio">
+          {primary.playing ? <>Asosiy: <span className="font-semibold text-foreground">{primaryOption?.label}</span></> : 'Asosiy tovush pauzada'}
+          {mix.playing && <span className="ml-2 text-[#47796c] dark:text-[#b9d7c4]">+ {mixOption?.label}</span>}
+        </div>
+        {(primary.playing || mix.playing) && <span className="size-2 animate-pulse rounded-full bg-[#47796c]" aria-label="Faol" />}
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
         {ambientSounds.map((sound) => {
-          const active = selected === sound.value && playing;
-          const chosen = selected === sound.value;
+          const active = primary.selected === sound.value && primary.playing;
+          const chosen = primary.selected === sound.value;
+          const mixChosen = mix.selected === sound.value;
           return (
             <button
               type="button"
               key={sound.value}
               onClick={() => choose(sound.value)}
               aria-pressed={active}
-              aria-label={`${active ? 'To‘xtatish' : 'Boshlash'}: ${sound.label}`}
-              className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition-colors ${active ? 'border-[#87ac99] bg-[#e0eee7] text-[#315d4e] shadow-sm dark:border-[#527a67] dark:bg-[#263e34] dark:text-[#c5e4d2]' : chosen ? 'border-[#c8c1aa] bg-[#f2efe5] text-foreground dark:bg-[#3b3d35]' : 'border-transparent bg-[#eeece2] text-muted-foreground hover:border-[#c8c1aa] hover:text-foreground dark:bg-[#34362f]'}`}
+              aria-label={`${active ? 'To‘xtatish' : 'Boshlash'}: ${sound.label} · asosiy qatlam`}
+              className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition-colors ${active ? 'border-[#87ac99] bg-[#e0eee7] text-[#315d4e] shadow-sm dark:border-[#527a67] dark:bg-[#263e34] dark:text-[#c5e4d2]' : chosen ? 'border-[#c8c1aa] bg-[#f2efe5] text-foreground dark:bg-[#3b3d35]' : mixChosen ? 'border-[#d4b98c] bg-[#f1eadb] text-foreground dark:border-[#766447] dark:bg-[#3b372c]' : 'border-transparent bg-[#eeece2] text-muted-foreground hover:border-[#c8c1aa] hover:text-foreground dark:bg-[#34362f]'}`}
               data-testid={`button-sound-${sound.value}`}
             >
               <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${active ? 'bg-white/70 dark:bg-black/15' : 'bg-white/60 dark:bg-black/10'}`}>{SOUND_ICONS[sound.value]}</span>
@@ -313,13 +332,13 @@ function AmbientSoundStudio() {
                 <span className="block truncate font-semibold">{sound.label}</span>
                 <span className="mt-0.5 block truncate text-[9px] opacity-70">{sound.description}</span>
               </span>
-              <span className="shrink-0 opacity-70">{active ? <Pause size={12} /> : <Play size={12} />}</span>
+              <span className="shrink-0 opacity-70">{mixChosen && !chosen ? <span className="text-[8px]">2-q</span> : active ? <Pause size={12} /> : <Play size={12} />}</span>
             </button>
           );
         })}
       </div>
 
-      {selected === 'white-noise' && (
+      {primary.selected === 'white-noise' && (
         <div className="mt-3 rounded-xl bg-[#f5f3ea] p-3 dark:bg-[#30322c]" aria-label="Shovqin rangi">
           <p className="mb-2 text-[9px] font-medium text-muted-foreground">Shovqin rangi</p>
           <div className="grid grid-cols-3 gap-1.5">
@@ -327,10 +346,10 @@ function AmbientSoundStudio() {
               <button
                 type="button"
                 key={option.value}
-                onClick={() => setNoiseColor(option.value)}
-                aria-pressed={noiseColor === option.value}
-                className={`rounded-lg px-2 py-1.5 text-[9px] transition-colors ${noiseColor === option.value ? 'bg-[#47796c] font-semibold text-white' : 'bg-white/70 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
-                data-testid={`button-noise-color-${option.value}`}
+                onClick={() => setNoiseColor('primary', option.value)}
+                aria-pressed={primary.noiseColor === option.value}
+                className={`rounded-lg px-2 py-1.5 text-[9px] transition-colors ${primary.noiseColor === option.value ? 'bg-[#47796c] font-semibold text-white' : 'bg-white/70 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
+                data-testid={`button-noise-color-primary-${option.value}`}
               >
                 {option.label}
               </button>
@@ -341,13 +360,57 @@ function AmbientSoundStudio() {
 
       <label className="mt-4 flex items-center gap-3 text-[10px] text-muted-foreground">
         <VolumeX size={13} />
-        <input type="range" min={0} max={100} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume" />
+        <input type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume-primary-studio" />
         <Volume2 size={13} />
-        <span className="w-8 text-right font-mono">{volume}%</span>
+        <span className="w-8 text-right font-mono">{primary.volume}%</span>
       </label>
 
-      <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground">Tovush almashganda yumshoq o‘tish ishlaydi. {selectedOption?.sourceUrl ? <a href={selectedOption.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">Manba: Mixkit · {selectedOption.duration}</a> : 'Shovqin tovushi brauzerda yaratiladi.'}</p>
-      {error && <p className="mt-3 text-[10px] text-destructive" role="alert" data-testid="status-audio-error">{error}</p>}
+      <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground">Qayta ijroda qisqa ustma-ust o‘tish ishlaydi. {primary.selected === 'white-noise' ? 'Shovqin brauzerda yaratiladi.' : primaryOption?.duration && ` · ${primaryOption.duration}`}</p>
+      {sourceDetails(primaryOption, 'link-ambient-source-primary-studio')}
+      {primary.error && <p className="mt-3 text-[10px] text-destructive" role="alert" data-testid="status-audio-error">{primary.error}</p>}
+
+      <div className="mt-4 rounded-xl border border-[#ddd6c5] bg-[#f8f6ec] p-3 dark:border-[#41453d] dark:bg-[#2a2d26]" data-testid="ambient-mix-panel">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold">Ikkinchi qatlam</p>
+            <p className="mt-0.5 text-[9px] text-muted-foreground">Mustaqil ovoz darajasi bilan birga ijro eting.</p>
+          </div>
+          {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white" aria-label={mix.playing ? 'Ikkinchi tovushni to‘xtatish' : 'Ikkinchi tovushni boshlash'} aria-pressed={mix.playing} data-testid="button-ambient-mix-studio-toggle">{mix.playing ? <Pause size={13} /> : <Play size={13} />}</button>}
+        </div>
+        <label className="mt-3 block text-[9px] text-muted-foreground" htmlFor="ambient-mix-select-studio">Aralashtirish uchun tovush</label>
+        <select id="ambient-mix-select-studio" value={mix.selected ?? ''} onChange={(event) => setSelected('mix', event.target.value ? event.target.value as AmbientSound : null)} className="mt-1 w-full rounded-lg border border-[#ddd6c5] bg-white px-2.5 py-2 text-[10px] text-foreground outline-none focus:ring-2 focus:ring-[#87ac99] dark:border-[#41453d] dark:bg-[#22251f]" data-testid="select-ambient-mix-studio">
+          <option value="">Tovush tanlang</option>
+          {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}
+        </select>
+        {mix.selected && (
+          <>
+            {mix.selected === 'white-noise' && (
+              <div className="mt-3 grid grid-cols-3 gap-1.5" aria-label="Ikkinchi qatlam shovqin rangi">
+                {noiseOptions.map((option) => (
+                  <button
+                    type="button"
+                    key={option.value}
+                    onClick={() => setNoiseColor('mix', option.value)}
+                    aria-pressed={mix.noiseColor === option.value}
+                    className={`rounded-lg px-2 py-1.5 text-[9px] transition-colors ${mix.noiseColor === option.value ? 'bg-[#47796c] font-semibold text-white' : 'bg-white/70 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
+                    data-testid={`button-noise-color-mix-${option.value}`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+              <VolumeX size={13} />
+              <input type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Ikkinchi qatlam ovoz balandligi" data-testid="input-ambient-mix-volume-studio" />
+              <Volume2 size={13} />
+              <span className="w-8 text-right font-mono">{mix.volume}%</span>
+            </label>
+            {sourceDetails(mixOption, 'link-ambient-source-mix-studio')}
+            {mix.error && <p className="mt-2 text-[10px] text-destructive" role="alert" data-testid="status-audio-mix-error">{mix.error}</p>}
+          </>
+        )}
+      </div>
     </section>
   );
 }
