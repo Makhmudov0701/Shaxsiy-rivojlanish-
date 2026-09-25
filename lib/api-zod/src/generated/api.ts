@@ -720,21 +720,6 @@ export const CreateTaskResponse = zod.object({
 
 
 /**
- * @summary Fetch a random safe meme for a diary section
- */
-export const FetchMotivationMemeBody = zod.object({
-  "sectionId": zod.enum(['diary', 'focus', 'goals', 'tasks', 'books', 'repetition', 'ideas', 'habits', 'vault'])
-})
-
-export const FetchMotivationMemeResponse = zod.object({
-  "imageUrl": zod.string().url(),
-  "title": zod.string(),
-  "postUrl": zod.string().url(),
-  "subreddit": zod.string()
-})
-
-
-/**
  * @summary Update a task or mark it complete
  */
 

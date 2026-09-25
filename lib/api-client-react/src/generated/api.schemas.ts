@@ -9,32 +9,6 @@ export interface HealthStatus {
   status: string;
 }
 
-export type MotivationMemeSection = typeof MotivationMemeSection[keyof typeof MotivationMemeSection];
-
-
-export const MotivationMemeSection = {
-  diary: 'diary',
-  focus: 'focus',
-  goals: 'goals',
-  tasks: 'tasks',
-  books: 'books',
-  repetition: 'repetition',
-  ideas: 'ideas',
-  habits: 'habits',
-  vault: 'vault',
-} as const;
-
-export interface MotivationMemeRequest {
-  sectionId: MotivationMemeSection;
-}
-
-export interface MotivationMemeResponse {
-  imageUrl: string;
-  title: string;
-  postUrl: string;
-  subreddit: string;
-}
-
 export type Mood = typeof Mood[keyof typeof Mood];
 
 

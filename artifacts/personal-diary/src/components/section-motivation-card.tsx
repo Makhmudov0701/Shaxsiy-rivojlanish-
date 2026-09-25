@@ -1,14 +1,21 @@
-import { Check, ChevronDown, Quote, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { MotivationMemeResponse } from "@workspace/api-client-react";
-import { useFetchMotivationMeme } from "@workspace/api-client-react";
+import { Check, ChevronDown, RefreshCw } from "lucide-react";
+import { useEffect, useState } from "react";
+import { motivationLibraries } from "@/components/section-motivation-library";
 import {
   sectionMotivationContent,
+  type MotivationCategory,
   type SectionId,
 } from "@/components/section-motivation-content";
 
 const collapsedStoragePrefix = "kundalik-section-info-collapsed-";
-const dailyMemeStoragePrefix = "kundalik-section-daily-meme-";
+const legacyDailyMemeStoragePrefix = "kundalik-section-daily-meme-";
+const millisecondsPerDay = 24 * 60 * 60 * 1000;
+const categoryRotationOffsets: Record<MotivationCategory, number> = {
+  diary: 3,
+  focus: 11,
+  repetition: 19,
+  tasks: 27,
+};
 
 function localDateKey() {
   const date = new Date();
@@ -18,70 +25,13 @@ function localDateKey() {
   return `${year}-${month}-${day}`;
 }
 
-function dailyQuoteIndex(sectionId: SectionId, day: string, count: number) {
-  const seed = `${sectionId}:${day}`;
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) | 0;
-  }
-  return Math.abs(hash) % count;
+function dayNumber(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return Math.floor(Date.UTC(year, month - 1, day) / millisecondsPerDay);
 }
 
-function dailyMemeStorageKey(sectionId: SectionId, day: string) {
-  return `${dailyMemeStoragePrefix}${sectionId}-${day}`;
-}
-
-function isHttpsUrl(value: unknown) {
-  if (typeof value !== "string") return false;
-  try {
-    return new URL(value).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-function isMotivationMeme(value: unknown): value is MotivationMemeResponse {
-  if (typeof value !== "object" || value === null) return false;
-  const meme = value as Record<string, unknown>;
-  return isHttpsUrl(meme.imageUrl)
-    && typeof meme.title === "string"
-    && typeof meme.subreddit === "string"
-    && isHttpsUrl(meme.postUrl);
-}
-
-function readCachedMeme(sectionId: SectionId, day: string) {
-  try {
-    const stored = window.localStorage.getItem(dailyMemeStorageKey(sectionId, day));
-    if (!stored) return null;
-    const parsed: unknown = JSON.parse(stored);
-    return isMotivationMeme(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function cacheMeme(sectionId: SectionId, day: string, meme: MotivationMemeResponse) {
-  try {
-    const currentKey = dailyMemeStorageKey(sectionId, day);
-    window.localStorage.setItem(currentKey, JSON.stringify(meme));
-    const sectionPrefix = `${dailyMemeStoragePrefix}${sectionId}-`;
-    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
-      const key = window.localStorage.key(index);
-      if (key?.startsWith(sectionPrefix) && key !== currentKey) {
-        window.localStorage.removeItem(key);
-      }
-    }
-  } catch {
-    // Keep the fetched meme for this visit when browser storage is unavailable.
-  }
-}
-
-function removeCachedMeme(sectionId: SectionId, day: string) {
-  try {
-    window.localStorage.removeItem(dailyMemeStorageKey(sectionId, day));
-  } catch {
-    // Keep the fallback available even when browser storage is unavailable.
-  }
+function dailyMotivationIndex(category: MotivationCategory, day: string, count: number) {
+  return (dayNumber(day) + categoryRotationOffsets[category]) % count;
 }
 
 function initialExpandedState(sectionId: SectionId) {
@@ -92,49 +42,49 @@ function initialExpandedState(sectionId: SectionId) {
   }
 }
 
+function clearLegacyMemeCache() {
+  try {
+    for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+      const key = window.localStorage.key(index);
+      if (key?.startsWith(legacyDailyMemeStoragePrefix)) {
+        window.localStorage.removeItem(key);
+      }
+    }
+  } catch {
+    // Legacy cache cleanup is best-effort when browser storage is unavailable.
+  }
+}
+
 export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
   const section = sectionMotivationContent[sectionId];
+  const library = motivationLibraries[section.motivationCategory];
   const [today, setToday] = useState(localDateKey);
-  const [meme, setMeme] = useState(() => readCachedMeme(sectionId, localDateKey()));
-  const [isLoading, setIsLoading] = useState(() => !readCachedMeme(sectionId, localDateKey()));
-  const [imageFailed, setImageFailed] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
   const [expanded, setExpanded] = useState(() => initialExpandedState(sectionId));
-  const requestedDateRef = useRef<string | null>(null);
-  const { mutate: fetchMeme } = useFetchMotivationMeme();
+  const [manualCycle, setManualCycle] = useState(() => ({
+    day: localDateKey(),
+    sectionId,
+    offset: 0,
+  }));
   const Icon = section.icon;
-  const dailyIndex = dailyQuoteIndex(sectionId, today, section.quotes.length);
-  const fallbackQuote = section.quotes[dailyIndex];
+  const dailyIndex = dailyMotivationIndex(section.motivationCategory, today, library.entries.length);
+  const manualOffset = manualCycle.day === today && manualCycle.sectionId === sectionId
+    ? manualCycle.offset
+    : 0;
+  const currentIndex = (dailyIndex + manualOffset) % library.entries.length;
+  const currentEntry = library.entries[currentIndex];
   const panelId = `section-info-panel-${sectionId}`;
 
-  const requestMeme = useCallback((requestedDate: string) => {
-    setIsLoading(true);
-    setLoadFailed(false);
-    fetchMeme(
-      { data: { sectionId } },
-      {
-        onSuccess: (nextMeme) => {
-          cacheMeme(sectionId, requestedDate, nextMeme);
-          if (requestedDate !== localDateKey()) return;
-          setMeme(nextMeme);
-          setImageFailed(false);
-          setIsLoading(false);
-        },
-        onError: () => {
-          if (requestedDate !== localDateKey()) return;
-          setMeme(null);
-          setImageFailed(false);
-          setLoadFailed(true);
-          setIsLoading(false);
-        },
-      },
-    );
-  }, [fetchMeme, sectionId]);
+  useEffect(() => {
+    clearLegacyMemeCache();
+  }, []);
 
   useEffect(() => {
     const syncDate = () => {
       const currentDate = localDateKey();
       setToday((previousDate) => previousDate === currentDate ? previousDate : currentDate);
+    };
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") syncDate();
     };
     let timer = 0;
     const scheduleMidnightSync = () => {
@@ -147,25 +97,13 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
     };
     scheduleMidnightSync();
     window.addEventListener("focus", syncDate);
+    document.addEventListener("visibilitychange", syncWhenVisible);
     return () => {
       window.clearTimeout(timer);
       window.removeEventListener("focus", syncDate);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
     };
   }, []);
-
-  useEffect(() => {
-    const cachedMeme = readCachedMeme(sectionId, today);
-    setMeme(cachedMeme);
-    setImageFailed(false);
-    setLoadFailed(false);
-    if (cachedMeme) {
-      setIsLoading(false);
-      return;
-    }
-    if (requestedDateRef.current === today) return;
-    requestedDateRef.current = today;
-    requestMeme(today);
-  }, [requestMeme, sectionId, today]);
 
   useEffect(() => {
     try {
@@ -175,19 +113,21 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
     }
   }, [expanded, sectionId]);
 
-  const showNextMeme = () => {
+  const showNextQuote = () => {
     const currentDate = localDateKey();
     if (currentDate !== today) {
       setToday(currentDate);
+      setManualCycle({ day: currentDate, sectionId, offset: 0 });
       return;
     }
-    requestMeme(currentDate);
-  };
-
-  const handleImageError = () => {
-    setImageFailed(true);
-    setMeme(null);
-    removeCachedMeme(sectionId, today);
+    setManualCycle((previous) => {
+      const sameCycle = previous.day === currentDate && previous.sectionId === sectionId;
+      return {
+        day: currentDate,
+        sectionId,
+        offset: sameCycle ? (previous.offset + 1) % library.entries.length : 1 % library.entries.length,
+      };
+    });
   };
 
   return (
@@ -259,12 +199,6 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
                 data-testid={`card-daily-motivation-${sectionId}`}
                 aria-live="polite"
               >
-                <Quote
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -right-2 -top-4 size-28 opacity-[0.09]"
-                  style={{ color: section.accent }}
-                  strokeWidth={1}
-                />
                 <div className="relative">
                   <div className="flex items-center gap-2">
                     <span className="grid size-7 place-items-center rounded-lg" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
@@ -273,65 +207,38 @@ export function SectionMotivationCard({ sectionId }: { sectionId: SectionId }) {
                     <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bugungi motivatsiya</p>
                   </div>
                 </div>
-                {isLoading ? (
-                  <div className="relative flex min-h-[220px] flex-1 flex-col items-center justify-center gap-3 text-muted-foreground" role="status" data-testid={`status-daily-meme-loading-${sectionId}`}>
-                    <RefreshCw size={22} className="animate-spin" style={{ color: section.accent }} />
-                    <span className="text-[12px]">Mem yuklanmoqda…</span>
-                  </div>
-                ) : meme && !imageFailed ? (
-                  <figure className="relative flex flex-1 flex-col justify-center">
-                    <a
-                      href={meme.postUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      tabIndex={expanded ? 0 : -1}
-                      aria-label="Memni Redditda ochish"
-                      data-testid={`link-daily-meme-source-${sectionId}`}
-                    >
-                      <img
-                        src={meme.imageUrl}
-                        alt={meme.title}
-                        onError={handleImageError}
-                        className="h-[220px] max-h-[280px] w-full rounded-xl object-contain sm:h-[240px]"
-                        data-testid={`img-daily-meme-${sectionId}`}
-                      />
-                    </a>
-                    <figcaption className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                      <span className="truncate">Reddit · r/{meme.subreddit}</span>
-                      <a href={meme.postUrl} target="_blank" rel="noreferrer" tabIndex={expanded ? 0 : -1} className="shrink-0 underline underline-offset-2 hover:text-foreground" data-testid={`link-meme-post-${sectionId}`}>
-                        Manba
-                      </a>
-                    </figcaption>
-                  </figure>
-                ) : (
-                  <div className="relative flex min-h-[220px] flex-1 flex-col justify-center">
-                    <Quote
-                      aria-hidden="true"
-                      className="pointer-events-none absolute -right-2 -top-4 size-28 opacity-[0.09]"
-                      style={{ color: section.accent }}
-                      strokeWidth={1}
-                    />
-                    <p key={`${today}-${dailyIndex}`} className="relative mt-5 max-w-[38rem] font-serif text-[clamp(1.5rem,2.5vw,2rem)] leading-[1.08] tracking-[-0.025em] text-foreground" data-testid={`text-daily-quote-${sectionId}`}>
-                      “{fallbackQuote}”
-                    </p>
-                    <p className="relative mt-4 text-[10px] text-muted-foreground" role={loadFailed || imageFailed ? "status" : undefined}>
-                      {imageFailed ? "Rasm ochilmadi — bugungi iqtibos." : loadFailed ? "Mem hozircha yuklanmadi — bugungi iqtibos." : "Bugungi iqtibos"}
-                    </p>
-                  </div>
-                )}
+                <div className="relative flex min-h-[220px] flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
+                  <span
+                    aria-hidden="true"
+                    className="mb-4 grid size-12 place-items-center rounded-2xl border text-[25px] shadow-sm"
+                    style={{
+                      color: section.accent,
+                      backgroundColor: `${section.accent}20`,
+                      borderColor: `${section.accent}42`,
+                    }}
+                  >
+                    {currentEntry.emoji}
+                  </span>
+                  <p className="max-w-[38rem] font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground" data-testid={`text-daily-quote-${sectionId}`}>
+                    “{currentEntry.text}”
+                  </p>
+                  <p className="mt-4 font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                    {section.motivationLabel} · {currentIndex + 1}/{library.entries.length}
+                  </p>
+                </div>
                 <div className="relative mt-5 flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {meme && !imageFailed ? `r/${meme.subreddit}` : `${section.title} · iqtibos`}
+                    {section.eyebrow}
                   </span>
                   <button
                     type="button"
-                    onClick={showNextMeme}
-                    disabled={!expanded || isLoading}
+                    onClick={showNextQuote}
+                    disabled={!expanded}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition-colors hover:bg-background"
-                    aria-label="Keyingi motivatsion memni yuklash"
+                    aria-label="Keyingi motivatsion fikrni ko‘rsatish"
                     data-testid={`button-next-daily-quote-${sectionId}`}
                   >
-                    <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+                    <RefreshCw size={13} />
                     <span>Keyingisi</span>
                   </button>
                 </div>
