@@ -6,6 +6,8 @@ import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } from '@/components/rich-text';
 import { AmbientSoundControl } from '@/components/ambient-sound';
+import { SectionMotivationCard } from '@/components/section-motivation-card';
+import { sectionIdForPath } from '@/components/section-motivation-content';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -156,6 +158,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = location.split('?')[0];
+  const sectionId = sectionIdForPath(pathname);
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
   const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/vault' || (pathname === '/user-portal' && portalView !== 'entries');
@@ -235,7 +238,10 @@ export function DiaryShell({ children }: { children: ReactNode }) {
         </div>
         <Link href="/entry/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-sm" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} />Yozish</Link>
       </header>
-      <main className="min-h-[100dvh] md:pl-[264px]">{children}</main>
+      <main className="min-h-[100dvh] md:pl-[264px]">
+        {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} />}
+        {children}
+      </main>
     </div>
   );
 }
