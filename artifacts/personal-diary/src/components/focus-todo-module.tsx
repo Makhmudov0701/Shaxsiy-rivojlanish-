@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
+  AudioLines,
   BarChart3,
   Bell,
+  Building2,
   Check,
   Circle,
+  CloudLightning,
   Clock3,
   CloudRain,
   Coffee,
   Edit3,
+  Flame,
   FolderOpen,
   Headphones,
   ListChecks,
+  Moon,
+  Music2,
   Pause,
   Play,
   Plus,
@@ -25,9 +31,9 @@ import {
   Waves,
   X,
 } from 'lucide-react';
+import { ambientSounds, useAmbientSound, type AmbientSound } from '@/components/ambient-sound';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
-type SoundKind = 'rain' | 'cafe' | 'forest' | 'whiteNoise';
 type ReportRange = 'kun' | 'hafta' | 'oy';
 type WorkspaceTab = 'timer' | 'tasks' | 'reports' | 'settings';
 
@@ -72,7 +78,6 @@ type WorkspaceData = {
   tasks: FocusTask[];
   sessions: FocusSession[];
   timer: TimerSnapshot;
-  sound: SoundKind | null;
   settings: FocusSettings;
 };
 
@@ -97,7 +102,6 @@ const EMPTY_WORKSPACE: WorkspaceData = {
   tasks: [],
   sessions: [],
   timer: EMPTY_TIMER,
-  sound: null,
   settings: DEFAULT_SETTINGS,
 };
 
@@ -111,13 +115,6 @@ const MODE_COLORS: Record<TimerMode, string> = {
   focus: '#9b6543',
   shortBreak: '#47796c',
   longBreak: '#706283',
-};
-
-const SOUND_INFO: Record<SoundKind, { label: string; icon: ReactNode; description: string }> = {
-  rain: { label: 'Yomg‘ir', icon: <CloudRain size={16} />, description: 'Deraza ortidagi mayin shovqin' },
-  cafe: { label: 'Kafe', icon: <Coffee size={16} />, description: 'Uzoqdagi sokin suhbatlar' },
-  forest: { label: 'O‘rmon', icon: <Trees size={16} />, description: 'Barglar orasidagi yengil shamol' },
-  whiteNoise: { label: 'Oq shovqin', icon: <Waves size={16} />, description: 'Bir tekis, toza fon' },
 };
 
 function makeId(prefix: string) {
@@ -203,7 +200,6 @@ function safeWorkspace(value: unknown): WorkspaceData {
     sessions,
     timer,
     settings,
-    sound: value.sound === 'rain' || value.sound === 'cafe' || value.sound === 'forest' || value.sound === 'whiteNoise' ? value.sound : null,
   };
 }
 
@@ -241,75 +237,34 @@ function playNotification() {
   }
 }
 
-function AmbientSoundStudio({
-  selected,
-  onSelect,
-}: {
-  selected: SoundKind | null;
-  onSelect: (sound: SoundKind | null) => void;
-}) {
-  const audioRef = useRef<{ context: AudioContext; source: AudioBufferSourceNode; gain: GainNode } | null>(null);
-  const [volume, setVolume] = useState(0.22);
-  const [audioError, setAudioError] = useState('');
+const SOUND_ICONS: Record<AmbientSound, ReactNode> = {
+  rain: <CloudRain size={16} />,
+  storm: <CloudLightning size={16} />,
+  forest: <Trees size={16} />,
+  'forest-night': <Moon size={16} />,
+  cafe: <Coffee size={16} />,
+  'white-noise': <AudioLines size={16} />,
+  ocean: <Waves size={16} />,
+  fireplace: <Flame size={16} />,
+  'night-city': <Building2 size={16} />,
+  'lofi-piano': <Music2 size={16} />,
+};
 
-  const stop = () => {
-    if (!audioRef.current) return;
-    try {
-      audioRef.current.source.stop();
-      void audioRef.current.context.close();
-    } catch {
-      // Ovoz oynasi allaqachon yopilgan bo‘lishi mumkin.
-    }
-    audioRef.current = null;
-  };
+function AmbientSoundStudio() {
+  const { selected, playing, volume, noiseColor, error, setVolume, setNoiseColor, play, pause, toggle } = useAmbientSound();
+  const selectedOption = ambientSounds.find((sound) => sound.value === selected);
+  const noiseOptions = [
+    { value: 'white' as const, label: 'Oq' },
+    { value: 'pink' as const, label: 'Pushti' },
+    { value: 'brown' as const, label: 'Jigarrang' },
+  ];
 
-  const start = (kind: SoundKind) => {
-    stop();
-    try {
-      const Constructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Constructor) throw new Error('audio');
-      const context = new Constructor();
-      const buffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
-      const channel = buffer.getChannelData(0);
-      for (let index = 0; index < channel.length; index += 1) {
-        const noise = Math.random() * 2 - 1;
-        channel[index] = kind === 'whiteNoise' ? noise * 0.45 : noise * (kind === 'rain' ? 0.22 : kind === 'cafe' ? 0.1 : 0.07);
-      }
-      const source = context.createBufferSource();
-      const gain = context.createGain();
-      const filter = context.createBiquadFilter();
-      source.buffer = buffer;
-      source.loop = true;
-      filter.type = kind === 'rain' ? 'bandpass' : 'lowpass';
-      filter.frequency.value = kind === 'rain' ? 1800 : kind === 'cafe' ? 900 : kind === 'forest' ? 620 : 4200;
-      gain.gain.value = volume;
-      source.connect(filter);
-      filter.connect(gain);
-      gain.connect(context.destination);
-      source.start();
-      audioRef.current = { context, source, gain };
-      void context.resume();
-      setAudioError('');
-    } catch {
-      setAudioError('Ovoz bu brauzerda ishga tushmadi.');
-      onSelect(null);
-    }
-  };
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.gain.gain.value = volume;
-  }, [volume]);
-
-  useEffect(() => () => stop(), []);
-
-  const choose = (kind: SoundKind) => {
-    if (selected === kind) {
-      stop();
-      onSelect(null);
+  const choose = (kind: AmbientSound) => {
+    if (selected === kind && playing) {
+      pause();
       return;
     }
-    start(kind);
-    onSelect(kind);
+    void play(kind);
   };
 
   return (
@@ -318,31 +273,81 @@ function AmbientSoundStudio({
         <div>
           <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin fon</p>
           <h2 className="mt-1 font-serif text-[26px] leading-none">Ovozli makon</h2>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Diqqatni ushlab turadigan tabiiy tovushni tanlang.</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">10 ta tabiiy muhit va fokus tovushidan birini tanlang.</p>
         </div>
-        <span className={`grid size-9 place-items-center rounded-xl ${selected ? 'bg-[#dcebe4] text-[#47796c]' : 'bg-[#e9e4d4] text-[#887d6b]'}`}><Headphones size={17} /></span>
+        <span className={`grid size-9 place-items-center rounded-xl ${playing ? 'bg-[#dcebe4] text-[#47796c]' : 'bg-[#e9e4d4] text-[#887d6b]'}`}><Headphones size={17} /></span>
       </div>
-      <div className="mt-5 grid grid-cols-2 gap-2">
-        {(Object.keys(SOUND_INFO) as SoundKind[]).map((kind) => (
-          <button
-            type="button"
-            key={kind}
-            onClick={() => choose(kind)}
-            aria-pressed={selected === kind}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-[11px] transition-colors ${selected === kind ? 'border-[#87ac99] bg-[#e0eee7] text-[#315d4e] shadow-sm dark:border-[#527a67] dark:bg-[#263e34] dark:text-[#c5e4d2]' : 'border-transparent bg-[#eeece2] text-muted-foreground hover:border-[#c8c1aa] hover:text-foreground dark:bg-[#34362f]'}`}
-            data-testid={`button-sound-${kind}`}
-          >
-            {SOUND_INFO[kind].icon}
-            <span className="min-w-0"><span className="block font-semibold">{SOUND_INFO[kind].label}</span><span className="mt-0.5 block truncate text-[9px] opacity-70">{SOUND_INFO[kind].description}</span></span>
-          </button>
-        ))}
+
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-[#f5f3ea] p-2.5 dark:bg-[#30322c]">
+        <button
+          type="button"
+          onClick={() => { void toggle(); }}
+          className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white transition-transform hover:scale-105"
+          aria-label={playing ? 'Fon tovushini to‘xtatish' : 'Fon tovushini boshlash'}
+          data-testid="button-ambient-studio-toggle"
+        >
+          {playing ? <Pause size={15} /> : <Play size={15} />}
+        </button>
+        <p className="min-w-0 flex-1 text-[10px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-ambient-studio">
+          {playing ? <>Ijroda: <span className="font-semibold text-foreground">{selectedOption?.label}</span></> : 'Tovush pauzada'}
+        </p>
+        {playing && <span className="size-2 animate-pulse rounded-full bg-[#47796c]" aria-label="Faol" />}
       </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
+        {ambientSounds.map((sound) => {
+          const active = selected === sound.value && playing;
+          const chosen = selected === sound.value;
+          return (
+            <button
+              type="button"
+              key={sound.value}
+              onClick={() => choose(sound.value)}
+              aria-pressed={active}
+              aria-label={`${active ? 'To‘xtatish' : 'Boshlash'}: ${sound.label}`}
+              className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition-colors ${active ? 'border-[#87ac99] bg-[#e0eee7] text-[#315d4e] shadow-sm dark:border-[#527a67] dark:bg-[#263e34] dark:text-[#c5e4d2]' : chosen ? 'border-[#c8c1aa] bg-[#f2efe5] text-foreground dark:bg-[#3b3d35]' : 'border-transparent bg-[#eeece2] text-muted-foreground hover:border-[#c8c1aa] hover:text-foreground dark:bg-[#34362f]'}`}
+              data-testid={`button-sound-${sound.value}`}
+            >
+              <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${active ? 'bg-white/70 dark:bg-black/15' : 'bg-white/60 dark:bg-black/10'}`}>{SOUND_ICONS[sound.value]}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">{sound.label}</span>
+                <span className="mt-0.5 block truncate text-[9px] opacity-70">{sound.description}</span>
+              </span>
+              <span className="shrink-0 opacity-70">{active ? <Pause size={12} /> : <Play size={12} />}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {selected === 'white-noise' && (
+        <div className="mt-3 rounded-xl bg-[#f5f3ea] p-3 dark:bg-[#30322c]" aria-label="Shovqin rangi">
+          <p className="mb-2 text-[9px] font-medium text-muted-foreground">Shovqin rangi</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {noiseOptions.map((option) => (
+              <button
+                type="button"
+                key={option.value}
+                onClick={() => setNoiseColor(option.value)}
+                aria-pressed={noiseColor === option.value}
+                className={`rounded-lg px-2 py-1.5 text-[9px] transition-colors ${noiseColor === option.value ? 'bg-[#47796c] font-semibold text-white' : 'bg-white/70 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
+                data-testid={`button-noise-color-${option.value}`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <label className="mt-4 flex items-center gap-3 text-[10px] text-muted-foreground">
         <VolumeX size={13} />
-        <input type="range" min="0" max="0.6" step="0.01" value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Ovoz balandligi" data-testid="input-ambient-volume" />
+        <input type="range" min={0} max={100} value={volume} onChange={(event) => setVolume(Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume" />
         <Volume2 size={13} />
+        <span className="w-8 text-right font-mono">{volume}%</span>
       </label>
-      {audioError && <p className="mt-3 text-[10px] text-destructive" role="status" data-testid="status-audio-error">{audioError}</p>}
+
+      <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground">Tovush almashganda yumshoq o‘tish ishlaydi. {selectedOption?.sourceUrl ? <a href={selectedOption.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2">Manba: Mixkit · {selectedOption.duration}</a> : 'Shovqin tovushi brauzerda yaratiladi.'}</p>
+      {error && <p className="mt-3 text-[10px] text-destructive" role="alert" data-testid="status-audio-error">{error}</p>}
     </section>
   );
 }
@@ -683,7 +688,7 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
       </div>
       <main className="px-5 py-6 sm:px-8 lg:px-12 lg:py-8">
         <div key={activeTab} className="diary-rise">
-          {activeTab === 'timer' && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,.7fr)]"><FocusTimer timer={workspace.timer} tasks={tasks} settings={workspace.settings} onTimerChange={updateTimer} onSession={addSession} /><div className="space-y-5"><section className="rounded-[24px] border border-[#d8d1bd] bg-card p-5 shadow-sm" data-testid="timer-task-preview"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Keyingi qadam</p><h2 className="mt-1 font-serif text-[26px] leading-none">Bugungi vazifa</h2></div><span className="grid size-9 place-items-center rounded-xl bg-[#e2eee7] text-[#47796c]"><ListChecks size={16} /></span></div><div className="mt-5 rounded-2xl bg-[#f5f3ea] p-4 dark:bg-[#30322c]">{activeTask ? <><p className="text-[13px] font-semibold">{activeTask.title}</p><p className="mt-2 text-[10px] text-muted-foreground">{activeTask.project} · {activeTask.completedPomodoros}/{activeTask.estimate} davr</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-open-tasks">Vazifalar ro‘yxatini ochish</button></> : <><p className="text-[13px] font-semibold">Taymer uchun vazifa tanlang</p><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vazifalar bo‘limidan ish tanlasangiz, sessiya loyihaga biriktiriladi.</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-choose-task"><Plus size={13} /> Vazifa qo‘shish</button></>}</div></section><AmbientSoundStudio selected={workspace.sound} onSelect={(sound) => setWorkspace((current) => ({ ...current, sound }))} /></div></div>}
+          {activeTab === 'timer' && <div className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,.7fr)]"><FocusTimer timer={workspace.timer} tasks={tasks} settings={workspace.settings} onTimerChange={updateTimer} onSession={addSession} /><div className="space-y-5"><section className="rounded-[24px] border border-[#d8d1bd] bg-card p-5 shadow-sm" data-testid="timer-task-preview"><div className="flex items-start justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Keyingi qadam</p><h2 className="mt-1 font-serif text-[26px] leading-none">Bugungi vazifa</h2></div><span className="grid size-9 place-items-center rounded-xl bg-[#e2eee7] text-[#47796c]"><ListChecks size={16} /></span></div><div className="mt-5 rounded-2xl bg-[#f5f3ea] p-4 dark:bg-[#30322c]">{activeTask ? <><p className="text-[13px] font-semibold">{activeTask.title}</p><p className="mt-2 text-[10px] text-muted-foreground">{activeTask.project} · {activeTask.completedPomodoros}/{activeTask.estimate} davr</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-open-tasks">Vazifalar ro‘yxatini ochish</button></> : <><p className="text-[13px] font-semibold">Taymer uchun vazifa tanlang</p><p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">Vazifalar bo‘limidan ish tanlasangiz, sessiya loyihaga biriktiriladi.</p><button type="button" onClick={() => setActiveTab('tasks')} className="mt-4 inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#47796c] hover:underline" data-testid="button-choose-task"><Plus size={13} /> Vazifa qo‘shish</button></>}</div></section><AmbientSoundStudio /></div></div>}
           {activeTab === 'tasks' && <section className="space-y-5" data-testid="task-workspace"><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Ishlar daftarim</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">Vazifalar<span className="text-[#a56c34]">.</span></h2><p className="mt-2 text-[11px] text-muted-foreground">{openCount} ta vazifa ochiq · {tasks.length} ta jami</p></div><div className="rounded-2xl bg-[#e6efe8] px-4 py-3 text-right dark:bg-[#283c32]"><p className="text-[9px] text-[#527463] dark:text-[#b8d6c3]">Pomodoro hisoboti</p><p className="mt-1 font-mono text-[17px] text-[#315d4e] dark:text-[#d1ebd9]">{completedPomodoros}/{estimatedPomodoros} <span className="text-[10px]">davr</span></p></div></div><div className="grid gap-5 xl:grid-cols-[minmax(300px,.7fr)_minmax(0,1.3fr)]"><form onSubmit={submitTask} className="h-fit rounded-2xl border border-border/70 bg-card p-4 shadow-sm" data-testid="form-add-task"><div className="flex items-center gap-2"><Plus size={15} className="text-[#47796c]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Yangi vazifa</p></div><input value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder="Vazifa nomi..." className="mt-4 w-full rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-3 text-[13px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Yangi vazifa nomi" data-testid="input-new-task-title" /><div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1"><input value={newProject} onChange={(event) => setNewProject(event.target.value)} placeholder="Loyiha nomi" className="min-w-0 rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-2.5 text-[11px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Loyiha nomi" data-testid="input-new-task-project" /><select value={newEstimate} onChange={(event) => setNewEstimate(event.target.value)} className="rounded-xl border border-[#d8d1bd] bg-[#f8f6ec] px-3 py-2.5 text-[11px] outline-none dark:border-[#4b4d43] dark:bg-[#30322c]" aria-label="Pomodoro taxmini" data-testid="select-new-task-estimate"><option value="1">1 davr · 25 daq</option><option value="2">2 davr · 50 daq</option><option value="3">3 davr · 75 daq</option><option value="4">4 davr · 100 daq</option><option value="8">8 davr · 200 daq</option></select></div><button type="submit" disabled={!newTitle.trim()} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-3 text-[11px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-add-task"><Plus size={14} /> Qo‘shish</button></form><div className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:p-5"><div className="flex items-center gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Loyiha filtrlari">{projects.map((project) => <button key={project} type="button" role="tab" aria-selected={filter === project} onClick={() => setFilter(project)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-[10px] transition-colors ${filter === project ? 'bg-[#47796c] text-white' : 'bg-muted text-muted-foreground hover:text-foreground'}`} data-testid={`filter-project-${project}`}>{project}</button>)}</div><div className="mt-4 flex items-center justify-between gap-3 border-b border-border/70 pb-3 text-[10px] text-muted-foreground"><span>{activeTask ? `Taymerda: ${activeTask.title}` : 'Taymer uchun vazifani tanlang'}</span><button type="button" onClick={() => setShowCompleted((value) => !value)} className="shrink-0 font-semibold text-[#47796c]" data-testid="button-toggle-completed">{showCompleted ? 'Bajarilganlarni yashirish' : 'Bajarilganlarni ko‘rsatish'}</button></div><div className="mt-4 space-y-5">{visibleTasks.length ? Array.from(new Set(visibleTasks.map((task) => task.project))).map((project) => <div key={project}><div className="mb-2 flex items-center justify-between"><p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[.12em] text-muted-foreground"><FolderOpen size={12} /> {project}</p><span className="text-[9px] text-muted-foreground">{visibleTasks.filter((task) => task.project === project).reduce((sum, task) => sum + task.completedPomodoros, 0)}/{visibleTasks.filter((task) => task.project === project).reduce((sum, task) => sum + task.estimate, 0)} davr</span></div><div className="space-y-2">{visibleTasks.filter((task) => task.project === project).map((task) => <TaskRow key={task.id} task={task} active={task.id === workspace.timer.activeTaskId} onToggle={() => toggleTask(task.id)} onDelete={() => deleteTask(task.id)} onSelect={() => selectTask(task.id)} onEdit={(title) => renameTask(task.id, title)} />)}</div></div>) : <div className="rounded-2xl border border-dashed border-[#d8d1bd] px-4 py-14 text-center dark:border-[#514e40]"><Circle size={20} className="mx-auto text-[#b7ae98]" /><p className="mt-3 font-serif text-[22px]">Bu yer hali ochiq.</p><p className="mt-1 text-[11px] text-muted-foreground">Birinchi vazifangizni yozib, kuningizga shakl bering.</p></div>}</div></div></div></section>}
           {activeTab === 'reports' && <FocusReports sessions={workspace.sessions} tasks={tasks} />}
           {activeTab === 'settings' && <SettingsPanel settings={workspace.settings} timer={workspace.timer} onSettingsChange={(settings) => setWorkspace((current) => ({ ...current, settings }))} onTimerChange={updateTimer} />}
