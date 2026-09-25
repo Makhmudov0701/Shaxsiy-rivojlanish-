@@ -60,8 +60,9 @@ function playGentleAlert(audioContextRef: React.MutableRefObject<AudioContext | 
   }
 }
 
-export function PomodoroTimer() {
+export function PomodoroTimer({ taskName, onClearTask }: { taskName?: string; onClearTask?: () => void } = {}) {
   const [expanded, setExpanded] = useState(false);
+  const [activeTaskName, setActiveTaskName] = useState(taskName?.trim() ?? '');
   const [mode, setMode] = useState<PomodoroMode>('focus');
   const [remainingSeconds, setRemainingSeconds] = useState(MODES.focus.seconds);
   const [isRunning, setIsRunning] = useState(false);
@@ -72,6 +73,13 @@ export function PomodoroTimer() {
   const endAtRef = useRef<number | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (taskName === undefined) return;
+    const nextTask = taskName.trim();
+    setActiveTaskName(nextTask);
+    if (nextTask) setExpanded(true);
+  }, [taskName]);
 
   const clearTimer = () => {
     if (intervalRef.current !== null) {
@@ -177,7 +185,7 @@ export function PomodoroTimer() {
   const progress = 1 - remainingSeconds / modeDetails.seconds;
 
   return (
-    <section className="mb-8 overflow-hidden rounded-[24px] border border-[#d8c795] bg-[#faf3df] shadow-sm dark:border-[#5e5037] dark:bg-[#302a20]" data-testid="pomodoro-timer">
+    <section id="pomodoro-timer" className="mb-8 overflow-hidden rounded-[24px] border border-[#d8c795] bg-[#faf3df] shadow-sm dark:border-[#5e5037] dark:bg-[#302a20]" data-testid="pomodoro-timer">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
@@ -196,7 +204,7 @@ export function PomodoroTimer() {
               <span className="font-serif text-[21px] leading-none text-primary">Diqqat taymeri</span>
               <span className="text-[11px] text-muted-foreground">{modeDetails.label}</span>
             </span>
-              {!expanded && <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">Bir ishni tanlang, 25 daqiqa diqqat qiling, so‘ng dam oling.</span>}
+              {!expanded && <span className="mt-1 block text-[12px] leading-relaxed text-muted-foreground">{activeTaskName ? `Vazifa: ${activeTaskName}` : 'Bir ishni tanlang, 25 daqiqa diqqat qiling, so‘ng dam oling.'}</span>}
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-3">
@@ -207,6 +215,7 @@ export function PomodoroTimer() {
 
       {expanded && (
         <div id="pomodoro-timer-panel" className="border-t border-[#e2d4ad] px-5 pb-5 pt-4 dark:border-[#5a4d38] sm:px-6 sm:pb-6">
+          {activeTaskName && <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#d9c99f] bg-card/70 px-3.5 py-3 dark:border-[#5a4d38]" data-testid="pomodoro-selected-task"><div><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#9a6b23]">Tanlangan vazifa</p><p className="mt-1 break-words text-[13px] font-semibold text-foreground">{activeTaskName}</p></div>{onClearTask && <button type="button" onClick={onClearTask} className="min-h-9 rounded-lg px-2.5 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="button-clear-pomodoro-task">Vazifani olib tashlash</button>}</div>}
           <div className="flex flex-wrap gap-2" role="tablist" aria-label="Taymer rejimlari">
             {(Object.keys(MODES) as PomodoroMode[]).map((item) => (
               <button

@@ -85,6 +85,8 @@ function cardSelection() {
     deckName: repetitionDecksTable.name,
     front: repetitionCardsTable.front,
     back: repetitionCardsTable.back,
+    pronunciation: repetitionCardsTable.pronunciation,
+    exampleSentence: repetitionCardsTable.exampleSentence,
     dueAt: repetitionCardsTable.dueAt,
     intervalDays: repetitionCardsTable.intervalDays,
     easeFactor: repetitionCardsTable.easeFactor,
@@ -303,6 +305,8 @@ protectedRouter.post("/repetition/cards", async (req, res): Promise<void> => {
       deckId: body.data.deckId,
       front: body.data.front.trim(),
       back: body.data.back.trim(),
+      pronunciation: body.data.pronunciation?.trim() || null,
+      exampleSentence: body.data.exampleSentence?.trim() || null,
     })
     .returning({ id: repetitionCardsTable.id });
   const card = created ? await getUserCard(userId, created.id) : undefined;
@@ -341,6 +345,12 @@ protectedRouter.patch("/repetition/cards/:id", async (req, res): Promise<void> =
       deckId: body.data.deckId,
       front: body.data.front.trim(),
       back: body.data.back.trim(),
+      ...(body.data.pronunciation !== undefined
+        ? { pronunciation: body.data.pronunciation?.trim() || null }
+        : {}),
+      ...(body.data.exampleSentence !== undefined
+        ? { exampleSentence: body.data.exampleSentence?.trim() || null }
+        : {}),
     })
     .where(and(
       eq(repetitionCardsTable.id, params.data.id),

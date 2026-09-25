@@ -39,6 +39,8 @@ protectedRouter.get("/tasks", async (_req, res): Promise<void> => {
       description: tasksTable.description,
       category: tasksTable.category,
       dueDate: tasksTable.dueDate,
+      priority: tasksTable.priority,
+      subtasks: tasksTable.subtasks,
       completed: tasksTable.completed,
       completedAt: tasksTable.completedAt,
       createdAt: tasksTable.createdAt,
@@ -74,6 +76,8 @@ protectedRouter.post("/tasks", async (req, res): Promise<void> => {
       description: body.data.description?.trim() || null,
       category: body.data.category,
       dueDate: toCalendarDate(body.data.dueDate) ?? null,
+      priority: body.data.priority ?? "normal",
+      subtasks: body.data.subtasks ?? [],
     })
     .returning({
       id: tasksTable.id,
@@ -81,6 +85,8 @@ protectedRouter.post("/tasks", async (req, res): Promise<void> => {
       description: tasksTable.description,
       category: tasksTable.category,
       dueDate: tasksTable.dueDate,
+      priority: tasksTable.priority,
+      subtasks: tasksTable.subtasks,
       completed: tasksTable.completed,
       completedAt: tasksTable.completedAt,
       createdAt: tasksTable.createdAt,
@@ -136,6 +142,8 @@ protectedRouter.patch("/tasks/:id", async (req, res): Promise<void> => {
   }
   if (body.data.category !== undefined) updates.category = body.data.category;
   if (body.data.dueDate !== undefined) updates.dueDate = toCalendarDate(body.data.dueDate);
+  if (body.data.priority !== undefined) updates.priority = body.data.priority;
+  if (body.data.subtasks !== undefined) updates.subtasks = body.data.subtasks;
   if (body.data.completed !== undefined) {
     updates.completed = body.data.completed;
     updates.completedAt = body.data.completed
@@ -153,6 +161,8 @@ protectedRouter.patch("/tasks/:id", async (req, res): Promise<void> => {
       description: tasksTable.description,
       category: tasksTable.category,
       dueDate: tasksTable.dueDate,
+      priority: tasksTable.priority,
+      subtasks: tasksTable.subtasks,
       completed: tasksTable.completed,
       completedAt: tasksTable.completedAt,
       createdAt: tasksTable.createdAt,

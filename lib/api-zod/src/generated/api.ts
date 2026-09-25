@@ -668,6 +668,10 @@ export const listTasksResponseTitleMax = 160;
 
 export const listTasksResponseDescriptionMax = 1000;
 
+export const listTasksResponseSubtasksItemIdMax = 80;
+
+export const listTasksResponseSubtasksItemTitleMax = 160;
+
 
 
 export const ListTasksResponseItem = zod.object({
@@ -676,6 +680,12 @@ export const ListTasksResponseItem = zod.object({
   "description": zod.string().max(listTasksResponseDescriptionMax).nullable(),
   "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
   "dueDate": zod.coerce.date().nullable(),
+  "priority": zod.enum(['low', 'normal', 'high']),
+  "subtasks": zod.array(zod.object({
+  "id": zod.string().min(1).max(listTasksResponseSubtasksItemIdMax),
+  "title": zod.string().min(1).max(listTasksResponseSubtasksItemTitleMax),
+  "completed": zod.boolean()
+})),
   "completed": zod.boolean(),
   "completedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -691,18 +701,34 @@ export const createTaskBodyTitleMax = 160;
 
 export const createTaskBodyDescriptionMax = 1000;
 
+export const createTaskBodySubtasksItemIdMax = 80;
+
+export const createTaskBodySubtasksItemTitleMax = 160;
+
+export const createTaskBodySubtasksMax = 30;
+
 
 
 export const CreateTaskBody = zod.object({
   "title": zod.string().min(1).max(createTaskBodyTitleMax),
   "description": zod.string().max(createTaskBodyDescriptionMax).nullish(),
   "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
-  "dueDate": zod.coerce.date().nullish()
+  "dueDate": zod.coerce.date().nullish(),
+  "priority": zod.enum(['low', 'normal', 'high']).optional(),
+  "subtasks": zod.array(zod.object({
+  "id": zod.string().min(1).max(createTaskBodySubtasksItemIdMax),
+  "title": zod.string().min(1).max(createTaskBodySubtasksItemTitleMax),
+  "completed": zod.boolean()
+})).max(createTaskBodySubtasksMax).optional()
 })
 
 export const createTaskResponseTitleMax = 160;
 
 export const createTaskResponseDescriptionMax = 1000;
+
+export const createTaskResponseSubtasksItemIdMax = 80;
+
+export const createTaskResponseSubtasksItemTitleMax = 160;
 
 
 
@@ -712,6 +738,12 @@ export const CreateTaskResponse = zod.object({
   "description": zod.string().max(createTaskResponseDescriptionMax).nullable(),
   "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
   "dueDate": zod.coerce.date().nullable(),
+  "priority": zod.enum(['low', 'normal', 'high']),
+  "subtasks": zod.array(zod.object({
+  "id": zod.string().min(1).max(createTaskResponseSubtasksItemIdMax),
+  "title": zod.string().min(1).max(createTaskResponseSubtasksItemTitleMax),
+  "completed": zod.boolean()
+})),
   "completed": zod.boolean(),
   "completedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -733,6 +765,12 @@ export const updateTaskBodyTitleMax = 160;
 
 export const updateTaskBodyDescriptionMax = 1000;
 
+export const updateTaskBodySubtasksItemIdMax = 80;
+
+export const updateTaskBodySubtasksItemTitleMax = 160;
+
+export const updateTaskBodySubtasksMax = 30;
+
 
 
 export const UpdateTaskBody = zod.object({
@@ -740,12 +778,22 @@ export const UpdateTaskBody = zod.object({
   "description": zod.string().max(updateTaskBodyDescriptionMax).nullish(),
   "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']).optional(),
   "dueDate": zod.coerce.date().nullish(),
+  "priority": zod.enum(['low', 'normal', 'high']).optional(),
+  "subtasks": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateTaskBodySubtasksItemIdMax),
+  "title": zod.string().min(1).max(updateTaskBodySubtasksItemTitleMax),
+  "completed": zod.boolean()
+})).max(updateTaskBodySubtasksMax).optional(),
   "completed": zod.boolean().optional()
 })
 
 export const updateTaskResponseTitleMax = 160;
 
 export const updateTaskResponseDescriptionMax = 1000;
+
+export const updateTaskResponseSubtasksItemIdMax = 80;
+
+export const updateTaskResponseSubtasksItemTitleMax = 160;
 
 
 
@@ -755,6 +803,12 @@ export const UpdateTaskResponse = zod.object({
   "description": zod.string().max(updateTaskResponseDescriptionMax).nullable(),
   "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
   "dueDate": zod.coerce.date().nullable(),
+  "priority": zod.enum(['low', 'normal', 'high']),
+  "subtasks": zod.array(zod.object({
+  "id": zod.string().min(1).max(updateTaskResponseSubtasksItemIdMax),
+  "title": zod.string().min(1).max(updateTaskResponseSubtasksItemTitleMax),
+  "completed": zod.boolean()
+})),
   "completed": zod.boolean(),
   "completedAt": zod.coerce.date().nullable(),
   "createdAt": zod.coerce.date(),
@@ -849,6 +903,10 @@ export const DeleteRepetitionDeckResponse = zod.void()
  * Returns all spaced-repetition cards belonging to the signed-in user.
  * @summary List spaced-repetition cards
  */
+export const listRepetitionCardsResponsePronunciationMax = 120;
+
+export const listRepetitionCardsResponseExampleSentenceMax = 2000;
+
 export const listRepetitionCardsResponseIntervalDaysMin = 0;
 
 export const listRepetitionCardsResponseEaseFactorMin = 1.3;
@@ -865,6 +923,8 @@ export const ListRepetitionCardsResponseItem = zod.object({
   "deckName": zod.string(),
   "front": zod.string(),
   "back": zod.string(),
+  "pronunciation": zod.string().max(listRepetitionCardsResponsePronunciationMax).nullable(),
+  "exampleSentence": zod.string().max(listRepetitionCardsResponseExampleSentenceMax).nullable(),
   "dueAt": zod.coerce.date(),
   "intervalDays": zod.number().int().min(listRepetitionCardsResponseIntervalDaysMin),
   "easeFactor": zod.number().min(listRepetitionCardsResponseEaseFactorMin),
@@ -886,13 +946,23 @@ export const createRepetitionCardBodyFrontMax = 5000;
 
 export const createRepetitionCardBodyBackMax = 5000;
 
+export const createRepetitionCardBodyPronunciationMax = 120;
+
+export const createRepetitionCardBodyExampleSentenceMax = 2000;
+
 
 
 export const CreateRepetitionCardBody = zod.object({
   "deckId": zod.number().int().min(1),
   "front": zod.string().min(1).max(createRepetitionCardBodyFrontMax),
-  "back": zod.string().min(1).max(createRepetitionCardBodyBackMax)
+  "back": zod.string().min(1).max(createRepetitionCardBodyBackMax),
+  "pronunciation": zod.string().max(createRepetitionCardBodyPronunciationMax).nullish(),
+  "exampleSentence": zod.string().max(createRepetitionCardBodyExampleSentenceMax).nullish()
 })
+
+export const createRepetitionCardResponsePronunciationMax = 120;
+
+export const createRepetitionCardResponseExampleSentenceMax = 2000;
 
 export const createRepetitionCardResponseIntervalDaysMin = 0;
 
@@ -910,6 +980,8 @@ export const CreateRepetitionCardResponse = zod.object({
   "deckName": zod.string(),
   "front": zod.string(),
   "back": zod.string(),
+  "pronunciation": zod.string().max(createRepetitionCardResponsePronunciationMax).nullable(),
+  "exampleSentence": zod.string().max(createRepetitionCardResponseExampleSentenceMax).nullable(),
   "dueAt": zod.coerce.date(),
   "intervalDays": zod.number().int().min(createRepetitionCardResponseIntervalDaysMin),
   "easeFactor": zod.number().min(createRepetitionCardResponseEaseFactorMin),
@@ -966,13 +1038,23 @@ export const updateRepetitionCardBodyFrontMax = 5000;
 
 export const updateRepetitionCardBodyBackMax = 5000;
 
+export const updateRepetitionCardBodyPronunciationMax = 120;
+
+export const updateRepetitionCardBodyExampleSentenceMax = 2000;
+
 
 
 export const UpdateRepetitionCardBody = zod.object({
   "deckId": zod.number().int().min(1),
   "front": zod.string().min(1).max(updateRepetitionCardBodyFrontMax),
-  "back": zod.string().min(1).max(updateRepetitionCardBodyBackMax)
+  "back": zod.string().min(1).max(updateRepetitionCardBodyBackMax),
+  "pronunciation": zod.string().max(updateRepetitionCardBodyPronunciationMax).nullish(),
+  "exampleSentence": zod.string().max(updateRepetitionCardBodyExampleSentenceMax).nullish()
 })
+
+export const updateRepetitionCardResponsePronunciationMax = 120;
+
+export const updateRepetitionCardResponseExampleSentenceMax = 2000;
 
 export const updateRepetitionCardResponseIntervalDaysMin = 0;
 
@@ -990,6 +1072,8 @@ export const UpdateRepetitionCardResponse = zod.object({
   "deckName": zod.string(),
   "front": zod.string(),
   "back": zod.string(),
+  "pronunciation": zod.string().max(updateRepetitionCardResponsePronunciationMax).nullable(),
+  "exampleSentence": zod.string().max(updateRepetitionCardResponseExampleSentenceMax).nullable(),
   "dueAt": zod.coerce.date(),
   "intervalDays": zod.number().int().min(updateRepetitionCardResponseIntervalDaysMin),
   "easeFactor": zod.number().min(updateRepetitionCardResponseEaseFactorMin),
@@ -1034,6 +1118,10 @@ export const ReviewRepetitionCardBody = zod.object({
   "timeZone": zod.string().min(1).max(reviewRepetitionCardBodyTimeZoneMax)
 })
 
+export const reviewRepetitionCardResponsePronunciationMax = 120;
+
+export const reviewRepetitionCardResponseExampleSentenceMax = 2000;
+
 export const reviewRepetitionCardResponseIntervalDaysMin = 0;
 
 export const reviewRepetitionCardResponseEaseFactorMin = 1.3;
@@ -1050,6 +1138,8 @@ export const ReviewRepetitionCardResponse = zod.object({
   "deckName": zod.string(),
   "front": zod.string(),
   "back": zod.string(),
+  "pronunciation": zod.string().max(reviewRepetitionCardResponsePronunciationMax).nullable(),
+  "exampleSentence": zod.string().max(reviewRepetitionCardResponseExampleSentenceMax).nullable(),
   "dueAt": zod.coerce.date(),
   "intervalDays": zod.number().int().min(reviewRepetitionCardResponseIntervalDaysMin),
   "easeFactor": zod.number().min(reviewRepetitionCardResponseEaseFactorMin),

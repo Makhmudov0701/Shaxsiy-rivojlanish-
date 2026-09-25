@@ -96,7 +96,7 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
           <div className="flex min-w-0 flex-wrap gap-1.5">
           <MoodBadge mood={entry.mood} small />
             <span className="rounded-full bg-[#eee8d5] px-2 py-1 text-[10px] text-[#756d5e]">{entry.folder}</span>
-          {entry.tags.slice(0, 2).map((tag) => <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">#{tag}</span>)}
+          {entry.tags.slice(0, 2).map((tag) => { const taggedMood = tag.startsWith('mood:') ? tag.slice('mood:'.length) as Mood : null; return <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{taggedMood && taggedMood in moodMeta ? `Kayfiyat: ${moodMeta[taggedMood].label}` : `#${tag}`}</span>; })}
         </div>
         <button type="button" onClick={() => onDelete(entry)} className="text-muted-foreground/50 opacity-100 transition-all hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100" aria-label={`${entry.title} yozuvini o‘chirish`} data-testid={`button-delete-${entry.id}`}>
           <span className="font-mono text-[9px] uppercase tracking-[0.12em]">o‘chirish</span>

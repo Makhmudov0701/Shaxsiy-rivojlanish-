@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { TaskCategory } from './taskCategory';
+import type { TaskPriority } from './taskPriority';
+import type { TaskSubtask } from './taskSubtask';
 
 export interface TaskUpdate {
   /**
@@ -21,5 +23,8 @@ export interface TaskUpdate {
   category?: TaskCategory;
   /** @nullable */
   dueDate?: Date | null;
+  priority?: TaskPriority;
+  /** @maxItems 30 */
+  subtasks?: TaskSubtask[];
   completed?: boolean;
 }

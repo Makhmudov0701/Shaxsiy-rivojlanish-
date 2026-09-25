@@ -48,6 +48,8 @@ export const repetitionCardsTable = pgTable(
       .references(() => repetitionDecksTable.id, { onDelete: "cascade" }),
     front: text("front").notNull(),
     back: text("back").notNull(),
+    pronunciation: text("pronunciation"),
+    exampleSentence: text("example_sentence"),
     dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
     intervalDays: integer("interval_days").notNull().default(0),
     easeFactor: real("ease_factor").notNull().default(2.5),

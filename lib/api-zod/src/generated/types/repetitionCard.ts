@@ -12,6 +12,16 @@ export interface RepetitionCard {
   deckName: string;
   front: string;
   back: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  pronunciation: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  exampleSentence: string | null;
   dueAt: Date;
   /** @minimum 0 */
   intervalDays: number;

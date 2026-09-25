@@ -280,6 +280,29 @@ export const TaskCategory = {
   free_time: 'free_time',
 } as const;
 
+export type TaskPriority = typeof TaskPriority[keyof typeof TaskPriority];
+
+
+export const TaskPriority = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+} as const;
+
+export interface TaskSubtask {
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  id: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  completed: boolean;
+}
+
 export interface Task {
   id: number;
   /** @maxLength 160 */
@@ -292,6 +315,8 @@ export interface Task {
   category: TaskCategory;
   /** @nullable */
   dueDate: string | null;
+  priority: TaskPriority;
+  subtasks: TaskSubtask[];
   completed: boolean;
   /** @nullable */
   completedAt: string | null;
@@ -313,6 +338,9 @@ export interface TaskInput {
   category: TaskCategory;
   /** @nullable */
   dueDate?: string | null;
+  priority?: TaskPriority;
+  /** @maxItems 30 */
+  subtasks?: TaskSubtask[];
 }
 
 export interface TaskUpdate {
@@ -329,6 +357,9 @@ export interface TaskUpdate {
   category?: TaskCategory;
   /** @nullable */
   dueDate?: string | null;
+  priority?: TaskPriority;
+  /** @maxItems 30 */
+  subtasks?: TaskSubtask[];
   completed?: boolean;
 }
 
@@ -338,6 +369,16 @@ export interface RepetitionCard {
   deckName: string;
   front: string;
   back: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  pronunciation: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  exampleSentence: string | null;
   dueAt: string;
   /** @minimum 0 */
   intervalDays: number;
@@ -383,6 +424,16 @@ export interface RepetitionCardInput {
      * @maxLength 5000
      */
   back: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  pronunciation?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  exampleSentence?: string | null;
 }
 
 export type RepetitionRating = typeof RepetitionRating[keyof typeof RepetitionRating];

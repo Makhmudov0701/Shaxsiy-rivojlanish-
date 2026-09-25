@@ -183,7 +183,7 @@ function FolderTagOverview({ entries, loading, onFolderClick, onTagClick }: { en
               <div className="mt-4 flex flex-wrap gap-2">
                 {tags.map(([tag, count]) => (
                   <button key={tag} type="button" onClick={() => onTagClick(tag)} className="rounded-full border border-[#c9dfcf] bg-card/70 px-3 py-2 text-[11px] text-[#35614f] transition-colors hover:border-[#78a98c] hover:bg-card dark:border-[#416c55] dark:text-[#b5d9c4]">
-                    #{tag} <span className="ml-1 font-mono text-[9px] opacity-70">{count}</span>
+                    {entryTagLabel(tag)} <span className="ml-1 font-mono text-[9px] opacity-70">{count}</span>
                   </button>
                 ))}
               </div>
@@ -341,7 +341,36 @@ export function UserPortalPage() {
 }
 
 function normalizeTags(value: string) {
-  return [...new Set(value.split(/[,\s]+/).map((tag) => tag.replace(/^#+/, '').trim().toLowerCase()).filter(Boolean))].slice(0, 8);
+  return [...new Set(value.split(/[,\s]+/).map((tag) => tag.replace(/^#+/, '').trim().toLowerCase()).filter(Boolean))];
+}
+
+const reflectionPrompts = [
+  'Bugun qaysi kichik lahza sizga quvonch berdi?',
+  'Bugun nimani o‘zingiz haqingizda bildingiz?',
+  'Bugun kimga yoki nimaga minnatdorchilik bildirasiz?',
+  'Bugun yengib o‘tgan bir qiyinchiligingiz nima edi?',
+  'Ertangi o‘zingizga qanday tilak qoldirasiz?',
+  'Bugun nimaga ko‘proq vaqt ajratishni istardingiz?',
+  'Bugun o‘zingiz bilan faxrlangan paytingiz bo‘ldimi?',
+];
+
+function getDailyReflectionPrompt(date: string) {
+  const day = Math.floor(Date.parse(`${date}T00:00:00.000Z`) / 86_400_000);
+  return reflectionPrompts[Math.abs(day) % reflectionPrompts.length];
+}
+
+function moodTagsFromStoredTags(tags: string[]): Mood[] {
+  return tags.flatMap((tag) => {
+    if (!tag.startsWith('mood:')) return [];
+    const mood = tag.slice('mood:'.length) as Mood;
+    return moods.includes(mood) ? [mood] : [];
+  });
+}
+
+function entryTagLabel(tag: string) {
+  if (!tag.startsWith('mood:')) return `#${tag}`;
+  const mood = tag.slice('mood:'.length) as Mood;
+  return moods.includes(mood) ? `Kayfiyat · ${moodMeta[mood].label}` : `#${tag}`;
 }
 
 function RichEditorToolbar({ preview, onPreview, onFormat }: { preview: boolean; onPreview: () => void; onFormat: (format: RichFormat) => void }) {
@@ -377,6 +406,8 @@ type EntryFormLayoutProps = {
   setEntryDate: (value: string) => void;
   tags: string;
   setTags: (value: string) => void;
+  moodTags: Mood[];
+  setMoodTags: React.Dispatch<React.SetStateAction<Mood[]>>;
   favorite: boolean;
   setFavorite: (value: boolean) => void;
   notice: string;
@@ -405,7 +436,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
   const [showPreview, setShowPreview] = useState(false);
   const {
     entry, isNew, title, setTitle, content, setContent, mood, setMood, energyLevel, setEnergyLevel, energyError, saveReady, folder, setFolder, entryDate, setEntryDate,
-    tags, setTags, favorite, setFavorite, notice, error, photoError, photoList, removedPhotoIds, setRemovedPhotoIds,
+    tags, setTags, moodTags, setMoodTags, favorite, setFavorite, notice, error, photoError, photoList, removedPhotoIds, setRemovedPhotoIds,
     pendingFiles, setPendingFiles, photoPreviews, fileInputRef, addPhotos, isListening, voiceSupported, voicePreview,
     voiceError, toggleVoiceInput, pending, save, exportPdf, exportingPdf,
   } = props;
@@ -440,6 +471,11 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
     }
     editor.dispatchEvent(new Event('input', { bubbles: true }));
   };
+  const reflectionPrompt = getDailyReflectionPrompt(entryDate);
+  const addReflectionPrompt = () => {
+    if (content.includes(reflectionPrompt)) return;
+    setContent(`${content.trim()}${content.trim() ? '\n\n' : ''}> ${reflectionPrompt}\n\n`);
+  };
    return <DiaryShell><div className="mx-auto max-w-[900px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
        <div className="flex flex-wrap items-center justify-between gap-3"><Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-back"><ArrowLeft size={17} /> {isNew ? 'Kundalikka qaytish' : 'Yozuvga qaytish'}</Link>{!isNew && entry && <button type="button" onClick={exportPdf} disabled={pending || exportingPdf} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-[13px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:cursor-wait disabled:opacity-60" data-testid="button-export-entry-pdf"><Download size={16} />{exportingPdf ? 'Tayyorlanmoqda…' : 'PDF olish'}</button>}</div>
        <div className="mt-5"><PomodoroTimer /></div>
@@ -458,6 +494,10 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
            </div>
          </header>
           <div className="px-4 pb-5 sm:px-7">
+           <section className="mt-5 flex flex-col gap-3 rounded-2xl border border-[#d8c795] bg-[#faf3df] p-4 dark:border-[#5e5037] dark:bg-[#302a20] sm:flex-row sm:items-center sm:justify-between" data-testid="daily-reflection-prompt">
+             <div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Bugungi mulohaza</p><p className="mt-1 text-[13px] leading-relaxed text-foreground">{reflectionPrompt}</p></div>
+             <button type="button" onClick={addReflectionPrompt} disabled={pending} className="min-h-10 shrink-0 rounded-xl border border-[#cdbd8e] bg-card px-3 text-[11px] font-semibold text-foreground transition-colors hover:bg-[#f8e9bf] disabled:opacity-50" data-testid="button-insert-reflection-prompt">Savolni matnga qo‘shish</button>
+           </section>
           <RichEditorToolbar preview={showPreview} onPreview={() => setShowPreview((value) => !value)} onFormat={applyVisualFormat} />
            {showPreview ? <div className="min-h-[240px] py-5"><RichTextPreview content={content} /></div> : <VisualRichTextEditor ref={editorRef} value={content} onChange={setContent} disabled={pending} />}
            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground"><span>{richTextWordCount(content)} ta so‘z</span><span aria-hidden="true">·</span><span>{estimatedReadingMinutes(content)} daqiqa o‘qish</span></div>
@@ -469,6 +509,10 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
           <div className="rounded-2xl border border-[#d8cdaf] bg-[#fbf6e9] p-4 dark:border-[#5d523f] dark:bg-[#2d291f]" data-testid="voice-input-panel">
            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Ovozli yozish</p><p className="mt-1 text-[11px] text-muted-foreground">{isListening ? 'Sizni tinglayapman. Gapiring.' : 'Gapiring — so‘zlaringiz matnga aylanadi.'}</p></div><button type="button" onClick={toggleVoiceInput} disabled={pending || (!voiceSupported && !isListening)} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-55 ${isListening ? 'border-[#b75539] bg-[#f4ddd4] text-[#9d432d]' : 'border-[#cdbd8e] bg-card text-foreground hover:border-[#b89c5c] hover:bg-[#f8e9bf]'}`} aria-label={isListening ? 'Ovozli yozishni to‘xtatish' : 'Ovoz orqali yozish'} data-testid="button-voice-input">{isListening ? <MicOff size={15} /> : <Mic size={15} />}{isListening ? 'To‘xtatish' : 'Ovoz orqali yozish'}</button></div>
            {isListening && <p className="mt-3 flex items-center gap-2 text-[11px] text-[#9d432d]" aria-live="polite"><span className="size-2 animate-pulse rounded-full bg-[#b75539]" />{voicePreview || 'Tinglanmoqda...'}</p>}{!voiceSupported && <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.</p>}{voiceError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert"><CircleAlert size={14} className="mt-0.5 shrink-0" />{voiceError}</p>}
+           <div className="mt-4 flex items-start gap-3 rounded-xl border border-dashed border-border bg-card/60 p-3" data-testid="audio-note-placeholder">
+             <Mic size={16} className="mt-0.5 shrink-0 text-muted-foreground" />
+             <div><p className="text-[12px] font-semibold">Qisqa audio-eslatma</p><p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">Audio yozib biriktirish imkoniyati tayyorlanmoqda. Hozircha ovozli yozish orqali gaplaringizni matnga aylantirishingiz mumkin.</p></div>
+           </div>
          </div>
           <div className="rounded-2xl border border-card-border bg-card p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[14px] font-semibold">Suratlar</p><p className="mt-1 text-[12px] text-muted-foreground">Xotirangizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-[13px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={17} /> Surat tanlash</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-10 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={17} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-10 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={17} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[13px] leading-relaxed text-destructive"><CircleAlert size={16} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">Suratlar faqat sizga ko‘rinadi.</p></div>
             </div>
@@ -478,6 +522,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-[14px] font-semibold"><span>Qo‘shimcha ma’lumotlar (ixtiyoriy)</span><ChevronDown size={18} className="text-muted-foreground" /></summary>
           <aside className="space-y-5 border-t border-border/70 p-4 sm:p-5">
           <div><p className="text-[14px] font-semibold">Bugun kayfiyatingiz qanday?</p><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">{moods.map((item) => <button type="button" key={item} onClick={() => setMood(item)} className={`min-h-11 rounded-xl px-3 py-2.5 text-left text-[13px] font-medium transition-all ${mood === item ? 'ring-2 ring-[#d9a441]/60' : 'opacity-80 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-${item}`}>{moodMeta[item].label}</button>)}</div></div>
+          <div><p className="text-[14px] font-semibold">Kayfiyat teglari <span className="font-normal text-muted-foreground">(ixtiyoriy, bir nechtasini tanlang)</span></p><div className="mt-3 flex flex-wrap gap-2">{moods.map((item) => { const selected = moodTags.includes(item); return <button type="button" key={item} onClick={() => setMoodTags((current) => selected ? current.filter((moodTag) => moodTag !== item) : [...current, item])} aria-pressed={selected} className={`min-h-10 rounded-full border px-3 py-2 text-[12px] font-medium transition-all ${selected ? 'border-[#b89c5c] shadow-sm' : 'border-border opacity-75 hover:opacity-100'}`} style={{ color: moodMeta[item].color, backgroundColor: moodMeta[item].soft }} data-testid={`button-mood-tag-${item}`}>{selected ? '✓ ' : '+ '}{moodMeta[item].label}</button>; })}</div><p className="mt-2 text-[11px] text-muted-foreground">Kayfiyat teglari va kalit so‘zlar jami 8 tagacha bo‘lishi mumkin.</p></div>
          <EnergySelector value={energyLevel} onChange={setEnergyLevel} disabled={!saveReady || pending || Boolean(energyError)} />
          {energyError && <p className="flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert" data-testid="status-energy-error"><CircleAlert size={14} className="mt-0.5 shrink-0" />{energyError}</p>}
          <div className="grid gap-4 sm:grid-cols-2"><div><label className="text-[13px] font-semibold" htmlFor="entry-folder">Mavzu</label><input id="entry-folder" list="folder-options" value={folder} onChange={(event) => setFolder(event.target.value)} placeholder="Masalan, Oila" maxLength={40} className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-[13px] outline-none placeholder:text-muted-foreground/70 focus:border-[#b89c5c]" data-testid="input-entry-folder" /><datalist id="folder-options">{defaultFolders.map((item) => <option key={item} value={item} />)}</datalist></div><div><label className="text-[13px] font-semibold" htmlFor="entry-tags">Kalit so‘zlar</label><input id="entry-tags" value={tags} onChange={(event) => setTags(event.target.value)} placeholder="Masalan, oila, sayr" className="mt-2 min-h-11 w-full rounded-xl border border-border bg-background px-3 text-[13px] outline-none placeholder:text-muted-foreground/70 focus:border-[#b89c5c]" data-testid="input-entry-tags" /><p className="mt-1 text-[12px] text-muted-foreground">Bir nechta so‘zni vergul bilan ajrating.</p></div></div>
@@ -501,7 +546,8 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
   const [energyReady, setEnergyReady] = useState(false);
   const [folder, setFolder] = useState(entry?.folder ?? defaultFolders[0]);
   const [entryDate, setEntryDate] = useState(entry?.entryDate ?? new Date().toISOString().slice(0, 10));
-  const [tags, setTags] = useState(entry?.tags.join(', ') ?? '');
+  const [tags, setTags] = useState(entry?.tags.filter((tag) => !tag.startsWith('mood:')).join(', ') ?? '');
+  const [moodTags, setMoodTags] = useState<Mood[]>(() => moodTagsFromStoredTags(entry?.tags ?? []));
   const [favorite, setFavorite] = useState(entry?.favorite ?? false);
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -630,7 +676,11 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
           setEnergyError(cause instanceof Error ? cause.message : 'Energiya qaydini saqlab bo‘lmadi.');
         }
       }
-      const normalizedTags = normalizeTags(tags);
+      const normalizedTags = [...normalizeTags(tags), ...moodTags.map((tag) => `mood:${tag}`)];
+      if (normalizedTags.length > 8) {
+        setError('Kayfiyat teglari va kalit so‘zlar jami 8 tadan oshmasin.');
+        return;
+      }
       const saved = isNew
         ? await create.mutateAsync({ data: { title: title.trim(), content: content.trim(), mood, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryInput })
         : entry
@@ -675,7 +725,7 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
     }
   };
   const pending = saving || create.isPending || update.isPending || deletePhoto.isPending;
-  return <EntryFormLayout entry={entry} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} energyError={energyError} saveReady={energyReady} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} tags={tags} setTags={setTags} favorite={favorite} setFavorite={setFavorite} notice={notice || initialNotice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
+  return <EntryFormLayout entry={entry} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} energyError={energyError} saveReady={energyReady} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} tags={tags} setTags={setTags} moodTags={moodTags} setMoodTags={setMoodTags} favorite={favorite} setFavorite={setFavorite} notice={notice || initialNotice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
   return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>
     <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-4 rounded-2xl border border-[#d8cdaF] bg-[#fbf6e9] p-4 dark:border-[#5d523f] dark:bg-[#2d291f]" data-testid="voice-input-panel"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Ovozli yozish</p><p className="mt-1 text-[11px] text-muted-foreground">{isListening ? 'Sizni tinglayapman. Gapiring.' : 'Gapiring — so‘zlaringiz matnga aylanadi.'}</p></div><button type="button" onClick={toggleVoiceInput} disabled={pending || (!voiceSupported && !isListening)} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-55 ${isListening ? 'border-[#b75539] bg-[#f4ddd4] text-[#9d432d] shadow-sm' : 'border-[#cdbd8e] bg-card text-foreground hover:border-[#b89c5c] hover:bg-[#f8e9bf]'}`} aria-label={isListening ? 'Ovozli yozishni to‘xtatish' : 'Ovoz orqali yozish'} data-testid="button-voice-input">{isListening ? <MicOff size={15} /> : <Mic size={15} />}{isListening ? 'To‘xtatish' : 'Ovoz orqali yozish'}</button></div>{isListening && <p className="mt-3 flex items-center gap-2 text-[11px] text-[#9d432d]" aria-live="polite"><span className="size-2 animate-pulse rounded-full bg-[#b75539]" />{voicePreview || 'Tinglanmoqda...'}</p>}{!voiceSupported && <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.</p>}{voiceError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert"><CircleAlert size={14} className="mt-0.5 shrink-0" />{voiceError}</p>}</div><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>

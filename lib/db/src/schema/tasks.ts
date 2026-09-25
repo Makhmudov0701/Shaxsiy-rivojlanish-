@@ -1,8 +1,10 @@
 import { createInsertSchema } from "drizzle-zod";
+import { sql } from "drizzle-orm";
 import {
   date,
   boolean,
   index,
+  jsonb,
   pgEnum,
   pgTable,
   serial,
@@ -10,6 +12,12 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
+
+export type TaskChecklistItem = {
+  id: string;
+  title: string;
+  completed: boolean;
+};
 
 export const taskCategoryEnum = pgEnum("task_category", [
   "important",
@@ -28,6 +36,8 @@ export const tasksTable = pgTable(
     description: text("description"),
     category: taskCategoryEnum("category").notNull(),
     dueDate: date("due_date", { mode: "string" }),
+    priority: text("priority").notNull().default("normal"),
+    subtasks: jsonb("subtasks").$type<TaskChecklistItem[]>().notNull().default(sql`'[]'::jsonb`),
     completed: boolean("completed").notNull().default(false),
     completedAt: timestamp("completed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

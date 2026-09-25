@@ -1,13 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Task, TaskCategory, TaskInput, TaskUpdate } from '@workspace/api-client-react';
+import type { Task, TaskCategory, TaskInput, TaskPriority, TaskSubtask, TaskUpdate } from '@workspace/api-client-react';
 import { getListTasksQueryKey, useCreateTask, useDeleteTask, useListTasks, useUpdateTask } from '@workspace/api-client-react';
-import { CalendarDays, Check, Circle, Clock3, ListTodo, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { CalendarDays, Check, Circle, Clock3, ListTodo, Pencil, Plus, Timer, Trash2, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { DiaryShell } from '@/components/diary-ui';
 import { Form } from '@/components/ui/form';
+import { PomodoroTimer } from '@/components/pomodoro-timer';
 
 type TaskFilter = 'all' | TaskCategory;
 
@@ -16,6 +17,8 @@ type TaskFormValues = {
   description: string;
   category: TaskCategory;
   dueDate: string;
+  priority: TaskPriority;
+  subtasks: TaskSubtask[];
 };
 
 const taskSchema = z.object({
@@ -23,6 +26,12 @@ const taskSchema = z.object({
   description: z.string().max(1000, 'Izoh 1000 belgidan oshmasin.'),
   category: z.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
   dueDate: z.string().optional(),
+  priority: z.enum(['low', 'normal', 'high']),
+  subtasks: z.array(z.object({
+    id: z.string().min(1).max(80),
+    title: z.string().trim().min(1).max(160),
+    completed: z.boolean(),
+  })).max(30),
 });
 
 const categories: Record<TaskCategory, { label: string; short: string; className: string; dot: string }> = {
@@ -42,7 +51,12 @@ const filters: { value: TaskFilter; label: string }[] = [
   { value: 'free_time', label: 'Bo‘sh vaqtda' },
 ];
 
-const emptyForm: TaskFormValues = { title: '', description: '', category: 'this_week', dueDate: '' };
+const emptyForm: TaskFormValues = { title: '', description: '', category: 'this_week', dueDate: '', priority: 'normal', subtasks: [] };
+const priorities: Record<TaskPriority, { label: string; className: string }> = {
+  low: { label: 'Past', className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' },
+  normal: { label: 'O‘rtacha', className: 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200' },
+  high: { label: 'Yuqori', className: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-200' },
+};
 
 function taskIsInCurrentPeriod(task: Task, filter: TaskFilter) {
   if (filter === 'all' || filter === task.category) return true;
@@ -70,9 +84,17 @@ function TaskForm({
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: editingTask
-      ? { title: editingTask.title, description: editingTask.description ?? '', category: editingTask.category, dueDate: editingTask.dueDate ?? '' }
+      ? { title: editingTask.title, description: editingTask.description ?? '', category: editingTask.category, dueDate: editingTask.dueDate ?? '', priority: editingTask.priority, subtasks: editingTask.subtasks }
       : emptyForm,
   });
+  const [subtaskDraft, setSubtaskDraft] = useState('');
+  const subtasks = form.watch('subtasks') ?? [];
+  const addSubtask = () => {
+    const title = subtaskDraft.trim();
+    if (!title || subtasks.length >= 30) return;
+    form.setValue('subtasks', [...subtasks, { id: crypto.randomUUID(), title, completed: false }], { shouldDirty: true });
+    setSubtaskDraft('');
+  };
 
   return (
     <Form {...form}>
@@ -97,6 +119,15 @@ function TaskForm({
             <label htmlFor="task-due-date" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Muddat <span className="font-normal normal-case tracking-normal">(ixtiyoriy)</span></label>
             <input id="task-due-date" type="date" {...form.register('dueDate')} className="mt-2 min-h-12 w-full rounded-2xl border border-input bg-background px-3 text-[13px] outline-none transition-colors focus:border-[#b89c5c] focus:ring-2 focus:ring-[#b89c5c]/20" data-testid="input-task-due-date" />
           </div>
+          <div>
+            <label htmlFor="task-priority" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Ustuvorlik</label>
+            <select id="task-priority" {...form.register('priority')} className="mt-2 min-h-12 w-full rounded-2xl border border-input bg-background px-3 text-[13px] outline-none focus:border-[#b89c5c] focus:ring-2 focus:ring-[#b89c5c]/20" data-testid="select-task-priority">{Object.entries(priorities).map(([value, meta]) => <option key={value} value={value}>{meta.label}</option>)}</select>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-border/80 bg-background/60 p-3.5">
+          <div className="flex items-center justify-between gap-3"><div><p className="text-[12px] font-semibold">Qadamlar ro‘yxati</p><p className="mt-1 text-[11px] text-muted-foreground">{subtasks.length}/30 kichik vazifa</p></div><Check size={16} className="text-[#6ea883]" /></div>
+          {subtasks.length > 0 && <ul className="mt-3 space-y-2">{subtasks.map((subtask, index) => <li key={subtask.id} className="flex items-center gap-2"><input type="checkbox" checked={subtask.completed} onChange={(event) => form.setValue('subtasks', subtasks.map((item, itemIndex) => itemIndex === index ? { ...item, completed: event.target.checked } : item), { shouldDirty: true })} aria-label={`${subtask.title} bajarildi`} className="size-4 accent-[#47796c]" /><input value={subtask.title} onChange={(event) => form.setValue('subtasks', subtasks.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item), { shouldDirty: true })} maxLength={160} className="min-h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-[12px]" aria-label={`Qadam ${index + 1}`} data-testid={`input-task-subtask-${index}`} /><button type="button" onClick={() => form.setValue('subtasks', subtasks.filter((_, itemIndex) => itemIndex !== index), { shouldDirty: true })} className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Qadamni o‘chirish"><X size={15} /></button></li>)}</ul>}
+          <div className="mt-3 flex gap-2"><input value={subtaskDraft} onChange={(event) => setSubtaskDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addSubtask(); } }} maxLength={160} placeholder="Kichik qadam qo‘shing..." disabled={subtasks.length >= 30} className="min-h-10 min-w-0 flex-1 rounded-lg border border-input bg-background px-3 text-[12px] disabled:opacity-50" aria-label="Yangi kichik vazifa" data-testid="input-new-task-subtask" /><button type="button" onClick={addSubtask} disabled={!subtaskDraft.trim() || subtasks.length >= 30} className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-lg bg-muted px-3 text-[11px] font-semibold hover:bg-muted/70 disabled:opacity-45" data-testid="button-add-task-subtask"><Plus size={14} /> Qo‘shish</button></div>
         </div>
         {error && <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] text-destructive" role="alert" data-testid="status-task-mutation-error">{error}</p>}
         <div className="flex gap-2 pt-2">
@@ -124,12 +155,15 @@ export function TasksPage() {
   const [deleteError, setDeleteError] = useState('');
   const [toggleError, setToggleError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pomodoroTask, setPomodoroTask] = useState('');
 
   const tasks = tasksQuery.data ?? [];
   const visibleTasks = useMemo(() => {
     const filtered = tasks.filter((task) => taskIsInCurrentPeriod(task, filter));
     return [...filtered].sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
+      const priorityOrder: Record<TaskPriority, number> = { high: 0, normal: 1, low: 2 };
+      if (priorityOrder[a.priority] !== priorityOrder[b.priority]) return priorityOrder[a.priority] - priorityOrder[b.priority];
       if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
       if (a.dueDate) return -1;
       if (b.dueDate) return 1;
@@ -167,6 +201,8 @@ export function TasksPage() {
       category: values.category,
       description: values.description.trim() || null,
       dueDate: values.dueDate || null,
+      priority: values.priority,
+      subtasks: values.subtasks.map((subtask) => ({ ...subtask, title: subtask.title.trim() })),
     };
     if (editingTask) {
       const data: TaskUpdate = payload;
@@ -191,6 +227,19 @@ export function TasksPage() {
     });
   };
 
+  const toggleSubtask = (task: Task, subtaskId: string) => {
+    setToggleError('');
+    updateTask.mutate({ id: task.id, data: { subtasks: task.subtasks.map((subtask) => subtask.id === subtaskId ? { ...subtask, completed: !subtask.completed } : subtask) } }, {
+      onSuccess: invalidate,
+      onError: () => setToggleError('Kichik vazifa holatini saqlab bo‘lmadi. Qayta urinib ko‘ring.'),
+    });
+  };
+
+  const handOffToPomodoro = (task: Task) => {
+    setPomodoroTask(task.title);
+    window.setTimeout(() => document.getElementById('pomodoro-timer')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  };
+
   const removeTask = (task: Task) => {
     if (!window.confirm(`“${task.title}” topshirig‘ini o‘chirishni xohlaysizmi?`)) return;
     setDeleteError('');
@@ -204,6 +253,7 @@ export function TasksPage() {
   return (
     <DiaryShell>
       <div className="mx-auto max-w-[1180px] px-4 py-6 sm:px-8 sm:py-9 lg:px-12 lg:py-12">
+        <PomodoroTimer taskName={pomodoroTask} onClearTask={() => setPomodoroTask('')} />
         <div className="flex flex-wrap items-end justify-between gap-5">
           <div>
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#b89c5c]"><span className="size-1.5 rounded-full bg-[#b89c5c]" /> Shaxsiy reja</div>
@@ -238,11 +288,13 @@ export function TasksPage() {
                   <div className="flex items-start gap-3 pl-1">
                     <button type="button" onClick={() => toggleTask(task)} disabled={updateTask.isPending} className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${task.completed ? 'border-[#6ea883] bg-[#6ea883] text-[#17221c]' : 'border-border text-transparent hover:border-[#6ea883]'}`} aria-label={task.completed ? 'Bajarilmagan deb belgilash' : 'Bajarildi deb belgilash'} aria-pressed={task.completed} data-testid={`button-toggle-task-${task.id}`}>{task.completed ? <Check size={15} strokeWidth={2.5} /> : <Circle size={13} />}</button>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${meta.className}`}>{meta.label}</span>{task.dueDate && <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarDays size={12} />{formatDueDate(task.dueDate)}</span>}</div>
+                      <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${meta.className}`}>{meta.label}</span><span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${priorities[task.priority].className}`}>{priorities[task.priority].label}</span>{task.dueDate && <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarDays size={12} />{formatDueDate(task.dueDate)}</span>}</div>
                       <h2 className={`mt-2 break-words text-[15px] font-semibold leading-snug transition-all duration-300 ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`} data-testid={`text-task-title-${task.id}`}>{task.title}</h2>
                       {task.description && <p className={`mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground ${task.completed ? 'line-through' : ''}`}>{task.description}</p>}
+                      {task.subtasks.length > 0 && <div className="mt-3" data-testid={`task-subtasks-${task.id}`}><p className="mb-1 text-[10px] font-semibold text-muted-foreground">{task.subtasks.filter((subtask) => subtask.completed).length}/{task.subtasks.length} qadam bajarildi</p><ul className="space-y-1">{task.subtasks.map((subtask) => <li key={subtask.id} className="flex items-center gap-2"><input type="checkbox" checked={subtask.completed} disabled={updateTask.isPending} onChange={() => toggleSubtask(task, subtask.id)} aria-label={`${subtask.title} bajarildi`} className="size-4 accent-[#47796c] disabled:opacity-50" /><span className={`min-w-0 break-words text-[11px] ${subtask.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{subtask.title}</span></li>)}</ul></div>}
                     </div>
                     <div className="flex shrink-0 items-center gap-0.5">
+                      <button type="button" onClick={() => handOffToPomodoro(task)} className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-[#dcebe4] hover:text-[#35614f]" aria-label={`${task.title} vazifasini Pomodoro bilan boshlash`} title="Pomodoro taymeri" data-testid={`button-task-pomodoro-${task.id}`}><Timer size={15} /></button>
                       <button type="button" onClick={() => openEdit(task)} disabled={updateTask.isPending || deleteTask.isPending} className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40" aria-label="Topshiriqni tahrirlash" data-testid={`button-edit-task-${task.id}`}><Pencil size={15} /></button>
                       <button type="button" onClick={() => removeTask(task)} disabled={deleteTask.isPending} className="grid size-9 place-items-center rounded-xl text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-40" aria-label="Topshiriqni o‘chirish" data-testid={`button-delete-task-${task.id}`}>{pendingDeleteId === task.id ? <span className="size-3 animate-pulse rounded-full bg-current" /> : <Trash2 size={15} />}</button>
                     </div>

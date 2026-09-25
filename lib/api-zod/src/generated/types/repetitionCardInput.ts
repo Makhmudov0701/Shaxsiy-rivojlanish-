@@ -19,4 +19,14 @@ export interface RepetitionCardInput {
      * @maxLength 5000
      */
   back: string;
+  /**
+     * @maxLength 120
+     * @nullable
+     */
+  pronunciation?: string | null;
+  /**
+     * @maxLength 2000
+     * @nullable
+     */
+  exampleSentence?: string | null;
 }

@@ -1289,7 +1289,7 @@ components:
           minimum: 0
     Task:
       type: object
-      required: [id, title, description, category, dueDate, completed, completedAt, createdAt, updatedAt]
+      required: [id, title, description, category, dueDate, priority, subtasks, completed, completedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -1304,6 +1304,12 @@ components:
         dueDate:
           type: ["string", "null"]
           format: date
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        subtasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/TaskSubtask"
         completed:
           type: boolean
         completedAt:
@@ -1315,6 +1321,21 @@ components:
         updatedAt:
           type: string
           format: date-time
+    TaskSubtask:
+      type: object
+      additionalProperties: false
+      required: [id, title, completed]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 80
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        completed:
+          type: boolean
     TaskInput:
       type: object
       additionalProperties: false
@@ -1332,6 +1353,13 @@ components:
         dueDate:
           type: ["string", "null"]
           format: date
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        subtasks:
+          type: array
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/TaskSubtask"
     TaskUpdate:
       type: object
       additionalProperties: false
@@ -1348,14 +1376,24 @@ components:
         dueDate:
           type: ["string", "null"]
           format: date
+        priority:
+          $ref: "#/components/schemas/TaskPriority"
+        subtasks:
+          type: array
+          maxItems: 30
+          items:
+            $ref: "#/components/schemas/TaskSubtask"
         completed:
           type: boolean
     TaskCategory:
       type: string
       enum: [important, this_week, this_month, this_year, free_time]
+    TaskPriority:
+      type: string
+      enum: [low, normal, high]
     RepetitionCard:
       type: object
-      required: [id, deckId, deckName, front, back, dueAt, intervalDays, easeFactor, repetitions, lapses, learnedAt, lastReviewedAt, createdAt, updatedAt]
+      required: [id, deckId, deckName, front, back, pronunciation, exampleSentence, dueAt, intervalDays, easeFactor, repetitions, lapses, learnedAt, lastReviewedAt, createdAt, updatedAt]
       properties:
         id:
           type: integer
@@ -1367,6 +1405,12 @@ components:
           type: string
         back:
           type: string
+        pronunciation:
+          type: ["string", "null"]
+          maxLength: 120
+        exampleSentence:
+          type: ["string", "null"]
+          maxLength: 2000
         dueAt:
           type: string
           format: date-time
@@ -1433,6 +1477,12 @@ components:
           type: string
           minLength: 1
           maxLength: 5000
+        pronunciation:
+          type: ["string", "null"]
+          maxLength: 120
+        exampleSentence:
+          type: ["string", "null"]
+          maxLength: 2000
     RepetitionReviewInput:
       type: object
       additionalProperties: false

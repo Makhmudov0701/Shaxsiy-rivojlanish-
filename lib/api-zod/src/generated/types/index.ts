@@ -51,5 +51,7 @@ export * from './restoreDiaryBackupResult';
 export * from './task';
 export * from './taskCategory';
 export * from './taskInput';
+export * from './taskPriority';
+export * from './taskSubtask';
 export * from './taskUpdate';
 export * from './unauthorizedResponse';
