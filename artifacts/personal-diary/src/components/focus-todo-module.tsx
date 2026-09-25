@@ -44,6 +44,7 @@ type FocusSettings = {
   notificationSound: boolean;
   strictMode: boolean;
 };
+type DurationSettingKey = 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes';
 
 type FocusTask = {
   id: string;
@@ -87,6 +88,12 @@ const DEFAULT_SETTINGS: FocusSettings = {
   longBreakMinutes: 15,
   notificationSound: true,
   strictMode: false,
+};
+const MAX_TIMER_MINUTES = 180;
+const DURATION_PRESETS: Record<DurationSettingKey, number[]> = {
+  focusMinutes: [25, 45, 60],
+  shortBreakMinutes: [5, 10, 15],
+  longBreakMinutes: [15, 30, 45],
 };
 
 const EMPTY_TIMER: TimerSnapshot = {
@@ -141,20 +148,37 @@ function formatClock(seconds: number) {
 
 function secondsForMode(mode: TimerMode, settings: FocusSettings) {
   const minutes = mode === 'focus' ? settings.focusMinutes : mode === 'shortBreak' ? settings.shortBreakMinutes : settings.longBreakMinutes;
-  return Math.max(1, minutes) * 60;
+  return Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(minutes))) * 60;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function safeDuration(value: unknown, fallback: number) {
+  const parsed = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim()
+      ? Number(value)
+      : Number.NaN;
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(parsed)));
+}
+
+function parseDurationInput(value: string): number | null {
+  if (!/^\d+$/.test(value)) return null;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) return null;
+  return Math.min(MAX_TIMER_MINUTES, parsed);
+}
+
 function safeWorkspace(value: unknown): WorkspaceData {
   if (!isObject(value)) return EMPTY_WORKSPACE;
   const rawSettings = isObject(value.settings) ? value.settings : {};
   const settings: FocusSettings = {
-    focusMinutes: Math.min(120, Math.max(1, Number(rawSettings.focusMinutes) || 25)),
-    shortBreakMinutes: Math.min(60, Math.max(1, Number(rawSettings.shortBreakMinutes) || 5)),
-    longBreakMinutes: Math.min(120, Math.max(1, Number(rawSettings.longBreakMinutes) || 15)),
+    focusMinutes: safeDuration(rawSettings.focusMinutes, DEFAULT_SETTINGS.focusMinutes),
+    shortBreakMinutes: safeDuration(rawSettings.shortBreakMinutes, DEFAULT_SETTINGS.shortBreakMinutes),
+    longBreakMinutes: safeDuration(rawSettings.longBreakMinutes, DEFAULT_SETTINGS.longBreakMinutes),
     notificationSound: rawSettings.notificationSound !== false,
     strictMode: Boolean(rawSettings.strictMode),
   };
@@ -639,16 +663,115 @@ function FocusReports({ sessions, tasks }: { sessions: FocusSession[]; tasks: Fo
 }
 
 function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { settings: FocusSettings; timer: TimerSnapshot; onSettingsChange: (settings: FocusSettings) => void; onTimerChange: (timer: TimerSnapshot) => void }) {
-  const updateDuration = (key: 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes', value: string) => {
-    const next = { ...settings, [key]: Math.min(120, Math.max(1, Number(value) || 1)) };
-    onSettingsChange(next);
-    if (!timer.running) onTimerChange({ ...timer, remaining: secondsForMode(timer.mode, next) });
+  const [drafts, setDrafts] = useState<Record<DurationSettingKey, string>>(() => ({
+    focusMinutes: String(settings.focusMinutes),
+    shortBreakMinutes: String(settings.shortBreakMinutes),
+    longBreakMinutes: String(settings.longBreakMinutes),
+  }));
+
+  useEffect(() => {
+    setDrafts({
+      focusMinutes: String(settings.focusMinutes),
+      shortBreakMinutes: String(settings.shortBreakMinutes),
+      longBreakMinutes: String(settings.longBreakMinutes),
+    });
+  }, [settings.focusMinutes, settings.shortBreakMinutes, settings.longBreakMinutes]);
+
+  const applyDuration = (key: DurationSettingKey, minutes: number) => {
+    const safeMinutes = Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(minutes)));
+    const nextSettings = { ...settings, [key]: safeMinutes };
+    onSettingsChange(nextSettings);
+
+    const activeDurationKey: DurationSettingKey = timer.mode === 'focus'
+      ? 'focusMinutes'
+      : timer.mode === 'shortBreak'
+        ? 'shortBreakMinutes'
+        : 'longBreakMinutes';
+    if (key !== activeDurationKey) return;
+
+    const nextRemaining = secondsForMode(timer.mode, nextSettings);
+    onTimerChange({
+      ...timer,
+      remaining: nextRemaining,
+      endAt: timer.running ? Date.now() + nextRemaining * 1000 : null,
+    });
   };
+
+  const updateDurationDraft = (key: DurationSettingKey, value: string) => {
+    const minutes = parseDurationInput(value);
+    if (minutes === null) {
+      setDrafts((current) => ({ ...current, [key]: value }));
+      return;
+    }
+    setDrafts((current) => ({ ...current, [key]: Number(value) > MAX_TIMER_MINUTES ? String(MAX_TIMER_MINUTES) : value }));
+    applyDuration(key, minutes);
+  };
+
+  const finishDurationEdit = (key: DurationSettingKey) => {
+    const minutes = parseDurationInput(drafts[key]);
+    setDrafts((current) => ({ ...current, [key]: String(minutes ?? settings[key]) }));
+  };
+
+  const durationFields: Array<{ key: DurationSettingKey; label: string }> = [
+    { key: 'focusMinutes', label: 'Diqqat' },
+    { key: 'shortBreakMinutes', label: 'Qisqa tanaffus' },
+    { key: 'longBreakMinutes', label: 'Uzoq tanaffus' },
+  ];
+
   return (
     <section className="space-y-5" data-testid="timer-settings">
       <div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Shaxsiy ritm</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">Taymer sozlamalari</h2><p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">Davrlarni o‘zingizga moslang. O‘zgarishlar shu brauzerdagi shaxsiy ish maydonida saqlanadi.</p></div>
       <div className="grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
-        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6"><div className="flex items-center gap-2"><Settings2 size={16} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Davr davomiyligi</p></div><div className="mt-5 grid gap-3 sm:grid-cols-3">{([['focusMinutes', 'Diqqat', 'Diqqat davri'], ['shortBreakMinutes', 'Qisqa tanaffus', 'Qisqa tanaffus'], ['longBreakMinutes', 'Uzoq tanaffus', 'Uzoq tanaffus']] as const).map(([key, label, aria]) => <label key={key} className="rounded-xl bg-[#f5f1e5] p-4 dark:bg-[#30322c]"><span className="block text-[10px] font-semibold">{label}</span><span className="mt-3 flex items-center gap-2"><input type="number" min="1" max="120" value={settings[key]} onChange={(event) => updateDuration(key, event.target.value)} className="w-full rounded-lg border border-[#d8d1bd] bg-card px-3 py-2 font-mono text-[16px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43]" aria-label={`${aria} davomiyligi`} data-testid={`input-${key}`} /><span className="text-[10px] text-muted-foreground">daqiqa</span></span></label>)}</div><p className="mt-4 text-[10px] text-muted-foreground">Boshlang‘ich qiymatlar: 25 / 5 / 15 daqiqa.</p></div>
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
+          <div className="flex items-center gap-2"><Settings2 size={16} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Davr davomiyligi</p></div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {durationFields.map(({ key, label }) => {
+              const invalid = parseDurationInput(drafts[key]) === null;
+              return (
+                <div key={key} className="rounded-xl bg-[#f5f1e5] p-4 dark:bg-[#30322c]">
+                  <label htmlFor={`input-${key}`} className="block text-[10px] font-semibold">{label}</label>
+                  <span className="mt-3 flex items-center gap-2">
+                    <input
+                      id={`input-${key}`}
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={MAX_TIMER_MINUTES}
+                      step={1}
+                      value={drafts[key]}
+                      onChange={(event) => updateDurationDraft(key, event.target.value)}
+                      onBlur={() => finishDurationEdit(key)}
+                      aria-label={`${label} davomiyligi`}
+                      aria-invalid={invalid}
+                      className="w-full rounded-lg border border-[#d8d1bd] bg-card px-3 py-2 font-mono text-[16px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43]"
+                      data-testid={`input-${key}`}
+                    />
+                    <span className="text-[10px] text-muted-foreground">daqiqa</span>
+                  </span>
+                  <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={`${label} uchun tez tanlovlar`}>
+                    {DURATION_PRESETS[key].map((minutes) => (
+                      <button
+                        key={minutes}
+                        type="button"
+                        onClick={() => {
+                          setDrafts((current) => ({ ...current, [key]: String(minutes) }));
+                          applyDuration(key, minutes);
+                        }}
+                        aria-pressed={settings[key] === minutes}
+                        className={`rounded-full px-2.5 py-1 text-[9px] font-medium transition-colors ${settings[key] === minutes ? 'bg-[#47796c] text-white' : 'bg-white/75 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
+                        data-testid={`button-duration-preset-${key}-${minutes}`}
+                      >
+                        {minutes} daq
+                      </button>
+                    ))}
+                  </div>
+                  {invalid && <p className="mt-2 text-[9px] text-destructive" role="status" aria-live="polite" data-testid={`error-${key}`}>1–180 oralig‘ida butun daqiqa kiriting.</p>}
+                </div>
+              );
+            })}
+          </div>
+          <p className="mt-4 text-[10px] text-muted-foreground">1–180 daqiqa. Qiymatlar darhol saqlanadi; tanlangan davr bo‘lsa, taymer ham yangilanadi.</p>
+        </div>
         <div className="space-y-4">
           <div className="rounded-2xl border border-border/70 bg-card p-5"><div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><Bell size={16} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Bildirishnoma ovozi</p></div><p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Sessiya tugaganda brauzer ichidagi qisqa ovoz yangraydi.</p></div><button type="button" role="switch" aria-checked={settings.notificationSound} onClick={() => onSettingsChange({ ...settings, notificationSound: !settings.notificationSound })} className={`relative h-6 w-11 rounded-full transition-colors ${settings.notificationSound ? 'bg-[#47796c]' : 'bg-muted'}`} data-testid="switch-notification-sound"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.notificationSound ? 'left-6' : 'left-1'}`} /></button></div><button type="button" onClick={playNotification} disabled={!settings.notificationSound} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-test-notification"><Volume2 size={13} /> Ovozini sinash</button></div>
           <div className={`rounded-2xl border p-5 ${settings.strictMode ? 'border-[#c8aa71] bg-[#fff8e7]' : 'border-border/70 bg-card'}`}><div className="flex items-start justify-between gap-4"><div><div className="flex items-center gap-2"><ShieldCheck size={16} className={settings.strictMode ? 'text-[#9b6543]' : 'text-muted-foreground'} /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Qat’iy rejim</p></div><p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">Faol bo‘lsa, diqqat davri tugamaguncha uni o‘tkazib yuborish tugmasi ishlamaydi.</p></div><button type="button" role="switch" aria-checked={settings.strictMode} onClick={() => onSettingsChange({ ...settings, strictMode: !settings.strictMode })} className={`relative h-6 w-11 rounded-full transition-colors ${settings.strictMode ? 'bg-[#9b6543]' : 'bg-muted'}`} data-testid="switch-strict-mode"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.strictMode ? 'left-6' : 'left-1'}`} /></button></div>{settings.strictMode && <p className="mt-4 rounded-xl bg-[#f3e3bd] px-3 py-2 text-[10px] font-medium text-[#745a2f]" role="status" data-testid="status-strict-mode">Qat’iy rejim yoqilgan: diqqat paytida o‘tkazish yopiq, qayta boshlash va pauza esa mavjud.</p>}</div>
