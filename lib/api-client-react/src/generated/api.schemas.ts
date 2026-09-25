@@ -269,6 +269,69 @@ export interface RestoreDiaryBackupResult {
   photosRestored: number;
 }
 
+export type TaskCategory = typeof TaskCategory[keyof typeof TaskCategory];
+
+
+export const TaskCategory = {
+  important: 'important',
+  this_week: 'this_week',
+  this_month: 'this_month',
+  this_year: 'this_year',
+  free_time: 'free_time',
+} as const;
+
+export interface Task {
+  id: number;
+  /** @maxLength 160 */
+  title: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  description: string | null;
+  category: TaskCategory;
+  /** @nullable */
+  dueDate: string | null;
+  completed: boolean;
+  /** @nullable */
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  description?: string | null;
+  category: TaskCategory;
+  /** @nullable */
+  dueDate?: string | null;
+}
+
+export interface TaskUpdate {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title?: string;
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
+  description?: string | null;
+  category?: TaskCategory;
+  /** @nullable */
+  dueDate?: string | null;
+  completed?: boolean;
+}
+
 export interface RepetitionCard {
   id: number;
   deckId: number;

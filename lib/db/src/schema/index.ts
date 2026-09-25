@@ -21,3 +21,4 @@ export * from "./diary-entries";
 export * from "./diary-photos";
 export * from "./user-settings";
 export * from "./repetition";
+export * from "./tasks";

@@ -662,6 +662,120 @@ export const RestoreDiaryBackupResponse = zod.object({
 
 
 /**
+ * @summary List the signed-in user's tasks
+ */
+export const listTasksResponseTitleMax = 160;
+
+export const listTasksResponseDescriptionMax = 1000;
+
+
+
+export const ListTasksResponseItem = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string().max(listTasksResponseTitleMax),
+  "description": zod.string().max(listTasksResponseDescriptionMax).nullable(),
+  "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListTasksResponse = zod.array(ListTasksResponseItem)
+
+
+/**
+ * @summary Create a task
+ */
+export const createTaskBodyTitleMax = 160;
+
+export const createTaskBodyDescriptionMax = 1000;
+
+
+
+export const CreateTaskBody = zod.object({
+  "title": zod.string().min(1).max(createTaskBodyTitleMax),
+  "description": zod.string().max(createTaskBodyDescriptionMax).nullish(),
+  "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
+  "dueDate": zod.coerce.date().nullish()
+})
+
+export const createTaskResponseTitleMax = 160;
+
+export const createTaskResponseDescriptionMax = 1000;
+
+
+
+export const CreateTaskResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string().max(createTaskResponseTitleMax),
+  "description": zod.string().max(createTaskResponseDescriptionMax).nullable(),
+  "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a task or mark it complete
+ */
+
+
+
+export const UpdateTaskParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateTaskBodyTitleMax = 160;
+
+export const updateTaskBodyDescriptionMax = 1000;
+
+
+
+export const UpdateTaskBody = zod.object({
+  "title": zod.string().min(1).max(updateTaskBodyTitleMax).optional(),
+  "description": zod.string().max(updateTaskBodyDescriptionMax).nullish(),
+  "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "completed": zod.boolean().optional()
+})
+
+export const updateTaskResponseTitleMax = 160;
+
+export const updateTaskResponseDescriptionMax = 1000;
+
+
+
+export const UpdateTaskResponse = zod.object({
+  "id": zod.number().int(),
+  "title": zod.string().max(updateTaskResponseTitleMax),
+  "description": zod.string().max(updateTaskResponseDescriptionMax).nullable(),
+  "category": zod.enum(['important', 'this_week', 'this_month', 'this_year', 'free_time']),
+  "dueDate": zod.coerce.date().nullable(),
+  "completed": zod.boolean(),
+  "completedAt": zod.coerce.date().nullable(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a task
+ */
+
+
+
+export const DeleteTaskParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const DeleteTaskResponse = zod.void()
+
+
+/**
  * @summary List spaced-repetition decks
  */
 export const ListRepetitionDecksResponseItem = zod.object({

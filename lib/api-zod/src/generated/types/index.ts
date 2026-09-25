@@ -48,4 +48,8 @@ export * from './repetitionRating';
 export * from './repetitionReviewInput';
 export * from './repetitionStats';
 export * from './restoreDiaryBackupResult';
+export * from './task';
+export * from './taskCategory';
+export * from './taskInput';
+export * from './taskUpdate';
 export * from './unauthorizedResponse';

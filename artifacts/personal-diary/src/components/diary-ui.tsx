@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -197,6 +197,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/user-portal" label="Kundalik" icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected} onNavigate={closeMobile} testId="link-portal" />
               <SidebarNavLink href="/pomodoro" label="Diqqat" icon={<Clock3 size={20} strokeWidth={1.8} />} active={pomodoroSelected} onNavigate={closeMobile} testId="link-pomodoro" />
               <SidebarNavLink href="/goals" label="Maqsadlar" icon={<Star size={20} strokeWidth={1.8} />} active={pathname === '/goals'} onNavigate={closeMobile} testId="link-goals" />
+              <SidebarNavLink href="/tasks" label="Topshiriqlar" icon={<ListTodo size={20} strokeWidth={1.8} />} active={pathname === '/tasks'} onNavigate={closeMobile} testId="link-tasks" />
               <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
               <SidebarNavLink href="/repetition" label="Takrorlash" icon={<Repeat2 size={20} strokeWidth={1.8} />} active={repetitionSelected} onNavigate={closeMobile} testId="link-repetition" />
             </nav>

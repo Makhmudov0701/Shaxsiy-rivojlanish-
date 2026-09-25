@@ -491,3 +491,14 @@
   mix-blend-mode: multiply;
 }
 .cl-formFieldInput::placeholder { color: #756d7e; opacity: 1; }
+
+.task-category-important { background: hsl(4 55% 90%); color: hsl(4 55% 38%); }
+.task-category-week { background: hsl(32 62% 89%); color: hsl(29 60% 39%); }
+.task-category-month { background: hsl(203 46% 88%); color: hsl(203 47% 35%); }
+.task-category-year { background: hsl(275 32% 89%); color: hsl(275 32% 39%); }
+.task-category-free { background: hsl(145 28% 87%); color: hsl(145 31% 32%); }
+.dark .task-category-important { background: hsl(4 42% 25%); color: hsl(4 68% 76%); }
+.dark .task-category-week { background: hsl(32 45% 25%); color: hsl(32 72% 73%); }
+.dark .task-category-month { background: hsl(203 38% 24%); color: hsl(203 70% 73%); }
+.dark .task-category-year { background: hsl(275 29% 25%); color: hsl(275 58% 76%); }
+.dark .task-category-free { background: hsl(145 30% 23%); color: hsl(145 58% 73%); }
