@@ -16,6 +16,8 @@ tags:
     description: Private task management operations
   - name: repetition
     description: Private spaced-repetition cards
+  - name: motivation
+    description: Public motivation meme content
 paths:
   /healthz:
     get:
@@ -632,6 +634,34 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /motivation/meme:
+    post:
+      operationId: fetchMotivationMeme
+      tags: [motivation]
+      summary: Fetch a random safe meme for a diary section
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MotivationMemeRequest"
+      responses:
+        "200":
+          description: A random motivation meme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotivationMemeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "502":
+          description: The free meme source could not provide a usable image
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /tasks/{id}:
     patch:
       operationId: updateTask
@@ -937,6 +967,29 @@ components:
           type: string
       required:
         - status
+    MotivationMemeSection:
+      type: string
+      enum: [diary, focus, goals, tasks, books, repetition, ideas, habits, vault]
+    MotivationMemeRequest:
+      type: object
+      required: [sectionId]
+      properties:
+        sectionId:
+          $ref: "#/components/schemas/MotivationMemeSection"
+    MotivationMemeResponse:
+      type: object
+      required: [imageUrl, title, postUrl, subreddit]
+      properties:
+        imageUrl:
+          type: string
+          format: uri
+        title:
+          type: string
+        postUrl:
+          type: string
+          format: uri
+        subreddit:
+          type: string
     Mood:
       type: string
       enum: [peaceful, happy, grateful, energized, thoughtful, sad, anxious]

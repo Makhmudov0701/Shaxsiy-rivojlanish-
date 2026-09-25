@@ -3,3 +3,4 @@
 - [Diary portability](diary-portability.md) — full backups use authenticated JSON with embedded base64 media; rich text remains local markdown without paid services.
 - [Expo Android module linking](expo-android-module-linking.md) — a local module config is not enough; verify Android project resolution, not just module search.
 - [Active-time heartbeat boundaries](active-time-heartbeats.md) — close foreground intervals on hide/background so capped accrual does not charge suspended time.
+- [Public meme API proxy](motivation-meme-api.md) — the free Meme API lacks browser CORS; proxy requests through the authenticated API and validate images before caching.
