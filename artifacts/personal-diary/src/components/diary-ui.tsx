@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, UserCircle, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -8,7 +8,8 @@ import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } fro
 import { AmbientSoundControl } from '@/components/ambient-sound';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
-import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText } from '@/lib/i18n';
+import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText, useI18n } from '@/lib/i18n';
+import { applyThemePreference, readProfilePreferences, updateProfilePreference, type ThemePreference } from '@/lib/profile-preferences';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -33,20 +34,59 @@ export function LogoMark({ compact = false }: { compact?: boolean }) {
 }
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
+  const { user } = useUser();
+  const [theme, setTheme] = useState<ThemePreference>(() => {
+    if (typeof window === 'undefined') return 'system';
+    if (user?.id) return readProfilePreferences(user.id).value.theme;
+    const saved = window.localStorage.getItem('kundalik-mavzu');
+    return saved === 'qorong‘i' ? 'dark' : saved === 'yorug‘' ? 'light' : 'system';
+  });
 
   useEffect(() => {
+    if (user?.id) {
+      const stored = readProfilePreferences(user.id).value.theme;
+      setTheme(stored);
+      applyThemePreference(stored);
+      return;
+    }
     const saved = window.localStorage.getItem('kundalik-mavzu');
-    const initialDark = saved ? saved === 'qorong‘i' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDark(initialDark);
-    document.documentElement.classList.toggle('dark', initialDark);
-  }, []);
+    const nextTheme: ThemePreference = saved === 'qorong‘i' ? 'dark' : saved === 'yorug‘' ? 'light' : 'system';
+    setTheme(nextTheme);
+    applyThemePreference(nextTheme);
+  }, [user?.id]);
 
+  useEffect(() => {
+    const sync = (event: Event) => {
+      const detail = (event as CustomEvent<{ userId?: string }>).detail;
+      if (detail?.userId !== user?.id || !user?.id) return;
+      const nextTheme = readProfilePreferences(user.id).value.theme;
+      setTheme(nextTheme);
+      applyThemePreference(nextTheme);
+    };
+    const syncTheme = (event: Event) => {
+      const detail = (event as CustomEvent<{ theme?: ThemePreference }>).detail;
+      if (detail?.theme === 'system' || detail?.theme === 'light' || detail?.theme === 'dark') {
+        setTheme(detail.theme);
+      }
+    };
+    window.addEventListener('kundalik-profile-preferences', sync);
+    window.addEventListener('kundalik-theme-preference-changed', syncTheme);
+    return () => {
+      window.removeEventListener('kundalik-profile-preferences', sync);
+      window.removeEventListener('kundalik-theme-preference-changed', syncTheme);
+    };
+  }, [user?.id]);
+
+  const dark = theme === 'dark' || (theme === 'system' && (typeof window !== 'undefined' && (window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false)));
   const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    window.localStorage.setItem('kundalik-mavzu', next ? 'qorong‘i' : 'yorug‘');
+    const next: ThemePreference = dark ? 'light' : 'dark';
+    setTheme(next);
+    applyThemePreference(next);
+    if (user?.id) {
+      updateProfilePreference(user.id, { theme: next });
+    } else {
+      window.localStorage.setItem('kundalik-mavzu', next === 'dark' ? 'qorong‘i' : 'yorug‘');
+    }
   };
 
   return (
@@ -154,13 +194,15 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { signOut } = useClerk();
   const { user } = useUser();
+  const { language } = useI18n();
   const appBasePath = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
   const firstName = user?.firstName || 'Yozuvchi';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = location.split('?')[0];
   const sectionId = sectionIdForPath(pathname);
-  const pageTitle = sectionId
+  const profileLabel = { uz: 'Shaxsiy profil', en: 'Personal profile', ru: 'Личный профиль', ko: '개인 프로필' }[language];
+  const pageTitle = pathname === '/profile' ? profileLabel : sectionId
     ? translateUiText(sectionMotivationContent[sectionId].title)
     : 'Shaxsiy kundalik';
   const query = location.split('?')[1]?.split('#')[0] ?? '';
@@ -207,6 +249,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/tasks" label="Topshiriqlar" icon={<ListTodo size={20} strokeWidth={1.8} />} active={pathname === '/tasks'} onNavigate={closeMobile} testId="link-tasks" />
               <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
               <SidebarNavLink href="/repetition" label="Takrorlash" icon={<Repeat2 size={20} strokeWidth={1.8} />} active={repetitionSelected} onNavigate={closeMobile} testId="link-repetition" />
+               <SidebarNavLink href="/profile" label={profileLabel} icon={<UserCircle size={20} />} active={pathname === '/profile'} onNavigate={closeMobile} testId="link-profile" />
             </nav>
             <button type="button" onClick={() => setMoreOpen((value) => !value)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-[14px] font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" aria-expanded={moreOpen} aria-controls="secondary-navigation" data-testid="button-more-navigation">
               <span className="grid size-6 place-items-center"><ChevronDown size={19} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} /></span>

@@ -194,6 +194,7 @@ export interface DiarySummary {
   thisMonth: number;
   writingStreak: number;
   favoriteCount: number;
+  activeDays: number;
   latestMood: Mood | null;
 }
 

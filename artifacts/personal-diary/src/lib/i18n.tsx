@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useUser } from "@clerk/react";
 import copyData from "./i18n-copy.json";
+import { readProfilePreferences, updateProfilePreference } from "@/lib/profile-preferences";
 
 export const appLanguages = ["uz", "en", "ru", "ko"] as const;
 export type AppLanguage = (typeof appLanguages)[number];
@@ -534,7 +536,14 @@ export function LocalizedText({ children }: { children: ReactNode }) {
 
 export function LanguageSelector({ className = "" }: { className?: string }) {
   const { language, setLanguage } = useI18n();
+  const { user } = useUser();
   const label = translateUiText("Til", language);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const stored = readProfilePreferences(user.id).value;
+    if (stored.language !== language) setLanguage(stored.language);
+  }, [user?.id]);
 
   return (
     <label className={`flex min-w-0 items-center gap-2 ${className}`}>
@@ -545,7 +554,10 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
         value={language}
         onChange={(event) => {
           const nextLanguage = event.target.value;
-          if (isAppLanguage(nextLanguage)) setLanguage(nextLanguage);
+          if (isAppLanguage(nextLanguage)) {
+            setLanguage(nextLanguage);
+            if (user?.id) updateProfilePreference(user.id, { language: nextLanguage });
+          }
         }}
         className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="select-app-language"

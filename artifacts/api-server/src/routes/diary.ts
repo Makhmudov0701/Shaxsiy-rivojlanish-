@@ -167,6 +167,7 @@ protectedRouter.get("/diary/summary", async (_req, res): Promise<void> => {
     thisMonth: entries.filter((entry) => entry.entryDate.startsWith(currentMonth)).length,
     writingStreak: calculateStreak(entries.map((entry) => entry.entryDate)),
     favoriteCount: entries.filter((entry) => entry.favorite).length,
+    activeDays: new Set(entries.map((entry) => entry.entryDate)).size,
     latestMood,
   };
 

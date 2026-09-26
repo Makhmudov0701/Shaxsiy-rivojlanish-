@@ -1157,7 +1157,7 @@ components:
           type: boolean
     DiarySummary:
       type: object
-      required: [totalEntries, thisMonth, writingStreak, favoriteCount, latestMood]
+      required: [totalEntries, thisMonth, writingStreak, favoriteCount, activeDays, latestMood]
       properties:
         totalEntries:
           type: integer
@@ -1166,6 +1166,8 @@ components:
         writingStreak:
           type: integer
         favoriteCount:
+          type: integer
+        activeDays:
           type: integer
         latestMood:
           anyOf:

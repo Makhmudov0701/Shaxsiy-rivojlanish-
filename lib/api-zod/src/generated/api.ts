@@ -26,6 +26,7 @@ export const GetDiarySummaryResponse = zod.object({
   "thisMonth": zod.number().int(),
   "writingStreak": zod.number().int(),
   "favoriteCount": zod.number().int(),
+  "activeDays": zod.number().int(),
   "latestMood": zod.union([zod.enum(['peaceful', 'happy', 'grateful', 'energized', 'thoughtful', 'sad', 'anxious']),zod.null()])
 })
 

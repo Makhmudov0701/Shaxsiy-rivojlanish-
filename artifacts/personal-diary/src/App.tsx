@@ -20,6 +20,7 @@ import { GoalsPage } from '@/pages/goals-page';
 import { BooksPage } from '@/pages/books-page';
 import RepetitionPage from '@/pages/repetition-page';
 import TasksPage from '@/pages/tasks-page';
+import { ProfilePage } from '@/pages/profile-page';
 import {
   Redirect,
   Route,
@@ -141,6 +142,9 @@ function Router() {
         </Route>
         <Route path="/settings">
           <ProtectedPage><SettingsPage /></ProtectedPage>
+        </Route>
+        <Route path="/profile">
+          <ProtectedPage><ProfilePage /></ProtectedPage>
         </Route>
         <Route path="/habits">
           <ProtectedPage><HabitsPage /></ProtectedPage>
