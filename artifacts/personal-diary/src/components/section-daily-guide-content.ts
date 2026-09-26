@@ -41,7 +41,7 @@ const diaryDetails = [
   localized("kichik quvonchlarni ko‘rishga e’tibor beradi.", "draws attention to small joys.", "помогает замечать маленькие радости.", "작은 기쁨에 주의를 기울이게 합니다."),
   localized("qiyin hisni hukmsiz kuzatishga yordam beradi.", "helps observe a difficult feeling without judgment.", "помогает наблюдать трудное чувство без осуждения.", "힘든 감정을 판단 없이 바라보게 합니다."),
   localized("keyingi kun uchun muloyim yo‘nalish qoldiradi.", "leaves a gentle direction for the next day.", "оставляет мягкое направление на следующий день.", "다음 날을 위한 부드러운 방향을 남깁니다."),
-  localized("현재의 힘과 한계를 현실적으로 보여줍니다.", "shows your current energy and limits realistically.", "реалистично показывает ваши силы и границы.", "현재의 에너지와 한계를 현실적으로 보여줍니다."),
+  localized("bugungi quvvat va imkoniyat chegaralaringizni haqqoniy aks ettiradi.", "shows your current energy and limits realistically.", "реалистично показывает ваши силы и границы.", "현재의 에너지와 한계를 현실적으로 보여줍니다."),
   localized("samimiy o‘z-o‘zini anglashni chuqurlashtiradi.", "deepens honest self-understanding.", "углубляет честное понимание себя.", "솔직한 자기 이해를 깊게 합니다."),
   localized("kunlar orasidagi o‘zgarishni ko‘rishga asos beradi.", "creates a basis for seeing change across days.", "даёт основу для замечания перемен между днями.", "날짜별 변화를 살펴볼 바탕을 만듭니다."),
   localized("qarorlar ortidagi hislarni tushunishni osonlashtiradi.", "makes feelings behind decisions easier to understand.", "помогает понять чувства за решениями.", "결정 뒤의 감정을 이해하기 쉽게 합니다."),

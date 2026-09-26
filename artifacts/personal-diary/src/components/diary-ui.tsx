@@ -205,9 +205,15 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const sectionId = sectionIdForPath(pathname);
   const mainSectionLabel = personalDevelopmentLabel(language);
   const profileLabel = { uz: 'Shaxsiy profil', en: 'Personal profile', ru: 'Личный профиль', ko: '개인 프로필' }[language];
-  const pageTitle = pathname === '/profile' ? profileLabel : pathname === '/vault' ? vaultNavigationLabel(language) : sectionId
-    ? translateUiText(sectionMotivationContent[sectionId].title)
-    : mainSectionLabel;
+  const pageTitle = pathname === '/profile'
+    ? profileLabel
+    : pathname === '/vault'
+      ? vaultNavigationLabel(language)
+      : sectionId === 'diary'
+        ? mainSectionLabel
+        : sectionId
+          ? translateUiText(sectionMotivationContent[sectionId].title)
+          : mainSectionLabel;
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
   const brainGymLabel = { uz: 'Xotira va miya', en: 'Memory & Brain Gym', ru: 'Память и мозг', ko: '기억력 훈련' }[language];

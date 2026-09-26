@@ -37,9 +37,9 @@ export interface SectionMotivationContent {
 export const sectionMotivationContent: Record<SectionId, SectionMotivationContent> = {
   diary: {
     id: "diary",
-    title: "Kundalik",
+    title: "Shaxsiy rivojlanish",
     eyebrow: "Fikrlar va kayfiyat uchun shaxsiy makon",
-    motivationLabel: "Kundalik fikri",
+    motivationLabel: "Shaxsiy rivojlanish fikri",
     accent: "#b89c5c",
     icon: BookOpen,
     motivationCategory: "diary",

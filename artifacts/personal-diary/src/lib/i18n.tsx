@@ -35,6 +35,13 @@ const personalDevelopmentTitleCopy: TranslationRow = {
   ko: "자기계발",
 };
 
+const personalDevelopmentThoughtCopy: TranslationRow = {
+  uz: "Shaxsiy rivojlanish fikri",
+  en: "Personal Development Thought",
+  ru: "Мысль о личностном росте",
+  ko: "자기계발에 관한 생각",
+};
+
 const personalDevelopmentBackCopy: TranslationRow = {
   uz: "Shaxsiy rivojlanishga qaytish",
   en: "Back to Personal Development",
@@ -58,6 +65,7 @@ const translations = new Map<string, Record<AppLanguage, string>>();
 for (const { uz, en, ru, ko } of [
   ...catalog.translations,
   personalDevelopmentTitleCopy,
+  personalDevelopmentThoughtCopy,
   personalDevelopmentBackCopy,
   personalDevelopmentSectionsCopy,
 ]) {
