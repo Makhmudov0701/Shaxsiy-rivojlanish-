@@ -1,4 +1,4 @@
-import type { MotivationCategory } from "@/components/section-motivation-content";
+import type { MotivationCategory, SectionId } from "@/components/section-motivation-content";
 import { getMotivationPoolSize } from "@/components/section-motivation-generator";
 
 const millisecondsPerDay = 24 * 60 * 60 * 1000;
@@ -42,11 +42,11 @@ function coprimeStride(seed: number, poolSize: number) {
   return candidate;
 }
 
-export function dailyMotivationIndex(category: MotivationCategory, userId: string, dateKey: string) {
-  const poolSize = getMotivationPoolSize(category);
-  const scope = JSON.stringify([userId, category]);
+function dailyHashedIndex(scope: string, seedPrefix: string, dateKey: string, poolSize: number) {
+  if (!Number.isInteger(poolSize) || poolSize <= 1) return 0;
+  const cacheKey = JSON.stringify([scope, poolSize]);
   const targetDay = calendarDayNumber(dateKey);
-  const cached = dailyIndexCache.get(scope);
+  const cached = dailyIndexCache.get(cacheKey);
   let day: number;
   let index: number;
 
@@ -55,14 +55,14 @@ export function dailyMotivationIndex(category: MotivationCategory, userId: strin
     index = cached.index;
   } else {
     day = calendarDayNumber(dailyIndexAnchor);
-    index = stableHash(`${userId}:${category}:${dailyIndexAnchor}`) % poolSize;
+    index = stableHash(`${seedPrefix}:${dailyIndexAnchor}`) % poolSize;
     if (targetDay < day) {
       for (let previousDay = day - 1; previousDay >= targetDay; previousDay -= 1) {
         const previousDateKey = dateKeyFromDayNumber(previousDay);
-        const candidate = stableHash(`${userId}:${category}:${previousDateKey}`) % poolSize;
+        const candidate = stableHash(`${seedPrefix}:${previousDateKey}`) % poolSize;
         index = candidate === index ? (candidate + poolSize - 1) % poolSize : candidate;
       }
-      dailyIndexCache.set(scope, { day: targetDay, index });
+      dailyIndexCache.set(cacheKey, { day: targetDay, index });
       return index;
     }
   }
@@ -70,16 +70,27 @@ export function dailyMotivationIndex(category: MotivationCategory, userId: strin
   // Hash the exact local YYYY-MM-DD seed; resolve collisions so adjacent days never repeat.
   for (let nextDay = day + 1; nextDay <= targetDay; nextDay += 1) {
     const nextDateKey = dateKeyFromDayNumber(nextDay);
-    const candidate = stableHash(`${userId}:${category}:${nextDateKey}`) % poolSize;
+    const candidate = stableHash(`${seedPrefix}:${nextDateKey}`) % poolSize;
     index = candidate === index ? (candidate + 1) % poolSize : candidate;
   }
 
-  dailyIndexCache.set(scope, { day: targetDay, index });
+  dailyIndexCache.set(cacheKey, { day: targetDay, index });
   if (dailyIndexCache.size > 128) {
     const oldestScope = dailyIndexCache.keys().next().value;
     if (oldestScope) dailyIndexCache.delete(oldestScope);
   }
   return index;
+}
+
+export function dailyMotivationIndex(category: MotivationCategory, userId: string, dateKey: string) {
+  const poolSize = getMotivationPoolSize(category);
+  const scope = JSON.stringify([userId, category]);
+  return dailyHashedIndex(scope, `${userId}:${category}`, dateKey, poolSize);
+}
+
+export function dailySectionGuideIndex(sectionId: SectionId, userId: string, dateKey: string, poolSize: number) {
+  const scope = JSON.stringify([userId, sectionId, "guide"]);
+  return dailyHashedIndex(scope, `${userId}:${sectionId}:guide`, dateKey, poolSize);
 }
 
 export function randomMotivationStride(poolSize: number) {
