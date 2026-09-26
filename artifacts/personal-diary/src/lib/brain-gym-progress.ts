@@ -2,7 +2,16 @@ import { useLocalModuleStorage } from '@/lib/local-module-storage';
 import { localDateKey } from '@/lib/date-utils';
 import { BRAIN_GYM_FACT_IDS } from '@/lib/brain-gym-ids';
 
-export type BrainGymExercise = 'number-matrix' | 'word-chain' | 'spaced-recall';
+export type BrainGymExercise =
+  | 'number-matrix'
+  | 'word-chain'
+  | 'spaced-recall'
+  | 'visual-pattern'
+  | 'stroop'
+  | 'sequence-recall'
+  | 'speed-math'
+  | 'anagrams';
+export type BrainGymDifficulty = 'easy' | 'medium' | 'hard';
 export type RecallInterval = 1 | 3 | 7;
 
 export type BrainGymCompletion = {
@@ -12,6 +21,8 @@ export type BrainGymCompletion = {
   completedAt: string;
   score: number;
   possible: number;
+  /** Optional so progress saved before difficulty support remains valid. */
+  difficulty?: BrainGymDifficulty;
 };
 
 export type BrainGymRecallItem = {
@@ -31,7 +42,17 @@ export const EMPTY_BRAIN_GYM_PROGRESS: BrainGymProgress = {
   recallItems: [],
 };
 
-const exerciseIds = new Set<BrainGymExercise>(['number-matrix', 'word-chain', 'spaced-recall']);
+const exerciseIds = new Set<BrainGymExercise>([
+  'number-matrix',
+  'word-chain',
+  'spaced-recall',
+  'visual-pattern',
+  'stroop',
+  'sequence-recall',
+  'speed-math',
+  'anagrams',
+]);
+const difficulties = new Set<BrainGymDifficulty>(['easy', 'medium', 'hard']);
 const intervals = new Set<RecallInterval>([1, 3, 7]);
 const factIds = new Set<string>(BRAIN_GYM_FACT_IDS);
 const storagePrefix = 'kundalik-brain-gym-v1-';
@@ -61,7 +82,8 @@ function isCompletion(value: unknown): value is BrainGymCompletion {
     && Number.isSafeInteger(value.possible)
     && value.possible >= 1
     && value.score >= 0
-    && value.score <= value.possible;
+    && value.score <= value.possible
+    && (value.difficulty === undefined || (typeof value.difficulty === 'string' && difficulties.has(value.difficulty as BrainGymDifficulty)));
 }
 
 function isRecallItem(value: unknown): value is BrainGymRecallItem {

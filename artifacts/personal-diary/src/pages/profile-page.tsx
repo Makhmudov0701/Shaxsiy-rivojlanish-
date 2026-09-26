@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { useI18n, type AppLanguage } from '@/lib/i18n';
 import { isPersonalGoalList, isTrackedBookList, userStorageKey, type PersonalGoal, type TrackedBook } from '@/lib/local-life-data';
 import { getRecordedFocusMinutes, readFocusWorkspace, type FocusWorkspaceData } from '@/lib/focus-workspace-data';
+import { useBrainGymProgress } from '@/lib/brain-gym-progress';
 import {
   applyThemePreference,
   DEFAULT_PROFILE_PREFERENCES,
@@ -62,6 +63,9 @@ type ProfileCopy = {
   focusHours: string;
   booksFinished: string;
   mastered: string;
+  brainGymRounds: string;
+  brainGymScoreHint: string;
+  brainGymEmpty: string;
   loading: string;
   noData: string;
   refresh: string;
@@ -118,6 +122,9 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     focusHours: 'Diqqat soatlari',
     booksFinished: 'Tugagan kitoblar',
     mastered: 'O‘zlashtirilgan kartochkalar',
+    brainGymRounds: 'Miya mashqlari',
+    brainGymScoreHint: 'O‘rtacha natija: {percent}% · jami {score}/{possible} ball',
+    brainGymEmpty: 'Mashqlar natijalari hozircha yo‘q.',
     loading: 'Ma’lumotlar yuklanmoqda',
     noData: 'Hali ma’lumot yo‘q',
     refresh: 'Qayta urinish',
@@ -172,6 +179,9 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     focusHours: 'Focus hours',
     booksFinished: 'Books finished',
     mastered: 'Cards mastered',
+    brainGymRounds: 'Brain Gym rounds',
+    brainGymScoreHint: '{percent}% average · {score}/{possible} total points',
+    brainGymEmpty: 'No exercise scores yet.',
     loading: 'Loading your data',
     noData: 'No data yet',
     refresh: 'Try again',
@@ -226,6 +236,9 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     focusHours: 'Часы фокуса',
     booksFinished: 'Прочитанные книги',
     mastered: 'Освоенные карточки',
+    brainGymRounds: 'Упражнения для памяти',
+    brainGymScoreHint: 'Средний результат: {percent}% · всего {score}/{possible} баллов',
+    brainGymEmpty: 'Результатов упражнений пока нет.',
     loading: 'Загружаем ваши данные',
     noData: 'Данных пока нет',
     refresh: 'Повторить',
@@ -280,6 +293,9 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     focusHours: '집중 시간',
     booksFinished: '읽은 책',
     mastered: '익힌 카드',
+    brainGymRounds: '기억 훈련 라운드',
+    brainGymScoreHint: '평균 {percent}% · 총 {score}/{possible}점',
+    brainGymEmpty: '아직 운동 점수가 없습니다.',
     loading: '데이터를 불러오는 중',
     noData: '아직 데이터가 없습니다',
     refresh: '다시 시도',
@@ -419,6 +435,7 @@ export function ProfilePage() {
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const repetitionStats = useGetRepetitionStats({ timeZone });
   const cardsQuery = useListRepetitionCards();
+  const brainGym = useBrainGymProgress(user?.id ?? 'pending-user', 'Brain Gym');
   const backupQuery = useDownloadDiaryBackup({ query: { enabled: false, queryKey: getDownloadDiaryBackupQueryKey() } });
 
   useEffect(() => {
@@ -487,8 +504,19 @@ export function ProfilePage() {
   }, [form, user?.id]);
 
   const finishedBooks = useMemo(() => books.filter((book) => book.status === 'finished').length, [books]);
-  const statsError = summary.isError || repetitionStats.isError || cardsQuery.isError;
-  const statsLoading = summary.isLoading || repetitionStats.isLoading || cardsQuery.isLoading;
+  const brainGymTotals = useMemo(() => brainGym.value.completions.reduce(
+    (total, item) => ({ score: total.score + item.score, possible: total.possible + item.possible }),
+    { score: 0, possible: 0 },
+  ), [brainGym.value.completions]);
+  const brainGymPercent = brainGymTotals.possible > 0 ? Math.round((brainGymTotals.score / brainGymTotals.possible) * 100) : 0;
+  const brainGymScoreHint = brainGymTotals.possible > 0
+    ? text.brainGymScoreHint
+      .replace('{percent}', String(brainGymPercent))
+      .replace('{score}', String(brainGymTotals.score))
+      .replace('{possible}', String(brainGymTotals.possible))
+    : text.brainGymEmpty;
+  const statsError = summary.isError || repetitionStats.isError || cardsQuery.isError || brainGym.status === 'error';
+  const statsLoading = summary.isLoading || repetitionStats.isLoading || cardsQuery.isLoading || brainGym.status === 'loading';
 
   if (!isLoaded || !user || !profileReady || profileUserId !== user.id) {
     return <DiaryShell><div className="mx-auto max-w-[1100px] px-5 py-10 sm:px-8 lg:px-14"><div className="skeleton h-3 w-28 rounded-full" /><div className="skeleton mt-5 h-16 w-3/4 max-w-xl rounded-2xl" /><div className="mt-10 grid gap-5 lg:grid-cols-[1.2fr_.8fr]"><div className="skeleton min-h-[480px] rounded-[28px]" /><div className="skeleton min-h-[260px] rounded-[28px]" /></div></div></DiaryShell>;
@@ -618,15 +646,16 @@ export function ProfilePage() {
         </div>
 
         <section className="mt-5 rounded-[28px] border border-card-border bg-card p-5 shadow-sm sm:p-7" data-testid="section-profile-stats">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><h2 className="font-serif text-[31px] leading-none">{text.stats}</h2>{statsError && <button type="button" onClick={() => { void summary.refetch(); void repetitionStats.refetch(); void cardsQuery.refetch(); }} className="inline-flex min-h-9 items-center gap-2 self-start rounded-lg border border-border px-3 text-[11px] font-semibold text-muted-foreground hover:text-foreground sm:self-auto" data-testid="button-retry-profile-stats"><RefreshCw size={13} />{text.refresh}</button>}</div>
-          {statsLoading ? <div className="mt-6 grid gap-3 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <div className="skeleton h-28 rounded-[22px]" key={item} data-testid={`skeleton-profile-stat-${item}`} />)}</div> : <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><h2 className="font-serif text-[31px] leading-none">{text.stats}</h2>{statsError && <button type="button" onClick={() => { void summary.refetch(); void repetitionStats.refetch(); void cardsQuery.refetch(); if (brainGym.status === 'error') window.location.reload(); }} className="inline-flex min-h-9 items-center gap-2 self-start rounded-lg border border-border px-3 text-[11px] font-semibold text-muted-foreground hover:text-foreground sm:self-auto" data-testid="button-retry-profile-stats"><RefreshCw size={13} />{text.refresh}</button>}</div>
+          {statsLoading ? <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{[1, 2, 3, 4, 5].map((item) => <div className="skeleton h-28 rounded-[22px]" key={item} data-testid={`skeleton-profile-stat-${item}`} />)}</div> : <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
              <MetricCard label={text.activeDays} value={summary.data ? String(summary.data.activeDays) : '—'} hint={text.activeDaysHint} accent="border-[#d8c795] bg-[#faf3df] text-[#6b4e26] dark:border-[#5e5037] dark:bg-[#302a20] dark:text-[#eed9a1]" testId="stat-active-days" />
              <MetricCard label={text.focusHours} value={focusStorageError ? '—' : (focusMinutes / 60).toFixed(1)} accent="border-[#d9e5db] bg-[#f1f7f2] text-[#35614f] dark:border-[#3e5c4c] dark:bg-[#25372d] dark:text-[#b9d7c4]" testId="stat-focus-hours" />
              <MetricCard label={text.booksFinished} value={booksStorageError ? '—' : String(finishedBooks)} accent="border-[#e7def0] bg-[#f4eff7] text-[#5b3f69] dark:border-[#554565] dark:bg-[#30283a] dark:text-[#dec9e9]" testId="stat-books-finished" />
             <MetricCard label={text.mastered} value={repetitionStats.data ? String(repetitionStats.data.totalLearned) : '—'} accent="border-[#ecd3c7] bg-[#fff1eb] text-[#8f4f3c] dark:border-[#664237] dark:bg-[#3b2823] dark:text-[#efc5b5]" testId="stat-cards-mastered" />
+             <MetricCard label={text.brainGymRounds} value={brainGym.status === 'error' ? '—' : String(brainGym.value.completions.length)} hint={brainGymScoreHint} accent="border-[#dcd3e8] bg-[#f3eff7] text-[#574666] dark:border-[#51435f] dark:bg-[#30283a] dark:text-[#dec9e9]" testId="stat-brain-gym-rounds" />
           </div>}
           {statsError && <p className="mt-4 text-[11px] text-muted-foreground" role="status" data-testid="status-profile-stats-error">{text.dataError}</p>}
-          {!statsLoading && !statsError && summary.data?.activeDays === 0 && focusMinutes === 0 && finishedBooks === 0 && (repetitionStats.data?.totalLearned ?? 0) === 0 && <p className="mt-4 text-[11px] text-muted-foreground" data-testid="status-profile-no-data">{text.noData}</p>}
+          {!statsLoading && !statsError && summary.data?.activeDays === 0 && focusMinutes === 0 && finishedBooks === 0 && (repetitionStats.data?.totalLearned ?? 0) === 0 && brainGym.value.completions.length === 0 && <p className="mt-4 text-[11px] text-muted-foreground" data-testid="status-profile-no-data">{text.noData}</p>}
         </section>
 
         <section className="mt-5 rounded-[28px] border border-[#d9e5db] bg-[#f1f7f2] p-5 shadow-sm dark:border-[#3e5c4c] dark:bg-[#25372d] sm:p-7" data-testid="section-profile-exports">

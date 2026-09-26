@@ -30,6 +30,16 @@ import {
   type BrainGymRecallItem,
   type RecallInterval,
 } from '@/lib/brain-gym-progress';
+import {
+  Anagrams,
+  DifficultySelector,
+  PatternMemory,
+  SequenceRecall,
+  SpeedMath,
+  StroopRound,
+  featuredExerciseTitle,
+} from '@/pages/brain-gym-exercises';
+import { challengeSeed, featuredIndexForDate, matrixSeconds, numberMatrixFor, type BrainGymDifficulty } from '@/lib/brain-gym-challenges';
 
 type Copy = {
   eyebrow: string;
@@ -94,6 +104,9 @@ type Copy = {
   phaseAnswer: string;
   phaseReview: string;
   phaseExpired: string;
+  featured: string;
+  featuredPrompt: string;
+  featuredDone: string;
 };
 
 const copy: Record<AppLanguage, Copy> = {
@@ -160,6 +173,9 @@ const copy: Record<AppLanguage, Copy> = {
     phaseAnswer: 'Javobni kiriting',
     phaseReview: 'Javoblar ko‘rib chiqilmoqda',
     phaseExpired: 'Vaqt tugadi',
+    featured: 'Bugungi tanlangan mashq',
+    featuredPrompt: 'Bugun shu mashq bilan muloyim boshlang.',
+    featuredDone: 'Bugun bajarildi',
   },
   en: {
     eyebrow: 'A quiet practice room',
@@ -224,6 +240,9 @@ const copy: Record<AppLanguage, Copy> = {
     phaseAnswer: 'Enter your answer',
     phaseReview: 'Reviewing answers',
     phaseExpired: 'Time expired',
+    featured: 'Today’s featured practice',
+    featuredPrompt: 'A gentle place to begin today.',
+    featuredDone: 'Completed today',
   },
   ru: {
     eyebrow: 'Тихая комната практики',
@@ -288,6 +307,9 @@ const copy: Record<AppLanguage, Copy> = {
     phaseAnswer: 'Введите ответ',
     phaseReview: 'Проверка ответа',
     phaseExpired: 'Время вышло',
+    featured: 'Выбранная практика дня',
+    featuredPrompt: 'Начните сегодня с этого спокойного упражнения.',
+    featuredDone: 'Сегодня выполнено',
   },
   ko: {
     eyebrow: '조용한 연습방',
@@ -352,6 +374,9 @@ const copy: Record<AppLanguage, Copy> = {
     phaseAnswer: '답을 입력하세요',
     phaseReview: '답을 확인하는 중',
     phaseExpired: '시간이 끝났습니다',
+    featured: '오늘의 추천 연습',
+    featuredPrompt: '오늘은 이 차분한 연습으로 시작해 보세요.',
+    featuredDone: '오늘 완료',
   },
 };
 
@@ -446,11 +471,11 @@ const wordPairs: Record<AppLanguage, [string, string, string, string][]> = {
 
 const today = () => localDateKey(new Date());
 
-function completion(exercise: BrainGymCompletion['exercise'], score: number, possible: number): BrainGymCompletion {
+function completion(exercise: BrainGymCompletion['exercise'], score: number, possible: number, difficulty?: BrainGymDifficulty): BrainGymCompletion {
   const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `brain-gym-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
-  return { id, exercise, date: today(), completedAt: new Date().toISOString(), score, possible };
+  return { id, exercise, date: today(), completedAt: new Date().toISOString(), score, possible, ...(difficulty ? { difficulty } : {}) };
 }
 
 function Panel({ children, className = '', testId }: { children: ReactNode; className?: string; testId?: string }) {
@@ -461,73 +486,72 @@ function SectionHeading({ icon, title, description }: { icon: ReactNode; title: 
   return <div className="flex min-w-0 items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-[#e1eee8] text-[#47796c]">{icon}</span><div className="min-w-0"><h2 className="font-serif text-[28px] leading-none tracking-[-.03em]">{title}</h2>{description && <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">{description}</p>}</div></div>;
 }
 
-function randomMatrix() {
-  const bytes = new Uint8Array(9);
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') crypto.getRandomValues(bytes);
-  else bytes.forEach((_, index) => { bytes[index] = Math.floor(Math.random() * 256); });
-  return Array.from(bytes, (value) => value % 10);
-}
-
-function NumberMatrix({ copy: c, disabled, onComplete }: { copy: Copy; disabled: boolean; onComplete: (score: number, possible: number) => void }) {
+function NumberMatrix({ copy: c, disabled, onComplete }: { copy: Copy; disabled: boolean; onComplete: (score: number, possible: number, difficulty: BrainGymDifficulty) => void }) {
+  const { language } = useI18n();
   const [phase, setPhase] = useState<'idle' | 'showing' | 'input' | 'result'>('idle');
-  const [countdown, setCountdown] = useState(3);
+  const [difficulty, setDifficulty] = useState<BrainGymDifficulty>('medium');
+  const [countdown, setCountdown] = useState(() => matrixSeconds('medium'));
   const [answer, setAnswer] = useState('');
   const [score, setScore] = useState<number | null>(null);
-  const [sequence, setSequence] = useState(randomMatrix);
+  const [sequence, setSequence] = useState(() => numberMatrixFor(today(), 'medium'));
 
   useEffect(() => {
     if (phase !== 'showing') return undefined;
-    setCountdown(3);
-    const timers = [
-      window.setTimeout(() => setCountdown(2), 1000),
-      window.setTimeout(() => setCountdown(1), 2000),
-      window.setTimeout(() => {
-        setCountdown(0);
-        setPhase('input');
-      }, 3000),
-    ];
+    const secondsToShow = matrixSeconds(difficulty);
+    setCountdown(secondsToShow);
+    const timers = Array.from({ length: secondsToShow }, (_, index) => window.setTimeout(() => {
+      const next = secondsToShow - index - 1;
+      setCountdown(next);
+      if (next === 0) setPhase('input');
+    }, (index + 1) * 1000));
     return () => timers.forEach(window.clearTimeout);
-  }, [phase]);
+  }, [phase, difficulty]);
 
-  const start = () => { setSequence(randomMatrix()); setCountdown(3); setAnswer(''); setScore(null); setPhase('showing'); };
+  const start = () => { setSequence(numberMatrixFor(today(), difficulty)); setCountdown(matrixSeconds(difficulty)); setAnswer(''); setScore(null); setPhase('showing'); };
   const grade = () => {
-    if (answer.replace(/\D/g, '').length < 9) return;
-    const typed = answer.replace(/\D/g, '').slice(0, 9).split('').map(Number);
+    if (answer.replace(/\D/g, '').length < sequence.length) return;
+    const typed = answer.replace(/\D/g, '').slice(0, sequence.length).split('').map(Number);
     const nextScore = typed.reduce((total, value, index) => total + (value === sequence[index] ? 1 : 0), 0);
     setScore(nextScore);
     setPhase('result');
-    onComplete(nextScore, 9);
+    onComplete(nextScore, sequence.length, difficulty);
   };
+  const sequencePlaceholder = c.sequencePlaceholder.replace(/\d+/, String(sequence.length));
   return <div className="mt-6 rounded-[22px] bg-[#f5edda] p-4 sm:p-5" data-testid="exercise-number-matrix">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#9a6b23]">01 / {c.matrixTitle}</p><h3 className="mt-1 font-serif text-[24px]">{c.matrixTitle}</h3></div><span className="rounded-full bg-card px-3 py-1.5 font-mono text-[10px] text-muted-foreground">3 {c.seconds}</span></div>
-    <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground" role="status" aria-live="polite" data-testid="status-number-phase">{phase === 'showing' ? `${c.phaseShowing} · ${c.lookClosely}` : phase === 'input' ? c.phaseAnswer : phase === 'result' ? c.phaseReview : c.practiceResult}</p>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#9a6b23]">01 / {c.matrixTitle}</p><h3 className="mt-1 font-serif text-[24px]">{c.matrixTitle}</h3></div><span className="rounded-full bg-card px-3 py-1.5 font-mono text-[10px] text-muted-foreground">{matrixSeconds(difficulty)} {c.seconds}</span></div>
+     <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground" role="status" aria-live="polite" data-testid="status-number-phase">{phase === 'showing' ? `${c.phaseShowing} · ${c.lookClosely}` : phase === 'input' ? c.phaseAnswer : phase === 'result' ? c.phaseReview : c.practiceResult}</p>
+      <DifficultySelector language={language} value={difficulty} onChange={(value) => { setDifficulty(value); setSequence(numberMatrixFor(today(), value)); setCountdown(matrixSeconds(value)); }} disabled={phase !== 'idle' || disabled} />
     <div className="mx-auto mt-5 grid max-w-[250px] grid-cols-3 gap-2" data-testid="status-number-grid">
-      {(phase === 'showing' ? sequence : Array(9).fill(null)).map((digit, index) => <span key={`${sequence[index]}-${index}`} className={`grid aspect-square place-items-center rounded-xl border text-[24px] font-semibold transition-opacity duration-300 ${phase === 'showing' ? 'border-[#c8a963] bg-[#fffaf0] text-[#30243f]' : 'border-[#d9cba9] bg-[#faf6e9] text-transparent'}`} data-testid={`cell-number-${index}`}>{digit}</span>)}
+      {(phase === 'showing' ? sequence : Array(sequence.length).fill(null)).map((digit, index) => <span key={`${sequence[index]}-${index}`} className={`grid aspect-square place-items-center rounded-xl border text-[24px] font-semibold transition-opacity duration-300 ${phase === 'showing' ? 'border-[#c8a963] bg-[#fffaf0] text-[#30243f]' : 'border-[#d9cba9] bg-[#faf6e9] text-transparent'}`} data-testid={`cell-number-${index}`}>{digit}</span>)}
     </div>
     {phase === 'idle' && <button type="button" disabled={disabled} onClick={start} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#30243f] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] transition-transform hover:-translate-y-0.5 disabled:opacity-45" data-testid="button-start-number-matrix"><Eye size={16} />{c.start}</button>}
     {phase === 'showing' && <p className="mt-4 text-center font-mono text-[11px] text-[#9a6b23]" role="status" aria-live="off" data-testid="status-number-countdown">{countdown} {c.seconds} · {c.lookClosely}</p>}
-    {phase === 'input' && <div className="mt-5 flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" disabled={disabled} maxLength={9} value={answer} onChange={(event) => setAnswer(event.target.value.replace(/\D/g, ''))} placeholder={c.sequencePlaceholder} aria-label={c.sequencePlaceholder} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#d9cba9] bg-card px-3 text-[13px] outline-none focus:border-[#9a6b23] disabled:opacity-60" data-testid="input-number-sequence" /><button type="button" onClick={grade} disabled={disabled || answer.length < 9} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-submit-number-matrix"><Check size={16} />{c.submit}</button></div>}
-    {phase === 'result' && score !== null && <><div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-3.5" role="status" data-testid="status-number-result"><span className="text-[13px] font-semibold">{c.practiceResult}: <strong className="font-serif text-[24px]">{score}</strong> {c.of} 9</span><button type="button" disabled={disabled} onClick={() => { setSequence(randomMatrix()); setPhase('idle'); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-[12px] font-semibold hover:bg-muted disabled:opacity-45" data-testid="button-reset-number-matrix"><RotateCcw size={14} />{c.reset}</button></div><div className="mt-3 flex justify-center gap-1.5" aria-label={c.positionResult} data-testid="status-number-position-results">{sequence.map((digit, index) => <span key={`result-${index}`} className={`grid size-7 place-items-center rounded-lg text-[11px] font-bold ${answer[index] === String(digit) ? 'bg-[#d8eade] text-[#35614f]' : 'bg-[#f4ddd4] text-[#8f3f2d]'}`} data-testid={`status-number-position-${index}`}>{answer[index] === String(digit) ? <Check size={13} /> : <X size={13} />}</span>)}</div></>}
+     {phase === 'input' && <div className="mt-5 flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" disabled={disabled} maxLength={sequence.length} value={answer} onChange={(event) => setAnswer(event.target.value.replace(/\D/g, ''))} placeholder={sequencePlaceholder} aria-label={sequencePlaceholder} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#d9cba9] bg-card px-3 text-[13px] outline-none focus:border-[#9a6b23] disabled:opacity-60" data-testid="input-number-sequence" /><button type="button" onClick={grade} disabled={disabled || answer.length < sequence.length} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-submit-number-matrix"><Check size={16} />{c.submit}</button></div>}
+     {phase === 'result' && score !== null && <><div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-3.5" role="status" data-testid="status-number-result"><span className="text-[13px] font-semibold">{c.practiceResult}: <strong className="font-serif text-[24px]">{score}</strong> {c.of} {sequence.length}</span><button type="button" disabled={disabled} onClick={() => { setSequence(numberMatrixFor(today(), difficulty)); setPhase('idle'); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-[12px] font-semibold hover:bg-muted disabled:opacity-45" data-testid="button-reset-number-matrix"><RotateCcw size={14} />{c.reset}</button></div><div className="mt-3 flex justify-center gap-1.5" aria-label={c.positionResult} data-testid="status-number-position-results">{sequence.map((digit, index) => <span key={`result-${index}`} className={`grid size-7 place-items-center rounded-lg text-[11px] font-bold ${answer[index] === String(digit) ? 'bg-[#d8eade] text-[#35614f]' : 'bg-[#f4ddd4] text-[#8f3f2d]'}`} data-testid={`status-number-position-${index}`}>{answer[index] === String(digit) ? <Check size={13} /> : <X size={13} />}</span>)}</div></>}
   </div>;
 }
 
-function WordChain({ copy: c, language, disabled, onComplete }: { copy: Copy; language: AppLanguage; disabled: boolean; onComplete: (score: number, possible: number) => void }) {
-  const index = new Date().getDate() % wordPairs[language].length;
+function WordChain({ copy: c, language, disabled, onComplete }: { copy: Copy; language: AppLanguage; disabled: boolean; onComplete: (score: number, possible: number, difficulty: BrainGymDifficulty) => void }) {
+  const [difficulty, setDifficulty] = useState<BrainGymDifficulty>('medium');
+  const index = Math.abs(challengeSeed(today(), 'word-chain', difficulty)) % wordPairs[language].length;
   const [story, setStory] = useState('');
   const [done, setDone] = useState(false);
-  const words = wordPairs[language][index];
+  const extras: Record<AppLanguage, string[]> = { uz: ['yulduz'], en: ['starlight'], ru: ['звезда'], ko: ['별빛'] };
+  const words = [...wordPairs[language][index], ...extras[language]].slice(0, difficulty === 'easy' ? 3 : difficulty === 'hard' ? 5 : 4);
   return <div className="mt-6 rounded-[22px] border border-[#d8e4dd] bg-[#edf5f0] p-4 sm:p-5" data-testid="exercise-word-chain">
     <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#47796c]">02 / {c.wordChainTitle}</p>
     <h3 className="mt-1 font-serif text-[24px]">{c.wordChainTitle}</h3>
+     <DifficultySelector language={language} value={difficulty} onChange={(value) => { setDifficulty(value); setStory(''); setDone(false); }} disabled={disabled} />
     <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-center" role="group" aria-label={c.typeStory}>{words.map((word, index) => <span className="contents" key={`${word}-${index}`}><span className="max-w-full break-words rounded-2xl bg-card px-3 py-2 font-serif text-[19px] sm:px-4 sm:py-3 sm:text-[23px]" data-testid={`text-word-chain-${index}`}>{word}</span>{index < words.length - 1 && <Waves size={16} className="shrink-0 text-[#9a6b23]" aria-hidden="true" />}</span>)}</div>
     <label htmlFor="word-story" className="mt-5 block text-[12px] font-semibold text-[#47796c]">{c.typeStory}</label>
     <textarea id="word-story" disabled={disabled} value={story} onChange={(event) => setStory(event.target.value)} rows={4} maxLength={1200} placeholder={language === 'en' ? 'Make it surprising, sensory, and yours…' : language === 'ru' ? 'Пусть она будет неожиданной и образной…' : language === 'ko' ? '뜻밖이고 감각적인 이야기로 만들어 보세요…' : 'Uni kutilmagan va jonli qiling…'} className="mt-2 w-full resize-y rounded-xl border border-[#cbdcd2] bg-card px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#47796c] disabled:opacity-60" data-testid="input-word-story" />
-    <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-[11px] italic text-muted-foreground" data-testid="status-word-storage">{c.noStorySaved}</p>{done ? <span className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#d8eade] px-4 text-[13px] font-semibold text-[#35614f]" role="status" data-testid="status-word-complete"><Check size={16} />{c.practiceComplete}</span> : <button type="button" disabled={disabled || !story.trim()} onClick={() => { setDone(true); onComplete(1, 1); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-complete-word-chain"><Sparkles size={16} />{c.completeRound}</button>}</div>
+     <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-[11px] italic text-muted-foreground" data-testid="status-word-storage">{c.noStorySaved}</p>{done ? <span className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#d8eade] px-4 text-[13px] font-semibold text-[#35614f]" role="status" data-testid="status-word-complete"><Check size={16} />{c.practiceComplete}</span> : <button type="button" disabled={disabled || !story.trim()} onClick={() => { setDone(true); onComplete(1, 1, difficulty); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-complete-word-chain"><Sparkles size={16} />{c.completeRound}</button>}</div>
     {!story.trim() && !done && <p className="mt-2 text-[11px] text-[#a14e36]" role="alert" data-testid="status-word-required">{c.storyRequired}</p>}
   </div>;
 }
 
-function RecallPractice({ copy: c, language, factsForLanguage, progress, save, disabled, onComplete }: { copy: Copy; language: AppLanguage; factsForLanguage: Fact[]; progress: BrainGymProgress; save: (next: BrainGymProgress) => boolean; disabled: boolean; onComplete: (score: number, possible: number) => void }) {
+function RecallPractice({ copy: c, language, factsForLanguage, progress, save, disabled, onComplete }: { copy: Copy; language: AppLanguage; factsForLanguage: Fact[]; progress: BrainGymProgress; save: (next: BrainGymProgress) => boolean; disabled: boolean; onComplete: (score: number, possible: number, difficulty: BrainGymDifficulty) => void }) {
+  const [difficulty, setDifficulty] = useState<BrainGymDifficulty>('medium');
   const [seconds, setSeconds] = useState(120);
   const [started, setStarted] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -536,7 +560,10 @@ function RecallPractice({ copy: c, language, factsForLanguage, progress, save, d
   const [reviewed, setReviewed] = useState<string[]>([]);
   const [completionRecorded, setCompletionRecorded] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
-  const dueItems = useMemo(() => progress.recallItems.filter((item) => item.nextReviewOn <= today()), [progress.recallItems]);
+  const dueItems = useMemo(() => {
+    const limit = difficulty === 'easy' ? 1 : difficulty === 'hard' ? 3 : 2;
+    return progress.recallItems.filter((item) => item.nextReviewOn <= today()).slice(0, limit);
+  }, [progress.recallItems, difficulty]);
   const currentItem = progress.recallItems.find((item) => item.factId === sessionIds[currentIndex]);
   const currentFact = factsForLanguage.find((fact) => fact.id === currentItem?.factId);
 
@@ -552,11 +579,11 @@ function RecallPractice({ copy: c, language, factsForLanguage, progress, save, d
     if (reviewed.length === 0 || completionRecorded) return;
     const nextProgress = {
       ...progress,
-      completions: [...progress.completions, completion('spaced-recall', reviewed.length, sessionIds.length)].slice(-2000),
+       completions: [...progress.completions, completion('spaced-recall', reviewed.length, sessionIds.length, difficulty)].slice(-2000),
     };
     if (save(nextProgress)) {
       setCompletionRecorded(true);
-      onComplete(reviewed.length, sessionIds.length);
+       onComplete(reviewed.length, sessionIds.length, difficulty);
     }
   }, [seconds, started, timedOut, reviewed.length, completionRecorded, progress, sessionIds, save, onComplete]);
 
@@ -576,13 +603,13 @@ function RecallPractice({ copy: c, language, factsForLanguage, progress, save, d
     const nextProgress = {
       ...progress,
       recallItems: nextItems,
-      completions: shouldRecordCompletion ? [...progress.completions, completion('spaced-recall', reviewCount, sessionIds.length)].slice(-2000) : progress.completions,
+       completions: shouldRecordCompletion ? [...progress.completions, completion('spaced-recall', reviewCount, sessionIds.length, difficulty)].slice(-2000) : progress.completions,
     };
     if (save(nextProgress)) {
       setReviewed((items) => [...items, currentItem.factId]);
       if (shouldRecordCompletion) setCompletionRecorded(true);
       setRevealed(false);
-      if (shouldRecordCompletion) onComplete(reviewCount, sessionIds.length);
+     if (shouldRecordCompletion) onComplete(reviewCount, sessionIds.length, difficulty);
        if (!isFinal) setCurrentIndex((value) => value + 1);
        else setStarted(false);
     }
@@ -591,6 +618,7 @@ function RecallPractice({ copy: c, language, factsForLanguage, progress, save, d
   const formatTime = `${Math.floor(seconds / 60).toString().padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`;
   return <div className="mt-6 rounded-[22px] border border-[#e3d3bd] bg-[#fbf4e7] p-4 sm:p-5" data-testid="exercise-spaced-recall">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#9a6b23]">03 / {c.spacedRecallTitle}</p><h3 className="mt-1 font-serif text-[24px]">{c.spacedRecallTitle}</h3></div><span className="inline-flex items-center gap-1.5 rounded-full bg-card px-3 py-1.5 font-mono text-[12px] text-[#9a6b23]" role="timer" aria-live="polite" aria-atomic="true" aria-label={`${c.countdownLabel}: ${formatTime}`} data-testid="status-recall-timer"><Clock3 size={14} />{formatTime}</span></div>
+     <DifficultySelector language={language} value={difficulty} onChange={setDifficulty} disabled={started || disabled} />
     <p className="sr-only" aria-live="polite" data-testid="status-recall-phase">{timedOut ? c.phaseExpired : started ? (revealed ? c.phaseReview : c.phaseAnswer) : c.start}</p>
     {!dueItems.length && !started ? <div className="mt-5 rounded-xl border border-dashed border-[#d9cba9] bg-card/60 p-5 text-center" data-testid="status-recall-empty"><Target size={22} className="mx-auto text-[#9a6b23]" /><p className="mt-2 font-serif text-[21px]">{c.noDue}</p><p className="mx-auto mt-1 max-w-md text-[12px] leading-relaxed text-muted-foreground">{c.noDueDescription}</p></div> : started && currentFact ? <div className="mt-5" data-testid={`card-recall-fact-${currentFact.id}`}><p className="font-mono text-[10px] uppercase tracking-[.14em] text-muted-foreground">{c.question} · {currentIndex + 1}/{sessionIds.length}</p><p className="mt-3 rounded-xl bg-card p-4 text-[15px] font-semibold leading-relaxed" data-testid="text-recall-question">{currentFact.question}</p>{revealed ? <div className="mt-3 rounded-xl border border-[#d8e4dd] bg-[#edf5f0] p-4" data-testid="text-recall-answer"><p className="text-[13px] leading-relaxed">{currentFact.answer}</p><div className="mt-4 flex flex-wrap gap-2"><button type="button" disabled={disabled || timedOut} onClick={() => rate(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#47796c] px-4 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-recall-remembered"><Check size={16} />{c.remembered}</button><button type="button" disabled={disabled || timedOut} onClick={() => rate(false)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#c98e76] px-4 text-[13px] font-semibold text-[#a14e36] disabled:opacity-45" data-testid="button-recall-missed"><X size={16} />{c.missed}</button></div></div> : <button type="button" disabled={disabled || timedOut} onClick={() => setRevealed(true)} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#30243f] px-4 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-recall-reveal"><Eye size={16} />{c.reveal}</button>}</div> : null}
     {started && (timedOut || seconds === 0) && <p className="mt-4 rounded-xl border border-[#e4c2b7] bg-[#fff0ec] p-3 text-[12px] text-[#8f3f2d]" role="status" data-testid="status-recall-timeout">{c.timerDone}</p>}
@@ -630,8 +658,8 @@ function BrainGymContent({ userId }: { userId: string }) {
     }
     return result;
   };
-  const recordCompletion = (exercise: BrainGymCompletion['exercise'], score: number, possible: number) => {
-    const result = saveProgress({ ...store.value, completions: [...store.value.completions, completion(exercise, score, possible)].slice(-2000) });
+  const recordCompletion = (exercise: BrainGymCompletion['exercise'], score: number, possible: number, difficulty: BrainGymDifficulty = 'medium') => {
+    const result = saveProgress({ ...store.value, completions: [...store.value.completions, completion(exercise, score, possible, difficulty)].slice(-2000) });
     if (result) showNotice(`${c.practiceResult}: ${score} ${c.of} ${possible}`);
   };
   const toggleFact = (fact: Fact) => {
@@ -641,6 +669,9 @@ function BrainGymContent({ userId }: { userId: string }) {
     if (saveProgress({ ...store.value, recallItems: nextItems.slice(0, 500) })) showNotice(existing ? c.savedFacts : c.saved);
   };
   const completionCount = store.value.completions.length;
+  const featuredIds: BrainGymCompletion['exercise'][] = ['number-matrix', 'word-chain', 'spaced-recall', 'visual-pattern', 'stroop', 'sequence-recall', 'speed-math', 'anagrams'];
+  const featuredExercise = featuredIds[featuredIndexForDate(today(), featuredIds.length)];
+  const featuredComplete = store.value.completions.some((item) => item.exercise === featuredExercise && item.date === today());
   if (store.status === 'loading') return <div className="space-y-4" data-testid="status-brain-gym-loading"><div className="skeleton h-36 rounded-[26px]" /><div className="skeleton h-72 rounded-[26px]" /><p className="sr-only">{c.loading}</p></div>;
   if (store.status === 'error') return <div className="rounded-[26px] border border-destructive/30 bg-destructive/5 p-7 text-center" role="alert" data-testid="status-brain-gym-error"><Brain size={25} className="mx-auto text-destructive" /><p className="mt-3 text-[14px]">{store.error || c.storageError}</p><button type="button" onClick={() => window.location.reload()} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl border border-border px-4 text-[13px] font-semibold" data-testid="button-retry-brain-gym"><RotateCcw size={15} />{c.retry}</button></div>;
   const mutationsDisabled = store.status !== 'ready' || storageIssue;
@@ -651,7 +682,22 @@ function BrainGymContent({ userId }: { userId: string }) {
       <Panel testId="section-science-repository"><SectionHeading icon={<Lightbulb size={19} />} title={c.science} description={c.scienceIntro} /><div className="mt-6 grid gap-3 sm:grid-cols-2">{factsForLanguage.map((fact) => { const isSaved = store.value.recallItems.some((item) => item.factId === fact.id); return <article key={fact.id} className={`rounded-2xl border p-4 transition-transform duration-200 hover:-translate-y-0.5 ${isSaved ? 'border-[#b6d0c0] bg-[#f1f7f3]' : 'border-border bg-background/40'}`} data-testid={`card-science-fact-${fact.id}`}><div className="flex items-start justify-between gap-3"><h3 className="font-serif text-[21px] leading-tight">{fact.title}</h3><button type="button" disabled={mutationsDisabled} onClick={() => toggleFact(fact)} aria-pressed={isSaved} aria-label={`${isSaved ? c.saved : c.saveFact}: ${fact.title}`} className={`grid size-9 shrink-0 place-items-center rounded-xl transition-colors disabled:opacity-45 ${isSaved ? 'bg-[#d8eade] text-[#35614f]' : 'bg-[#f5edda] text-[#9a6b23] hover:bg-[#ebddb6]'}`} data-testid={`button-save-fact-${fact.id}`}>{isSaved ? <Check size={16} /> : <Save size={16} />}</button></div><p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{fact.body}</p><p className="mt-3 text-[10px] leading-relaxed text-[#9a6b23]" data-testid={`text-citation-${fact.id}`}>{fact.citation}</p></article>; })}</div><div className="mt-5 flex items-center gap-2 rounded-xl bg-[#f5edda] p-3 text-[11px] leading-relaxed text-[#756d5e]" data-testid="status-saved-facts"><Save size={14} className="shrink-0 text-[#9a6b23]" />{store.value.recallItems.length} {c.savedFacts}</div></Panel>
       <div className="space-y-7"><Panel className="bg-[#30243f] text-[#fffaf0]" testId="card-daily-tip"><div className="flex items-center gap-2 text-[#d9a441]"><Sparkles size={17} /><p className="font-mono text-[10px] uppercase tracking-[.14em]">{c.tipLabel}</p></div><p className="mt-5 font-serif text-[27px] leading-tight" data-testid="text-daily-tip">{todayTip}</p><p className="mt-4 text-[11px] leading-relaxed text-[#e9dfcf]" data-testid="text-tip-guidance">{c.tipGuidance}</p></Panel><Panel testId="section-guides"><SectionHeading icon={<Footprints size={19} />} title={c.guide} /> <div className="mt-5 space-y-2">{guides[language].map((item, index) => { const id = `${language}-${index}`; const open = openGuide === id; return <div key={id} className="overflow-hidden rounded-xl border border-border bg-background/45" data-testid={`guide-${index}`}><button type="button" onClick={() => setOpenGuide(open ? null : id)} aria-expanded={open} className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 py-3 text-left text-[13px] font-semibold" data-testid={`button-toggle-guide-${index}`}><span className="min-w-0">{item.title}</span><ChevronDown size={16} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} /></button>{open && <div className="border-t border-border px-3.5 pb-4 pt-3" data-testid={`text-guide-${index}`}><p className="text-[12px] leading-relaxed text-muted-foreground">{item.intro}</p><ol className="mt-3 space-y-2">{item.steps.map((step, stepIndex) => <li key={step} className="flex gap-2 text-[12px] leading-relaxed"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#e1eee8] font-mono text-[9px] text-[#47796c]">{stepIndex + 1}</span><span>{step}</span></li>)}</ol></div>}</div>; })}</div></Panel></div>
     </div>
-    <Panel testId="section-practice"><SectionHeading icon={<Dumbbell size={19} />} title={c.practice} description={c.gentleNote} /><NumberMatrix copy={c} disabled={mutationsDisabled} onComplete={(score, possible) => recordCompletion('number-matrix', score, possible)} /><WordChain copy={c} language={language} disabled={mutationsDisabled} onComplete={(score, possible) => recordCompletion('word-chain', score, possible)} /><RecallPractice copy={c} language={language} factsForLanguage={factsForLanguage} progress={store.value} save={saveProgress} disabled={mutationsDisabled} onComplete={(score, possible) => showNotice(`${c.practiceResult}: ${score} ${c.of} ${possible}`)} /></Panel>
+     <Panel testId="section-practice"><SectionHeading icon={<Dumbbell size={19} />} title={c.practice} description={c.gentleNote} />
+       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#d9cba9] bg-[#f5edda] p-4" data-testid="card-featured-challenge">
+         <div><p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#9a6b23]">{c.featured}</p><p className="mt-1 font-serif text-[23px]" data-testid="text-featured-challenge">{featuredExerciseTitle(language, featuredExercise)}</p><p className="mt-1 text-[11px] text-muted-foreground">{c.featuredPrompt}</p></div>
+          {featuredComplete ? <span className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#d8eade] px-3 text-[12px] font-semibold text-[#35614f]" role="status" data-testid="status-featured-complete"><Check size={15} />{c.featuredDone}</span> : <button type="button" onClick={() => document.querySelector(`[data-testid="exercise-${featuredExercise}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="min-h-10 rounded-xl border border-[#9a6b23]/40 bg-card px-3 text-[12px] font-semibold text-[#755b25]" data-testid="button-featured-challenge">{c.start}</button>}
+       </div>
+       <div id="brain-gym-exercise-list">
+         <NumberMatrix copy={c} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('number-matrix', score, possible, difficulty)} />
+         <WordChain copy={c} language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('word-chain', score, possible, difficulty)} />
+         <RecallPractice copy={c} language={language} factsForLanguage={factsForLanguage} progress={store.value} save={saveProgress} disabled={mutationsDisabled} onComplete={(score, possible) => showNotice(`${c.practiceResult}: ${score} ${c.of} ${possible}`)} />
+         <PatternMemory language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('visual-pattern', score, possible, difficulty)} />
+         <StroopRound language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('stroop', score, possible, difficulty)} />
+         <SequenceRecall language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('sequence-recall', score, possible, difficulty)} />
+         <SpeedMath language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('speed-math', score, possible, difficulty)} />
+         <Anagrams language={language} disabled={mutationsDisabled} onComplete={(score, possible, difficulty) => recordCompletion('anagrams', score, possible, difficulty)} />
+       </div>
+     </Panel>
     <Panel className="bg-[#f5edda]" testId="section-sources">
       <SectionHeading icon={<Waves size={19} />} title={c.sources} />
       <div className="mt-5 grid gap-3 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-2">

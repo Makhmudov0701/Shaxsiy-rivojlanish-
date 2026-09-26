@@ -98,6 +98,8 @@ function buildDailyActivity(
       pomodoroMinutes: 0,
       flashcardsReviewed: 0,
       exerciseCompletions: 0,
+      exerciseScore: 0,
+      exercisePossible: 0,
     };
     daily.set(date, next);
     return next;
@@ -124,7 +126,10 @@ function buildDailyActivity(
   }
   for (const completion of exerciseCompletions) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(completion.date)) continue;
-    getDay(completion.date).exerciseCompletions += 1;
+    const day = getDay(completion.date);
+    day.exerciseCompletions += 1;
+    day.exerciseScore = (day.exerciseScore ?? 0) + completion.score;
+    day.exercisePossible = (day.exercisePossible ?? 0) + completion.possible;
   }
   return [...daily.values()].sort((left, right) => left.date.localeCompare(right.date));
 }

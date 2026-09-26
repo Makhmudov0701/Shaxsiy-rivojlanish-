@@ -8,6 +8,8 @@ export type ActivityDay = {
   pomodoroMinutes: number;
   flashcardsReviewed: number;
   exerciseCompletions: number;
+  exerciseScore?: number;
+  exercisePossible?: number;
 };
 
 export type ActivityHeatmapProps = {
@@ -41,6 +43,7 @@ type Copy = {
     pomodoroMinutes: string;
     flashcardsReviewed: string;
     exerciseCompletions: string;
+    exerciseScore: string;
   };
   monthLabel: (date: Date) => string;
   dateLabel: (date: Date) => string;
@@ -118,6 +121,7 @@ function createCopy(language: AppLanguage): Copy {
         pomodoroMinutes: 'Pomodoro daqiqalari',
         flashcardsReviewed: 'Ko‘rilgan kartochkalar',
         exerciseCompletions: 'Bajarilgan mashqlar',
+        exerciseScore: 'Miya mashqlari natijasi',
       },
     },
     en: {
@@ -141,6 +145,7 @@ function createCopy(language: AppLanguage): Copy {
         pomodoroMinutes: 'Pomodoro minutes',
         flashcardsReviewed: 'Flashcards reviewed',
         exerciseCompletions: 'Exercises completed',
+        exerciseScore: 'Brain Gym score',
       },
     },
     ru: {
@@ -164,6 +169,7 @@ function createCopy(language: AppLanguage): Copy {
         pomodoroMinutes: 'Минуты Pomodoro',
         flashcardsReviewed: 'Повторенные карточки',
         exerciseCompletions: 'Выполненные упражнения',
+        exerciseScore: 'Баллы упражнений для памяти',
       },
     },
     ko: {
@@ -187,6 +193,7 @@ function createCopy(language: AppLanguage): Copy {
         pomodoroMinutes: '포모도로 시간(분)',
         flashcardsReviewed: '복습한 플래시카드',
         exerciseCompletions: '완료한 운동',
+        exerciseScore: '기억 훈련 점수',
       },
     },
   };
@@ -238,7 +245,10 @@ function ActivityCell({
 }) {
   const date = parseLocalDate(day.date);
   if (!date) return null;
-  const accessibleLabel = `${copy.dateLabel(date)}. ${copy.metricLabels.journalEntries}: ${metricCount(day.journalEntries)}. ${copy.metricLabels.tasksCompleted}: ${metricCount(day.tasksCompleted)}. ${copy.metricLabels.pomodoroMinutes}: ${metricCount(day.pomodoroMinutes)}. ${copy.metricLabels.flashcardsReviewed}: ${metricCount(day.flashcardsReviewed)}. ${copy.metricLabels.exerciseCompletions}: ${metricCount(day.exerciseCompletions)}.`;
+  const scoreLabel = day.exercisePossible
+    ? `${copy.metricLabels.exerciseScore}: ${metricCount(day.exerciseScore ?? 0)} / ${metricCount(day.exercisePossible)}`
+    : '';
+  const accessibleLabel = `${copy.dateLabel(date)}. ${copy.metricLabels.journalEntries}: ${metricCount(day.journalEntries)}. ${copy.metricLabels.tasksCompleted}: ${metricCount(day.tasksCompleted)}. ${copy.metricLabels.pomodoroMinutes}: ${metricCount(day.pomodoroMinutes)}. ${copy.metricLabels.flashcardsReviewed}: ${metricCount(day.flashcardsReviewed)}. ${copy.metricLabels.exerciseCompletions}: ${metricCount(day.exerciseCompletions)}.${scoreLabel ? ` ${scoreLabel}.` : ''}`;
   return (
     <div
       role="gridcell"
@@ -256,6 +266,7 @@ function ActivityCell({
           <p>{copy.metricLabels.pomodoroMinutes}: {metricCount(day.pomodoroMinutes)}</p>
           <p>{copy.metricLabels.flashcardsReviewed}: {metricCount(day.flashcardsReviewed)}</p>
           <p>{copy.metricLabels.exerciseCompletions}: {metricCount(day.exerciseCompletions)}</p>
+          {scoreLabel && <p>{scoreLabel}</p>}
         </div>
       </div>
     </div>
@@ -292,6 +303,8 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry,
         pomodoroMinutes: existing.pomodoroMinutes + Math.max(0, day.pomodoroMinutes || 0),
         flashcardsReviewed: existing.flashcardsReviewed + Math.max(0, day.flashcardsReviewed || 0),
         exerciseCompletions: existing.exerciseCompletions + Math.max(0, day.exerciseCompletions || 0),
+        exerciseScore: (existing.exerciseScore ?? 0) + Math.max(0, day.exerciseScore || 0),
+        exercisePossible: (existing.exercisePossible ?? 0) + Math.max(0, day.exercisePossible || 0),
       } : {
         date: day.date,
         journalEntries: Math.max(0, day.journalEntries || 0),
@@ -299,6 +312,8 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry,
         pomodoroMinutes: Math.max(0, day.pomodoroMinutes || 0),
         flashcardsReviewed: Math.max(0, day.flashcardsReviewed || 0),
         exerciseCompletions: Math.max(0, day.exerciseCompletions || 0),
+        exerciseScore: Math.max(0, day.exerciseScore || 0),
+        exercisePossible: Math.max(0, day.exercisePossible || 0),
       });
     }
 
