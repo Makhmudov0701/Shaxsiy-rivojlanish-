@@ -4,5 +4,5 @@
 - [Expo Android module linking](expo-android-module-linking.md) — a local module config is not enough; verify Android project resolution, not just module search.
 - [Active-time heartbeat boundaries](active-time-heartbeats.md) — close foreground intervals on hide/background so capped accrual does not charge suspended time.
 - [Remote ambience audio](mixkit-audio-streaming.md) — stream cross-origin tracks with native audio and verify each source’s license and attribution requirements.
-- [Diary quote localization](diary-quote-localization.md) — translate rotation-matched quote fragments so localized copy keeps the original quote and index correspondence.
+- [Daily motivation and guide localization](diary-quote-localization.md) — keep quote and guide pools date-seeded, section-aware, and explicit in all supported languages.
 - [JSX localization transform](diary-localization-transform.md) — skip wrapping expressions that contain nested JSX; localize descendants to avoid overlapping AST edits.

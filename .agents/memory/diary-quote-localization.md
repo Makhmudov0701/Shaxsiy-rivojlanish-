@@ -1,12 +1,12 @@
 ---
 name: Diary quote localization
-description: Preserve localized source quotes and predictable daily and manual rotation behavior.
+description: Preserve localized motivation quotes and date-seeded section guides across supported languages.
 ---
 
 Translate the quote's template fragments rather than replacing the rotation with a smaller set of sample quotes.
 
-Daily motivation is seeded from the local `YYYY-MM-DD` and user/section category, with consecutive-day collisions resolved. Manual cycling traverses the full pool before repeating.
+Daily motivation and section guides use the local `YYYY-MM-DD` plus the user and section/category for selection, with adjacent-day collisions resolved. Keep guide pools separate from quote pools, and store every guide item in all four app languages.
 
-**Why:** Substituting sample quotes can make the displayed text no longer correspond to the original quote selected by its rotation index. Independent random picks can also repeat too soon, while a date collision would defeat the daily refresh.
+**Why:** Replacing source-matched quotes breaks their rotation; random selection can repeat too soon. A guide's language should change its wording, not which item is selected that day.
 
-**How to apply:** Preserve source-matched quote fragments and the daily/manual rotation guarantees when expanding or localizing the quote pools.
+**How to apply:** Preserve the daily date-seed guarantees, full-pool manual quote cycle, source-matched quote fragments, and explicit translations when editing motivation or section-guide content.

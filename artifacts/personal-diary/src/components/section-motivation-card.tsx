@@ -1,4 +1,4 @@
-import { Check, ChevronDown, RefreshCw } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   generateMotivationEntry,
@@ -10,11 +10,17 @@ import {
 } from "@/components/section-motivation-content";
 import {
   dailyMotivationIndex,
+  dailySectionGuideIndex,
   localDateKey,
   nextMotivationIndex,
   randomMotivationStride,
 } from "@/components/section-motivation-rotation";
-import { useI18n } from "@/lib/i18n";
+import {
+  sectionDailyGuides,
+  sectionGuideHeading,
+  sectionGuideKindLabels,
+} from "@/components/section-daily-guides";
+import { translateUiText, useI18n } from "@/lib/i18n";
 
 const collapsedStoragePrefix = "kundalik-section-info-collapsed-";
 const legacyDailyMemeStoragePrefix = "kundalik-section-daily-meme-";
@@ -53,11 +59,14 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
   const section = sectionMotivationContent[sectionId];
   const category = section.motivationCategory;
   const poolSize = getMotivationPoolSize(category);
+  const dailyGuides = sectionDailyGuides[sectionId];
   const [today, setToday] = useState(localDateKey);
   const [expanded, setExpanded] = useState(() => initialExpandedState(sectionId));
   const [manualSelection, setManualSelection] = useState<ManualQuoteSelection | null>(null);
   const Icon = section.icon;
   const dailyIndex = dailyMotivationIndex(category, userId, today);
+  const dailyGuideIndex = dailySectionGuideIndex(sectionId, userId, today, dailyGuides.length);
+  const dailyGuide = dailyGuides[dailyGuideIndex];
   const manualSelectionIsCurrent = manualSelection?.date === today
     && manualSelection.userId === userId
     && manualSelection.sectionId === sectionId;
@@ -145,9 +154,9 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
             <Icon size={20} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Bo‘lim haqida</p>
-            <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{section.title}</h2>
-            {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{section.eyebrow}</p>}
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{sectionGuideHeading[language]}</p>
+            <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
+            {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{translateUiText(section.eyebrow, language)}</p>}
           </div>
           <button
             type="button"
@@ -169,20 +178,26 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
         >
           <div className="overflow-hidden">
             <div className={`grid min-w-0 gap-4 px-4 pb-4 transition-[opacity,transform] duration-300 ease-out sm:px-6 sm:pb-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,.95fr)] ${expanded ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0"}`}>
-              <div className="flex min-w-0 max-w-full flex-col justify-center rounded-[20px] border border-border/50 bg-background/40 p-4 sm:p-5">
-                <p className="break-words text-[13px] leading-relaxed text-foreground/85 [overflow-wrap:anywhere]" data-testid={`text-section-purpose-${sectionId}`}>{section.purpose}</p>
-                <h3 className="mt-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Foydasi</h3>
-                <ul className="mt-2.5 space-y-2">
-                  {section.benefits.map((benefit, index) => (
-                    <li key={benefit} className="flex min-w-0 items-start gap-2.5 text-[12px] leading-relaxed text-muted-foreground" data-testid={`text-section-benefit-${sectionId}-${index + 1}`}>
-                      <span className="mt-0.5 grid size-4 shrink-0 place-items-center rounded-full" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
-                        <Check size={10} strokeWidth={2.5} />
-                      </span>
-                      <span className="min-w-0 break-words [overflow-wrap:anywhere]">{benefit}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <article
+                className="flex min-h-[320px] min-w-0 max-w-full flex-col justify-between rounded-[20px] border border-border/50 bg-background/40 p-4 sm:p-5"
+                aria-live="polite"
+                data-testid={`card-daily-section-guide-${sectionId}`}
+              >
+                <div className="flex min-w-0 items-start justify-start gap-2">
+                  <span className="shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
+                    {sectionGuideKindLabels[language][dailyGuide.kind]}
+                  </span>
+                </div>
+                <p
+                  className="my-auto min-w-0 break-words py-6 font-serif text-[clamp(1.35rem,2vw,1.75rem)] leading-[1.2] tracking-[-0.02em] text-foreground [overflow-wrap:anywhere]"
+                  data-testid={`text-daily-section-guide-${sectionId}`}
+                >
+                  {dailyGuide.text[language]}
+                </p>
+                <p className="border-t border-border/60 pt-3 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
+                  {translateUiText(section.title, language)} · {dailyGuideIndex + 1}/{dailyGuides.length}
+                </p>
+              </article>
 
               <article
                 className="relative flex min-h-[320px] w-full min-w-0 max-w-full flex-col justify-between overflow-hidden rounded-[20px] border p-4 sm:min-h-[340px] sm:p-5"
@@ -198,7 +213,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                     <span className="grid size-7 place-items-center rounded-lg" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
                       <Icon size={14} />
                     </span>
-                    <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Bugungi motivatsiya</p>
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{translateUiText("Bugungi motivatsiya", language)}</p>
                   </div>
                 </div>
                 <div className="relative flex min-h-[220px] min-w-0 flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
@@ -217,12 +232,12 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                     “{currentEntry.text}”
                   </p>
                   <p className="mt-4 min-w-0 break-words font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
-                    {section.motivationLabel} · {currentIndex + 1}/{poolSize}
+                    {translateUiText(section.motivationLabel, language)} · {currentIndex + 1}/{poolSize}
                   </p>
                 </div>
                 <div className="relative mt-5 flex min-w-0 items-center justify-between gap-3">
                   <span className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {section.eyebrow}
+                    {translateUiText(section.eyebrow, language)}
                   </span>
                   <button
                     type="button"

@@ -28,7 +28,7 @@ export const sectionDailyGuides: Record<SectionId, SectionGuideItem[]> = {
   ],
   focus: [
     guide("tip", "Taymerni yoqishdan oldin bitta aniq vazifani tanlang.", "Choose one specific task before starting the timer.", "Перед запуском таймера выберите одну конкретную задачу.", "타이머를 시작하기 전에 구체적인 작업 하나를 고르세요."),
-    guide("reflection", "Bugun qaysi chalg‘ituvchi narsa diqqatingizni ko‘proq bo‘ldi?", "What distracted you most today?", "Что сегодня сильнее всего отвлекало вас?", "오늘 무엇이 가장 집중을 방해했나요?"),
+    guide("reflection", "Bugun qaysi narsa diqqatingizni eng ko‘p chalg‘itdi?", "What distracted you most today?", "Что сегодня сильнее всего отвлекало вас?", "오늘 무엇이 가장 집중을 방해했나요?"),
     guide("habit", "Har diqqat davri oldidan telefonni chetga qo‘yib, ish joyini tayyorlang.", "Before each focus session, set your phone aside and prepare your workspace.", "Перед каждым периодом концентрации отложите телефон и подготовьте рабочее место.", "집중 시간을 시작하기 전에 휴대전화를 치우고 작업 공간을 정리하세요."),
     guide("benefit", "Qisqa diqqat davrlari boshlashni osonlashtirib, tanaffuslarni rejalashga yordam beradi.", "Short focus sessions make it easier to begin and plan breaks.", "Короткие периоды концентрации помогают легче начать и запланировать отдых.", "짧은 집중 시간은 시작을 쉽게 하고 휴식 계획을 세우도록 도와줍니다."),
     guide("prompt", "Keyingi 25 daqiqada yakunlash mumkin bo‘lgan qadam qaysi?", "What step can you finish in the next 25 minutes?", "Какой шаг можно завершить за следующие 25 минут?", "앞으로 25분 안에 끝낼 수 있는 단계는 무엇인가요?"),
