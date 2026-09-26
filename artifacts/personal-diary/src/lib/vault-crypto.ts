@@ -14,6 +14,12 @@ export const vaultCategories = [
 
 export type VaultCategory = (typeof vaultCategories)[number];
 export type VaultCredentialType = 'pin' | 'password';
+export type VaultCustomField = {
+  id: string;
+  label: string;
+  value: string;
+  secret: boolean;
+};
 
 export type VaultEntry = {
   id: string;
@@ -23,6 +29,7 @@ export type VaultEntry = {
   secret: string;
   url: string;
   notes: string;
+  customFields: VaultCustomField[];
   reminderDate: string | null;
   createdAt: string;
   updatedAt: string;
@@ -85,6 +92,10 @@ function base64ToBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (character) => character.charCodeAt(0));
 }
 
+function asArrayBuffer(value: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(value).buffer as ArrayBuffer;
+}
+
 function isEncryptedValue(value: unknown): value is EncryptedValue {
   if (!isObject(value) || typeof value.iv !== 'string' || typeof value.ciphertext !== 'string') return false;
   try {
@@ -98,6 +109,20 @@ function isVaultCategory(value: unknown): value is VaultCategory {
   return typeof value === 'string' && vaultCategories.includes(value as VaultCategory);
 }
 
+const MAX_STORED_TEXT_LENGTH = 5_000_000;
+
+function isVaultCustomField(value: unknown): value is VaultCustomField {
+  return isObject(value)
+    && typeof value.id === 'string'
+    && value.id.length > 0
+    && value.id.length <= 128
+    && typeof value.label === 'string'
+    && value.label.length <= 500
+    && typeof value.value === 'string'
+    && value.value.length <= MAX_STORED_TEXT_LENGTH
+    && typeof value.secret === 'boolean';
+}
+
 export function isVaultEntry(value: unknown): value is VaultEntry {
   if (!isObject(value)) return false;
   const reminderDateIsValid = value.reminderDate === null
@@ -107,15 +132,18 @@ export function isVaultEntry(value: unknown): value is VaultEntry {
     && value.id.length <= 128
     && isVaultCategory(value.category)
     && typeof value.title === 'string'
-    && value.title.length <= 200
+    && value.title.length <= MAX_STORED_TEXT_LENGTH
     && typeof value.username === 'string'
-    && value.username.length <= 500
+    && value.username.length <= MAX_STORED_TEXT_LENGTH
     && typeof value.secret === 'string'
-    && value.secret.length <= 10_000
+    && value.secret.length <= MAX_STORED_TEXT_LENGTH
     && typeof value.url === 'string'
-    && value.url.length <= 2_000
+    && value.url.length <= MAX_STORED_TEXT_LENGTH
     && typeof value.notes === 'string'
-    && value.notes.length <= 20_000
+    && value.notes.length <= MAX_STORED_TEXT_LENGTH
+    && Array.isArray(value.customFields)
+    && value.customFields.length <= 100
+    && value.customFields.every(isVaultCustomField)
     && reminderDateIsValid
     && typeof value.createdAt === 'string'
     && Number.isFinite(Date.parse(value.createdAt))
@@ -136,7 +164,8 @@ function isLegacyNote(value: unknown): value is LegacyNote {
     && isEncryptedValue(value);
 }
 
-function isLegacyVault(value: Record<string, unknown>): value is unknown as LegacyVault {
+function isLegacyVault(value: unknown): value is LegacyVault {
+  if (!isObject(value)) return false;
   return typeof value.salt === 'string'
     && (() => {
       try {
@@ -186,7 +215,7 @@ async function deriveVaultKey(credential: string, salt: Uint8Array, iterations: 
   const cryptoApi = getCrypto();
   const material = await cryptoApi.subtle.importKey('raw', textEncoder.encode(credential), 'PBKDF2', false, ['deriveKey']);
   return cryptoApi.subtle.deriveKey(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: asArrayBuffer(salt), iterations, hash: 'SHA-256' },
     material,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -203,9 +232,9 @@ async function encryptText(key: CryptoKey, value: string): Promise<EncryptedValu
 
 async function decryptText(key: CryptoKey, value: EncryptedValue): Promise<string> {
   const plaintext = await getCrypto().subtle.decrypt(
-    { name: 'AES-GCM', iv: base64ToBytes(value.iv) },
+    { name: 'AES-GCM', iv: asArrayBuffer(base64ToBytes(value.iv)) },
     key,
-    base64ToBytes(value.ciphertext),
+    asArrayBuffer(base64ToBytes(value.ciphertext)),
   );
   return textDecoder.decode(plaintext);
 }
@@ -226,6 +255,14 @@ export async function createVault(
   credentialType: VaultCredentialType,
 ): Promise<{ key: CryptoKey; envelope: VaultEnvelope }> {
   if (!isValidVaultCredential(credential, credentialType)) throw new Error('vault-credential-invalid');
+  return createVaultEnvelope(credential, credentialType, []);
+}
+
+async function createVaultEnvelope(
+  credential: string,
+  credentialType: VaultCredentialType,
+  entries: VaultEntry[],
+): Promise<{ key: CryptoKey; envelope: VaultEnvelope }> {
   const cryptoApi = getCrypto();
   const salt = cryptoApi.getRandomValues(new Uint8Array(16));
   const key = await deriveVaultKey(credential, salt, VAULT_KDF_ITERATIONS);
@@ -238,7 +275,7 @@ export async function createVault(
     iv: '',
     ciphertext: '',
   };
-  return { key, envelope: await encryptEntries(key, metadata, []) };
+  return { key, envelope: await encryptEntries(key, metadata, entries) };
 }
 
 export async function saveVaultEntries(
@@ -254,14 +291,15 @@ export async function changeVaultCredential(
   credentialType: VaultCredentialType,
   entries: VaultEntry[],
 ): Promise<{ key: CryptoKey; envelope: VaultEnvelope }> {
-  return createVault(credential, credentialType).then(async ({ key, envelope }) => ({
+  if (!isValidVaultCredential(credential, credentialType)) throw new Error('vault-credential-invalid');
+  return createVaultEnvelope(credential, credentialType, []).then(async ({ key, envelope }) => ({
     key,
     envelope: await encryptEntries(key, envelope, entries),
   }));
 }
 
 export async function unlockVault(credential: string, stored: StoredVault): Promise<UnlockedVault> {
-  if ('version' in stored && stored.version === 2) {
+  if (!('verifier' in stored)) {
     const key = await deriveVaultKey(credential, base64ToBytes(stored.salt), stored.iterations);
     try {
       const plaintext = await decryptText(key, stored);
@@ -288,13 +326,16 @@ export async function unlockVault(credential: string, stored: StoredVault): Prom
         secret: '',
         url: '',
         notes,
+        customFields: [],
         reminderDate: null,
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
       });
     }
     const credentialType: VaultCredentialType = /^\d{4}$/.test(credential) ? 'pin' : 'password';
-    const migrated = await changeVaultCredential(credential, credentialType, entries);
+    // Preserve the legacy credential during migration even if it predates the
+    // current stronger setup rules; users can change it after unlocking.
+    const migrated = await createVaultEnvelope(credential, credentialType, entries);
     return { ...migrated, entries, migrated: true };
   } catch {
     throw new Error('vault-unlock-failed');

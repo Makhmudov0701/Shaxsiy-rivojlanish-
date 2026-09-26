@@ -9,6 +9,7 @@ import { AmbientSoundControl } from '@/components/ambient-sound';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
 import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText, useI18n } from '@/lib/i18n';
+import { vaultNavigationLabel } from '@/lib/vault-i18n';
 import { applyThemePreference, readProfilePreferences, updateProfilePreference, type ThemePreference } from '@/lib/profile-preferences';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
@@ -202,12 +203,12 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const pathname = location.split('?')[0];
   const sectionId = sectionIdForPath(pathname);
   const profileLabel = { uz: 'Shaxsiy profil', en: 'Personal profile', ru: 'Личный профиль', ko: '개인 프로필' }[language];
-  const pageTitle = pathname === '/profile' ? profileLabel : sectionId
+  const pageTitle = pathname === '/profile' ? profileLabel : pathname === '/vault' ? vaultNavigationLabel(language) : sectionId
     ? translateUiText(sectionMotivationContent[sectionId].title)
     : 'Shaxsiy kundalik';
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
-  const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/vault' || (pathname === '/user-portal' && portalView !== 'entries');
+  const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || (pathname === '/user-portal' && portalView !== 'entries');
   const pomodoroSelected = pathname === '/pomodoro';
   const repetitionSelected = pathname === '/repetition';
 
@@ -249,6 +250,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/tasks" label="Topshiriqlar" icon={<ListTodo size={20} strokeWidth={1.8} />} active={pathname === '/tasks'} onNavigate={closeMobile} testId="link-tasks" />
               <SidebarNavLink href="/books" label="Kitoblar" icon={<BookMarked size={20} strokeWidth={1.8} />} active={pathname === '/books'} onNavigate={closeMobile} testId="link-books" />
               <SidebarNavLink href="/repetition" label="Takrorlash" icon={<Repeat2 size={20} strokeWidth={1.8} />} active={repetitionSelected} onNavigate={closeMobile} testId="link-repetition" />
+              <SidebarNavLink href="/vault" label={vaultNavigationLabel(language)} icon={<LockKeyhole size={20} />} active={pathname === '/vault'} onNavigate={closeMobile} testId="link-vault" />
                <SidebarNavLink href="/profile" label={profileLabel} icon={<UserCircle size={20} />} active={pathname === '/profile'} onNavigate={closeMobile} testId="link-profile" />
             </nav>
             <button type="button" onClick={() => setMoreOpen((value) => !value)} className="mt-5 flex min-h-12 w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-[14px] font-medium text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-foreground" aria-expanded={moreOpen} aria-controls="secondary-navigation" data-testid="button-more-navigation">
@@ -262,7 +264,6 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/user-portal?view=analytics" label="Kayfiyat" icon={<BarChart3 size={20} />} active={pathname === '/user-portal' && portalView === 'analytics'} onNavigate={closeMobile} testId="link-analytics" />
               <SidebarNavLink href="/ideas" label="G‘oyalar" icon={<Lightbulb size={20} />} active={pathname === '/ideas'} onNavigate={closeMobile} testId="link-ideas" />
               <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={20} />} active={pathname === '/habits'} onNavigate={closeMobile} testId="link-habits" />
-              <SidebarNavLink href="/vault" label="Maxfiy jild" icon={<LockKeyhole size={20} />} active={pathname === '/vault'} onNavigate={closeMobile} testId="link-vault" />
               <SidebarNavLink href="/settings" label="Sozlamalar" icon={<Settings size={20} />} active={pathname === '/settings'} onNavigate={closeMobile} testId="link-settings" />
             </nav>}
           </div>

@@ -2,26 +2,31 @@ import { useUser } from '@clerk/react';
 import { Link } from 'wouter';
 import { CalendarCheck2, ChevronLeft, LockKeyhole } from 'lucide-react';
 import { DiaryShell } from '@/components/diary-ui';
-import { HabitTracker, PrivateVault } from '@/components/diary-modules';
+import { HabitTracker } from '@/components/diary-modules';
+import { PrivateVault } from '@/components/private-vault';
+import { useI18n } from '@/lib/i18n';
+import { getVaultCopy } from '@/lib/vault-i18n';
 
 export function ModulePageFrame({
   eyebrow,
   title,
   description,
   icon,
+  backLabel = 'Kundalikka qaytish',
   children,
 }: {
   eyebrow: string;
   title: string;
   description: string;
   icon: React.ReactNode;
+  backLabel?: string;
   children: React.ReactNode;
 }) {
   return (
     <DiaryShell>
       <div className="mx-auto max-w-[1120px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
         <Link href="/user-portal" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-module-back">
-          <ChevronLeft size={17} /> Kundalikka qaytish
+          <ChevronLeft size={17} /> {backLabel}
         </Link>
         <div className="mt-6 flex items-start gap-3 sm:gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e7def0] text-[#5b3f69] dark:bg-[#3b3044] dark:text-[#d8bce2]">{icon}</span>
@@ -63,16 +68,19 @@ export function HabitsPage() {
 }
 
 export function VaultPage() {
+  const { language } = useI18n();
+  const copy = getVaultCopy(language);
   return (
     <UserStoragePage>
       {(userId) => (
         <ModulePageFrame
-          eyebrow="Alohida himoya"
-          title="Maxfiy jild"
-          description="Oddiy kundalikdan alohida, faqat o‘zingiz biladigan kod bilan ochiladigan shaxsiy sahifalar."
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
           icon={<LockKeyhole size={22} strokeWidth={1.7} />}
+          backLabel={copy.back}
         >
-          <PrivateVault storageKey={`kundalik-maxfiy-jild-${userId}`} />
+          <PrivateVault key={userId} storageKey={`kundalik-maxfiy-jild-${userId}`} />
         </ModulePageFrame>
       )}
     </UserStoragePage>
