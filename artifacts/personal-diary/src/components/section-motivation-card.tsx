@@ -69,6 +69,14 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
   const dailyIndex = dailyMotivationIndex(category, userId, today);
   const dailyGuideIndex = dailySectionGuideIndex(sectionId, userId, today, SECTION_DAILY_GUIDE_POOL_SIZE);
   const dailyGuide = generateSectionDailyGuide(sectionId, dailyGuideIndex, language);
+  const guideHeading = sectionId === "diary"
+    ? {
+      uz: "SHAXSIY RIVOJLANISH YO‘RIQNOMASI",
+      en: "PERSONAL DEVELOPMENT GUIDE",
+      ru: "РУКОВОДСТВО ПО ЛИЧНОСТНОМУ РОСТУ",
+      ko: "자기계발 안내",
+    }[language]
+    : sectionGuideHeading[language];
   const manualSelectionIsCurrent = manualSelection?.date === today
     && manualSelection.userId === userId
     && manualSelection.sectionId === sectionId;
@@ -156,7 +164,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
             <Icon size={20} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{sectionGuideHeading[language]}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{guideHeading}</p>
             <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
             {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{translateUiText(section.eyebrow, language)}</p>}
           </div>

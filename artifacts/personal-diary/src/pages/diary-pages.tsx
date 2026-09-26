@@ -4,7 +4,7 @@ import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp, useUser } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, Bold, CalendarDays, Check, ChevronDown, CircleAlert, Download, Eye, FileJson, FileText, FolderOpen, Heart, ImagePlus, Italic, List, LoaderCircle, LockKeyhole, Mic, MicOff, Pencil, Plus, Quote, Search, ShieldCheck, Star, Upload, X } from 'lucide-react';
-import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale, getCurrentLanguage, LanguageSelector, personalDevelopmentBackLabel, personalDevelopmentSectionsLabel, useI18n } from '@/lib/i18n';
+import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale, getCurrentLanguage, LanguageSelector, personalDevelopmentBackLabel, personalDevelopmentLabel, personalDevelopmentSectionsLabel, useI18n } from '@/lib/i18n';
 import { DAILY_STICKER_COPY, DAILY_STICKER_OPTIONS } from '@/lib/daily-stickers';
 import {
   DiaryEntryInput,
@@ -940,26 +940,180 @@ export function SettingsPage() {
   </div></DiaryShell>;
 }
 
-function clerkErrorMessage(error: unknown) {
+const AUTH_COPY = {
+  uz: {
+    verifyTitle: 'Emailni tasdiqlang',
+    signupTitle: 'Shaxsiy rivojlanishni boshlang',
+    signinTitle: 'Xush kelibsiz',
+    verifyDescription: 'Emailingizga yuborilgan kodni kiriting.',
+    signupDescription: 'O‘zingizga tegishli sokin makon.',
+    signinDescription: 'Yozuvlaringizga qaytish vaqti keldi.',
+    verificationCode: 'Tasdiqlash kodi',
+    codePlaceholder: '6 xonali kod',
+    confirm: 'Tasdiqlash',
+    emailLabel: 'Email manzili',
+    emailPlaceholder: 'sizning@email.uz',
+    passwordLabel: 'Parol',
+    passwordPlaceholder: 'Parolingiz',
+    signupButton: 'Ro‘yxatdan o‘tish',
+    signinButton: 'Kirish',
+    accountExists: 'Hisobingiz bormi?',
+    noAccount: 'Hisobingiz yo‘qmi?',
+    signupLink: 'Ro‘yxatdan o‘ting',
+    emailPasswordRequired: 'Email manzili va parolni kiriting.',
+    codeRequired: 'Tasdiqlash kodini kiriting.',
+    errors: {
+      passwordPwned: 'Bu parol xavfsiz emas. Boshqa parol tanlang.',
+      passwordTooShort: PASSWORD_TOO_SHORT_MESSAGE,
+      passwordNotEnabled: 'Email va parol orqali ro‘yxatdan o‘tish yoqilmagan.',
+      identifierExists: 'Bu email manzili allaqachon ro‘yxatdan o‘tgan.',
+      identifierNotAllowed: 'Bu email manzilidan ro‘yxatdan o‘tish mumkin emas.',
+      identifierNotFound: 'Bu email manzili bilan hisob topilmadi.',
+      passwordIncorrect: 'Parol noto‘g‘ri.',
+      formatInvalid: 'Kiritilgan ma’lumot formatini tekshiring.',
+      strategyInvalid: 'Email va parol orqali ro‘yxatdan o‘tish sozlamalarda yoqilmagan.',
+      captcha: 'Xavfsizlik tekshiruvi bajarilmadi. Sahifani yangilang va qayta urinib ko‘ring.',
+      tooManyRequests: 'Juda ko‘p urinish bo‘ldi. Biroz kutib, qayta urinib ko‘ring.',
+      additionalVerification: 'Qo‘shimcha tasdiqlash talab qilindi. Hisob sozlamalarini tekshiring.',
+      verificationPending: 'Kod hali tasdiqlanmadi. Qayta urinib ko‘ring.',
+      generic: 'Amalni bajarib bo‘lmadi. Ma’lumotlarni tekshirib, qayta urinib ko‘ring.',
+    },
+  },
+  en: {
+    verifyTitle: 'Verify your email',
+    signupTitle: 'Start your personal development',
+    signinTitle: 'Welcome back',
+    verifyDescription: 'Enter the code sent to your email.',
+    signupDescription: 'A quiet space that belongs to you.',
+    signinDescription: 'It is time to return to your entries.',
+    verificationCode: 'Verification code',
+    codePlaceholder: '6-digit code',
+    confirm: 'Verify',
+    emailLabel: 'Email address',
+    emailPlaceholder: 'you@example.com',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Your password',
+    signupButton: 'Create account',
+    signinButton: 'Sign in',
+    accountExists: 'Already have an account?',
+    noAccount: 'Do not have an account?',
+    signupLink: 'Sign up',
+    emailPasswordRequired: 'Enter your email address and password.',
+    codeRequired: 'Enter the verification code.',
+    errors: {
+      passwordPwned: 'This password is not secure. Choose a different password.',
+      passwordTooShort: 'Password must be at least 8 characters long.',
+      passwordNotEnabled: 'Email and password sign-up is not enabled.',
+      identifierExists: 'An account with this email address already exists.',
+      identifierNotAllowed: 'Sign-up with this email address is not allowed.',
+      identifierNotFound: 'No account was found for this email address.',
+      passwordIncorrect: 'The password is incorrect.',
+      formatInvalid: 'Check the format of the information you entered.',
+      strategyInvalid: 'Email and password sign-up is not enabled in the account settings.',
+      captcha: 'Security verification failed. Refresh the page and try again.',
+      tooManyRequests: 'Too many attempts. Wait a moment and try again.',
+      additionalVerification: 'Additional verification is required. Check your account settings.',
+      verificationPending: 'The code has not been verified yet. Please try again.',
+      generic: 'Could not complete the action. Check your information and try again.',
+    },
+  },
+  ru: {
+    verifyTitle: 'Подтвердите электронную почту',
+    signupTitle: 'Начните личностное развитие',
+    signinTitle: 'С возвращением',
+    verifyDescription: 'Введите код, отправленный на вашу почту.',
+    signupDescription: 'Спокойное пространство, которое принадлежит только вам.',
+    signinDescription: 'Пора вернуться к своим записям.',
+    verificationCode: 'Код подтверждения',
+    codePlaceholder: 'Код из 6 цифр',
+    confirm: 'Подтвердить',
+    emailLabel: 'Электронная почта',
+    emailPlaceholder: 'you@example.com',
+    passwordLabel: 'Пароль',
+    passwordPlaceholder: 'Ваш пароль',
+    signupButton: 'Создать аккаунт',
+    signinButton: 'Войти',
+    accountExists: 'Уже есть аккаунт?',
+    noAccount: 'Нет аккаунта?',
+    signupLink: 'Зарегистрироваться',
+    emailPasswordRequired: 'Введите электронную почту и пароль.',
+    codeRequired: 'Введите код подтверждения.',
+    errors: {
+      passwordPwned: 'Этот пароль небезопасен. Выберите другой пароль.',
+      passwordTooShort: 'Пароль должен содержать не менее 8 символов.',
+      passwordNotEnabled: 'Регистрация по электронной почте и паролю не включена.',
+      identifierExists: 'Аккаунт с таким адресом электронной почты уже существует.',
+      identifierNotAllowed: 'Регистрация с этим адресом электронной почты запрещена.',
+      identifierNotFound: 'Аккаунт с таким адресом электронной почты не найден.',
+      passwordIncorrect: 'Неверный пароль.',
+      formatInvalid: 'Проверьте формат введённых данных.',
+      strategyInvalid: 'Регистрация по электронной почте и паролю не включена в настройках.',
+      captcha: 'Проверка безопасности не пройдена. Обновите страницу и попробуйте снова.',
+      tooManyRequests: 'Слишком много попыток. Подождите и попробуйте снова.',
+      additionalVerification: 'Требуется дополнительное подтверждение. Проверьте настройки аккаунта.',
+      verificationPending: 'Код ещё не подтверждён. Попробуйте снова.',
+      generic: 'Не удалось выполнить действие. Проверьте данные и попробуйте снова.',
+    },
+  },
+  ko: {
+    verifyTitle: '이메일 인증',
+    signupTitle: '자기계발을 시작하세요',
+    signinTitle: '다시 오신 것을 환영합니다',
+    verifyDescription: '이메일로 전송된 코드를 입력하세요.',
+    signupDescription: '나만을 위한 차분한 공간입니다.',
+    signinDescription: '기록으로 돌아갈 시간입니다.',
+    verificationCode: '인증 코드',
+    codePlaceholder: '6자리 코드',
+    confirm: '인증',
+    emailLabel: '이메일 주소',
+    emailPlaceholder: 'you@example.com',
+    passwordLabel: '비밀번호',
+    passwordPlaceholder: '비밀번호 입력',
+    signupButton: '계정 만들기',
+    signinButton: '로그인',
+    accountExists: '이미 계정이 있나요?',
+    noAccount: '계정이 없나요?',
+    signupLink: '가입하기',
+    emailPasswordRequired: '이메일 주소와 비밀번호를 입력하세요.',
+    codeRequired: '인증 코드를 입력하세요.',
+    errors: {
+      passwordPwned: '안전하지 않은 비밀번호입니다. 다른 비밀번호를 선택하세요.',
+      passwordTooShort: '비밀번호는 8자 이상이어야 합니다.',
+      passwordNotEnabled: '이메일과 비밀번호를 통한 가입이 활성화되지 않았습니다.',
+      identifierExists: '이 이메일 주소로 만든 계정이 이미 있습니다.',
+      identifierNotAllowed: '이 이메일 주소로 가입할 수 없습니다.',
+      identifierNotFound: '이 이메일 주소로 된 계정을 찾을 수 없습니다.',
+      passwordIncorrect: '비밀번호가 올바르지 않습니다.',
+      formatInvalid: '입력한 정보의 형식을 확인하세요.',
+      strategyInvalid: '계정 설정에서 이메일과 비밀번호 가입이 활성화되지 않았습니다.',
+      captcha: '보안 인증에 실패했습니다. 페이지를 새로고침한 뒤 다시 시도하세요.',
+      tooManyRequests: '시도 횟수가 너무 많습니다. 잠시 후 다시 시도하세요.',
+      additionalVerification: '추가 인증이 필요합니다. 계정 설정을 확인하세요.',
+      verificationPending: '아직 코드가 확인되지 않았습니다. 다시 시도하세요.',
+      generic: '요청을 완료할 수 없습니다. 정보를 확인하고 다시 시도하세요.',
+    },
+  },
+} as const;
+
+type AuthErrorCopy = { [Key in keyof typeof AUTH_COPY.uz.errors]: string };
+
+function clerkErrorMessage(error: unknown, copy: AuthErrorCopy) {
   const first = (error as {
     errors?: Array<{ code?: string; longMessage?: string; message?: string }>;
     message?: string;
   })?.errors?.[0];
-  if (first?.code === 'form_password_pwned') return 'Bu parol xavfsiz emas. Boshqa parol tanlang.';
-  if (first?.code === 'form_password_length') return PASSWORD_TOO_SHORT_MESSAGE;
-  if (first?.code === 'form_password_not_enabled') return 'Email va parol orqali ro‘yxatdan o‘tish yoqilmagan.';
-  if (first?.code === 'form_identifier_exists') return 'Bu email manzili allaqachon ro‘yxatdan o‘tgan.';
-  if (first?.code === 'form_identifier_not_allowed') return 'Bu email manzilidan ro‘yxatdan o‘tish mumkin emas.';
-  if (first?.code === 'form_identifier_not_found') return 'Bu email manzili bilan hisob topilmadi.';
-  if (first?.code === 'form_password_incorrect') return 'Parol noto‘g‘ri.';
-  if (first?.code === 'form_param_format_invalid') return 'Kiritilgan ma’lumot formatini tekshiring.';
-  if (first?.code === 'strategy_for_user_invalid') return 'Email va parol orqali ro‘yxatdan o‘tish Clerk sozlamalarida yoqilmagan.';
-  if (first?.code === 'captcha_invalid' || first?.code === 'captcha_missing') return 'Xavfsizlik tekshiruvi bajarilmadi. Sahifani yangilang va qayta urinib ko‘ring.';
-  if (first?.code === 'too_many_requests') return 'Juda ko‘p urinish bo‘ldi. Biroz kutib, qayta urinib ko‘ring.';
-  if (first?.longMessage || first?.message) return first.longMessage ?? first.message ?? 'Clerk auth xatosi.';
-  const message = (error as { message?: string })?.message;
-  if (message) return message;
-  return 'Amalni bajarib bo‘lmadi. Ma’lumotlarni tekshirib, qayta urinib ko‘ring.';
+  if (first?.code === 'form_password_pwned') return copy.passwordPwned;
+  if (first?.code === 'form_password_length') return copy.passwordTooShort;
+  if (first?.code === 'form_password_not_enabled') return copy.passwordNotEnabled;
+  if (first?.code === 'form_identifier_exists') return copy.identifierExists;
+  if (first?.code === 'form_identifier_not_allowed') return copy.identifierNotAllowed;
+  if (first?.code === 'form_identifier_not_found') return copy.identifierNotFound;
+  if (first?.code === 'form_password_incorrect') return copy.passwordIncorrect;
+  if (first?.code === 'form_param_format_invalid') return copy.formatInvalid;
+  if (first?.code === 'strategy_for_user_invalid') return copy.strategyInvalid;
+  if (first?.code === 'captcha_invalid' || first?.code === 'captcha_missing') return copy.captcha;
+  if (first?.code === 'too_many_requests') return copy.tooManyRequests;
+  return copy.generic;
 }
 
 function logClerkError(context: string, error: unknown) {
@@ -979,6 +1133,8 @@ function logClerkError(context: string, error: unknown) {
 
 function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   const isSignUp = mode === 'sign-up';
+  const { language } = useI18n();
+  const copy = AUTH_COPY[language];
   const [, setLocation] = useLocation();
   const signInHook = useSignIn();
   const signUpHook = useSignUp();
@@ -998,13 +1154,13 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!email.trim() || !password) { setError('Email manzili va parolni kiriting.'); return; }
+    if (!email.trim() || !password) { setError(copy.emailPasswordRequired); return; }
     setBusy(true); setError('');
     try {
       if (isSignUp) {
         const passwordResult = passwordSchema.safeParse(password);
         if (!passwordResult.success) {
-          setError(passwordResult.error.issues[0]?.message ?? PASSWORD_TOO_SHORT_MESSAGE);
+          setError(copy.errors.passwordTooShort);
           return;
         }
         const result = await signUpHook.signUp.password({ emailAddress: email.trim(), password });
@@ -1015,28 +1171,28 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         const result = await signInHook.signIn.password({ identifier: email.trim(), password });
         if (result.error) throw result.error;
         if (signInHook.signIn.status === 'complete') await finish();
-        else setError('Qo‘shimcha tasdiqlash talab qilindi. Hisob sozlamalarini tekshiring.');
+        else setError(copy.errors.additionalVerification);
       }
-    } catch (submissionError) { logClerkError(isSignUp ? 'sign-up' : 'sign-in', submissionError); setError(clerkErrorMessage(submissionError)); } finally { setBusy(false); }
+    } catch (submissionError) { logClerkError(isSignUp ? 'sign-up' : 'sign-in', submissionError); setError(clerkErrorMessage(submissionError, copy.errors)); } finally { setBusy(false); }
   };
 
   const verify = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!code.trim()) { setError('Tasdiqlash kodini kiriting.'); return; }
+    if (!code.trim()) { setError(copy.codeRequired); return; }
     setBusy(true); setError('');
     try {
       const result = await signUpHook.signUp.verifications.verifyEmailCode({ code: code.trim() });
       if (result.error) throw result.error;
       if (signUpHook.signUp.status === 'complete') await finish();
-      else setError('Kod hali tasdiqlanmadi. Qayta urinib ko‘ring.');
-    } catch (verificationError) { logClerkError('email-verification', verificationError); setError(clerkErrorMessage(verificationError)); } finally { setBusy(false); }
+      else setError(copy.errors.verificationPending);
+    } catch (verificationError) { logClerkError('email-verification', verificationError); setError(clerkErrorMessage(verificationError, copy.errors)); } finally { setBusy(false); }
   };
 
   return <div className="w-full max-w-[440px] rounded-[24px] border border-[#d8ccb0] bg-[#fffaf0] p-7 shadow-xl sm:p-9">
-    <div className="mb-8"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy kundalik</p><h1 className="mt-3 font-serif text-[38px] leading-none text-[#30243f]">{verificationSent ? 'Emailni tasdiqlang' : isSignUp ? 'Kundalik oching' : 'Xush kelibsiz'}</h1><p className="mt-3 text-[13px] leading-relaxed text-[#756d7e]">{verificationSent ? 'Emailingizga yuborilgan kodni kiriting.' : isSignUp ? 'Faqat sizga tegishli sokin makon.' : 'Yozuvlaringizga qaytish vaqti keldi.'}</p></div>
-    {verificationSent ? <form onSubmit={verify} className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Tasdiqlash kodi<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="6 xonali kod" inputMode="numeric" autoComplete="one-time-code" /></label><button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />} Tasdiqlash</button></form> : <form onSubmit={submit} noValidate className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Email manzili<input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="sizning@email.uz" type="email" autoComplete="email" /></label><label className="block text-[12px] font-medium text-[#30243f]">Parol<input value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="Parolingiz" type="password" minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined} autoComplete={isSignUp ? 'new-password' : 'current-password'} /></label><button type="submit" disabled={busy || !loaded} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />}{isSignUp ? 'Ro‘yxatdan o‘tish' : 'Kirish'}</button></form>}
+    <div className="mb-8"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{personalDevelopmentLabel(language)}</p><h1 className="mt-3 font-serif text-[38px] leading-none text-[#30243f]">{verificationSent ? copy.verifyTitle : isSignUp ? copy.signupTitle : copy.signinTitle}</h1><p className="mt-3 text-[13px] leading-relaxed text-[#756d7e]">{verificationSent ? copy.verifyDescription : isSignUp ? copy.signupDescription : copy.signinDescription}</p></div>
+    {verificationSent ? <form onSubmit={verify} className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">{copy.verificationCode}<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder={copy.codePlaceholder} inputMode="numeric" autoComplete="one-time-code" /></label><button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />} {copy.confirm}</button></form> : <form onSubmit={submit} noValidate className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">{copy.emailLabel}<input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder={copy.emailPlaceholder} type="email" autoComplete="email" /></label><label className="block text-[12px] font-medium text-[#30243f]">{copy.passwordLabel}<input value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder={copy.passwordPlaceholder} type="password" minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined} autoComplete={isSignUp ? 'new-password' : 'current-password'} /></label><button type="submit" disabled={busy || !loaded} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />}{isSignUp ? copy.signupButton : copy.signinButton}</button></form>}
     {error && <p className="mt-5 rounded-xl border border-[#ecc6bd] bg-[#fff0ec] px-3 py-2.5 text-[12px] leading-relaxed text-[#8f3f2d]" role="alert">{error}</p>}
-    <p className="mt-7 border-t border-[#e4dac3] pt-5 text-center text-[12px] text-[#756d7e]">{isSignUp ? 'Hisobingiz bormi?' : 'Hisobingiz yo‘qmi?'} <Link href={isSignUp ? '/sign-in' : '/sign-up'} className="font-semibold text-[#9a6b23]">{isSignUp ? 'Kirish' : 'Ro‘yxatdan o‘ting'}</Link></p>
+    <p className="mt-7 border-t border-[#e4dac3] pt-5 text-center text-[12px] text-[#756d7e]">{isSignUp ? copy.accountExists : copy.noAccount} <Link href={isSignUp ? '/sign-in' : '/sign-up'} className="font-semibold text-[#9a6b23]">{isSignUp ? copy.signinButton : copy.signupLink}</Link></p>
   </div>;
 }
 

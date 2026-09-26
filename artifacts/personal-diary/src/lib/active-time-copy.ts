@@ -11,7 +11,7 @@ export type ActiveTimeLanguage =
 export const activeTimeCopy = {
   uz: {
     title: "Kunlik foydalanish",
-    description: "Personal Diary va Kunlik limit uchun umumiy faol vaqt hisoblagichi.",
+    description: "Faol vaqt Kunlik limit ilovasi bilan umumiy hisoblanadi.",
     usedToday: "Bugun sarflangan",
     remaining: "Qolgan vaqt",
     dailyLimit: "Kunlik maksimal vaqt",
@@ -39,7 +39,7 @@ export const activeTimeCopy = {
   },
   ru: {
     title: "Ежедневное использование",
-    description: "Общий счётчик активного времени для Personal Diary и Kunlik limit.",
+    description: "Активное время общее с приложением «Дневной лимит».",
     usedToday: "Использовано сегодня",
     remaining: "Осталось",
     dailyLimit: "Дневной максимум",
@@ -67,7 +67,7 @@ export const activeTimeCopy = {
   },
   en: {
     title: "Daily usage",
-    description: "One active-time counter shared by Personal Diary and Kunlik limit.",
+    description: "Active time is shared with the Daily Limit app.",
     usedToday: "Used today",
     remaining: "Remaining",
     dailyLimit: "Daily maximum",
@@ -95,7 +95,7 @@ export const activeTimeCopy = {
   },
   ko: {
     title: "일일 사용량",
-    description: "Personal Diary와 Kunlik limit에서 공유하는 활성 시간 기록입니다.",
+    description: "활성 시간은 일일 한도 앱과 공유됩니다.",
     usedToday: "오늘 사용한 시간",
     remaining: "남은 시간",
     dailyLimit: "일일 최대 시간",

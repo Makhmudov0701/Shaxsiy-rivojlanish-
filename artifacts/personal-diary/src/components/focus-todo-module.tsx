@@ -108,6 +108,139 @@ const DEFAULT_SETTINGS: FocusSettings = {
   strictMode: false,
 };
 const MAX_TIMER_MINUTES = 180;
+const FOCUS_SETTINGS_COPY = {
+  uz: {
+    kicker: 'Shaxsiy ritm',
+    title: 'Taymer sozlamalari',
+    description: 'Davrlarni o‘zingizga moslang. O‘zgarishlar shu brauzerdagi shaxsiy ish maydonida saqlanadi.',
+    durationTitle: 'Davr davomiyligi',
+    focus: 'Diqqat',
+    shortBreak: 'Qisqa tanaffus',
+    longBreak: 'Uzoq tanaffus',
+    minute: 'daqiqa',
+    presetMinute: 'daq',
+    durationError: '1–180 oralig‘ida butun daqiqa kiriting.',
+    durationHelp: '1–180 daqiqa. Qiymatlar darhol saqlanadi; tanlangan davr bo‘lsa, taymer ham yangilanadi.',
+    audioTitle: 'Bildirishnoma ovozi',
+    audioDescription: 'Sessiya tugaganda tanlangan ovoz va balandlikda signal yangraydi.',
+    audioStyle: 'Bildirishnoma ovozi uslubi',
+    audioToggle: 'Bildirishnoma ovozini yoqish',
+    volume: 'Ovoz balandligi',
+    preview: 'Ovozini sinash',
+    previewSuccess: 'Sinov ovozi ijro etildi.',
+    previewSilent: 'Balandlik 0% — ovozni eshitish uchun balandlikni oshiring.',
+    audioUnavailable: 'Bu brauzerda ovoz ijrosi qo‘llab-quvvatlanmaydi.',
+    strictTitle: 'Qat’iy rejim',
+    strictDescription: 'Faol bo‘lsa, diqqat davri tugamaguncha uni o‘tkazib yuborish tugmasi ishlamaydi.',
+    strictEnabled: 'Qat’iy rejim yoqilgan: diqqat paytida o‘tkazish yopiq, qayta boshlash va pauza esa mavjud.',
+  },
+  en: {
+    kicker: 'Personal rhythm',
+    title: 'Timer settings',
+    description: 'Adjust each interval to fit your routine. Changes are saved in this browser workspace.',
+    durationTitle: 'Interval duration',
+    focus: 'Focus',
+    shortBreak: 'Short break',
+    longBreak: 'Long break',
+    minute: 'minutes',
+    presetMinute: 'min',
+    durationError: 'Enter a whole number from 1 to 180 minutes.',
+    durationHelp: '1–180 minutes. Changes save immediately and update the selected timer.',
+    audioTitle: 'Notification sound',
+    audioDescription: 'A sound plays at the selected tone and volume when a session ends.',
+    audioStyle: 'Notification sound style',
+    audioToggle: 'Enable notification sound',
+    volume: 'Volume',
+    preview: 'Test sound',
+    previewSuccess: 'Sound preview played.',
+    previewSilent: 'Volume is 0% — raise it to hear the preview.',
+    audioUnavailable: 'Audio playback is not supported in this browser.',
+    strictTitle: 'Strict mode',
+    strictDescription: 'When enabled, you cannot skip a focus interval before it ends.',
+    strictEnabled: 'Strict mode is on: skipping is disabled during focus, but reset and pause remain available.',
+  },
+  ru: {
+    kicker: 'Личный ритм',
+    title: 'Настройки таймера',
+    description: 'Настройте интервалы под свой ритм. Изменения сохраняются в рабочей области этого браузера.',
+    durationTitle: 'Длительность интервала',
+    focus: 'Фокус',
+    shortBreak: 'Короткий перерыв',
+    longBreak: 'Длинный перерыв',
+    minute: 'минут',
+    presetMinute: 'мин',
+    durationError: 'Введите целое число от 1 до 180 минут.',
+    durationHelp: '1–180 минут. Изменения сохраняются сразу и обновляют выбранный таймер.',
+    audioTitle: 'Звук уведомления',
+    audioDescription: 'При завершении сессии прозвучит выбранный сигнал с заданной громкостью.',
+    audioStyle: 'Стиль звука уведомления',
+    audioToggle: 'Включить звук уведомления',
+    volume: 'Громкость',
+    preview: 'Проверить звук',
+    previewSuccess: 'Проверочный звук воспроизведён.',
+    previewSilent: 'Громкость 0% — увеличьте её, чтобы услышать звук.',
+    audioUnavailable: 'Этот браузер не поддерживает воспроизведение звука.',
+    strictTitle: 'Строгий режим',
+    strictDescription: 'В этом режиме нельзя пропустить интервал фокусировки до его завершения.',
+    strictEnabled: 'Строгий режим включён: пропуск во время фокусировки отключён, сброс и пауза доступны.',
+  },
+  ko: {
+    kicker: '나만의 리듬',
+    title: '타이머 설정',
+    description: '원하는 흐름에 맞게 간격을 조정하세요. 변경 사항은 이 브라우저 작업 공간에 저장됩니다.',
+    durationTitle: '구간 길이',
+    focus: '집중',
+    shortBreak: '짧은 휴식',
+    longBreak: '긴 휴식',
+    minute: '분',
+    presetMinute: '분',
+    durationError: '1분에서 180분 사이의 정수를 입력하세요.',
+    durationHelp: '1–180분. 변경 사항은 즉시 저장되며 선택한 타이머에도 적용됩니다.',
+    audioTitle: '알림 소리',
+    audioDescription: '세션이 끝나면 선택한 소리와 음량으로 알림이 울립니다.',
+    audioStyle: '알림 소리 스타일',
+    audioToggle: '알림 소리 켜기',
+    volume: '음량',
+    preview: '소리 테스트',
+    previewSuccess: '미리 듣기를 재생했습니다.',
+    previewSilent: '음량이 0%입니다. 소리를 들으려면 음량을 높이세요.',
+    audioUnavailable: '이 브라우저에서는 오디오를 재생할 수 없습니다.',
+    strictTitle: '엄격 모드',
+    strictDescription: '켜면 집중 구간이 끝나기 전에 건너뛸 수 없습니다.',
+    strictEnabled: '엄격 모드가 켜졌습니다. 집중 중 건너뛰기는 비활성화되지만 재설정과 일시정지는 가능합니다.',
+  },
+} as const;
+
+const FOCUS_SOUND_PRESET_LABELS = {
+  uz: {
+    'zen-bowl': 'Zen gongi',
+    'digital-chime': 'Raqamli qo‘ng‘iroq',
+    'bell-trio': 'Uch qo‘ng‘iroq',
+    'marimba-strum': 'Marimba ohangi',
+    'soft-flute': 'Mayin nay',
+  },
+  en: {
+    'zen-bowl': 'Zen Gong',
+    'digital-chime': 'Digital Chime',
+    'bell-trio': 'Bell Trio',
+    'marimba-strum': 'Marimba Melodic Strum',
+    'soft-flute': 'Soft Flute',
+  },
+  ru: {
+    'zen-bowl': 'Дзен-гонг',
+    'digital-chime': 'Цифровой звон',
+    'bell-trio': 'Тройной колокольчик',
+    'marimba-strum': 'Мелодия маримбы',
+    'soft-flute': 'Мягкая флейта',
+  },
+  ko: {
+    'zen-bowl': '젠 공',
+    'digital-chime': '디지털 차임',
+    'bell-trio': '세 번 울리는 종',
+    'marimba-strum': '마림바 선율',
+    'soft-flute': '부드러운 플루트',
+  },
+} as const;
 const DURATION_PRESETS: Record<DurationSettingKey, number[]> = {
   focusMinutes: [25, 45, 60],
   shortBreakMinutes: [5, 10, 15],
@@ -179,8 +312,8 @@ function safeDuration(value: unknown, fallback: number) {
 function parseDurationInput(value: string): number | null {
   if (!value.trim()) return null;
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  return Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(parsed)));
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_TIMER_MINUTES) return null;
+  return parsed;
 }
 
 function safeWorkspace(value: unknown): WorkspaceData {
@@ -226,12 +359,17 @@ function safeWorkspace(value: unknown): WorkspaceData {
   const mode: TimerMode = rawTimer.mode === 'shortBreak' || rawTimer.mode === 'longBreak' ? rawTimer.mode : 'focus';
   const modeDuration = mode === 'focus' ? settings.focusMinutes : mode === 'shortBreak' ? settings.shortBreakMinutes : settings.longBreakMinutes;
   const durationMinutes = safeDuration(rawTimer.durationMinutes, modeDuration);
-  const endAt = Number(rawTimer.endAt);
-  const running = Boolean(rawTimer.running) && endAt > Date.now();
+  const now = Date.now();
+  const rawEndAt = Number(rawTimer.endAt);
+  const endAt = Number.isFinite(rawEndAt) ? Math.min(rawEndAt, now + durationMinutes * 60_000) : 0;
+  const running = Boolean(rawTimer.running) && endAt > now;
+  const storedRemaining = Number(rawTimer.remaining);
   const timer: TimerSnapshot = {
     mode,
     durationMinutes,
-    remaining: running ? Math.max(0, Math.ceil((endAt - Date.now()) / 1000)) : Math.max(0, Number(rawTimer.remaining) || durationMinutes * 60),
+    remaining: running
+      ? Math.max(0, Math.ceil((endAt - now) / 1000))
+      : Math.min(durationMinutes * 60, Math.max(0, Number.isFinite(storedRemaining) ? storedRemaining : durationMinutes * 60)),
     running,
     endAt: running ? endAt : null,
     activeTaskId: typeof rawTimer.activeTaskId === 'string' ? rawTimer.activeTaskId : null,
@@ -539,6 +677,7 @@ function FocusTimer({
   };
 
   const startOrPause = () => {
+    preparePomodoroNotificationAudio();
     if (timer.running && timer.endAt) {
       const left = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
       focusPlaybackRef.current = false;
@@ -548,7 +687,6 @@ function FocusTimer({
       return;
     }
     if (timer.remaining <= 0) return;
-    preparePomodoroNotificationAudio();
     const startsFocus = timer.mode === 'focus';
     focusPlaybackRef.current = startsFocus;
     if (startsFocus) {
@@ -756,7 +894,10 @@ function TaskRow({
 }
 
 function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { settings: FocusSettings; timer: TimerSnapshot; onSettingsChange: (settings: FocusSettings) => void; onTimerChange: (timer: TimerSnapshot) => void }) {
+  const { language } = useI18n();
+  const copy = FOCUS_SETTINGS_COPY[language];
   const [audioUnavailable, setAudioUnavailable] = useState(false);
+  const [audioPreviewed, setAudioPreviewed] = useState(false);
   const [drafts, setDrafts] = useState<Record<DurationSettingKey, string>>(() => ({
     focusMinutes: String(settings.focusMinutes),
     shortBreakMinutes: String(settings.shortBreakMinutes),
@@ -809,21 +950,23 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
   };
 
   const testNotificationSound = () => {
-    setAudioUnavailable(!playPomodoroNotification(settings.notificationPreset, settings.notificationVolume));
+    const played = playPomodoroNotification(settings.notificationPreset, settings.notificationVolume);
+    setAudioUnavailable(!played);
+    setAudioPreviewed(played);
   };
 
   const durationFields: Array<{ key: DurationSettingKey; label: string }> = [
-    { key: 'focusMinutes', label: 'Diqqat' },
-    { key: 'shortBreakMinutes', label: 'Qisqa tanaffus' },
-    { key: 'longBreakMinutes', label: 'Uzoq tanaffus' },
+    { key: 'focusMinutes', label: copy.focus },
+    { key: 'shortBreakMinutes', label: copy.shortBreak },
+    { key: 'longBreakMinutes', label: copy.longBreak },
   ];
 
   return (
     <section className="space-y-5" data-testid="timer-settings">
-      <div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Shaxsiy ritm</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">Taymer sozlamalari</h2><p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">Davrlarni o‘zingizga moslang. O‘zgarishlar shu brauzerdagi shaxsiy ish maydonida saqlanadi.</p></div>
+      <div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">{copy.kicker}</p><h2 className="mt-1 font-serif text-[clamp(2rem,4vw,3.1rem)] leading-none">{copy.title}</h2><p className="mt-2 max-w-xl text-[11px] leading-relaxed text-muted-foreground">{copy.description}</p></div>
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)]">
         <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5 sm:p-6">
-          <div className="flex items-center gap-2"><Settings2 size={16} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Davr davomiyligi</p></div>
+          <div className="flex items-center gap-2"><Settings2 size={16} className="text-[#9b6543]" /><p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">{copy.durationTitle}</p></div>
           <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-3">
             {durationFields.map(({ key, label }) => {
               const invalid = parseDurationInput(drafts[key]) === null;
@@ -846,7 +989,7 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
                       className="min-w-0 flex-1 rounded-lg border border-[#d8d1bd] bg-card px-3 py-2 font-mono text-[16px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43]"
                       data-testid={`input-${key}`}
                     />
-                    <span className="shrink-0 text-[10px] text-muted-foreground">daqiqa</span>
+                    <span className="shrink-0 text-[10px] text-muted-foreground">{copy.minute}</span>
                   </span>
                   <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={formatTimerPresetsGroupLabel(label)}>
                     {DURATION_PRESETS[key].map((minutes) => (
@@ -861,16 +1004,16 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
                         className={`rounded-full px-2.5 py-1 text-[9px] font-medium transition-colors ${settings[key] === minutes ? 'bg-[#47796c] text-white' : 'bg-white/75 text-muted-foreground hover:text-foreground dark:bg-black/15'}`}
                         data-testid={`button-duration-preset-${key}-${minutes}`}
                       >
-                        {minutes} daq
+                        {minutes} {copy.presetMinute}
                       </button>
                     ))}
                   </div>
-                  {invalid && <p className="mt-2 text-[9px] text-destructive" role="status" aria-live="polite" data-testid={`error-${key}`}>1–180 oralig‘ida butun daqiqa kiriting.</p>}
+                  {invalid && <p className="mt-2 text-[9px] text-destructive" role="status" aria-live="polite" data-testid={`error-${key}`}>{copy.durationError}</p>}
                 </div>
               );
             })}
           </div>
-          <p className="mt-4 text-[10px] text-muted-foreground">1–180 daqiqa. Qiymatlar darhol saqlanadi; tanlangan davr bo‘lsa, taymer ham yangilanadi.</p>
+          <p className="mt-4 text-[10px] text-muted-foreground">{copy.durationHelp}</p>
         </div>
         <div className="min-w-0 space-y-4">
           <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
@@ -878,27 +1021,31 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <Bell size={16} className="shrink-0 text-[#9b6543]" />
-                  <p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">Bildirishnoma ovozi</p>
+                  <p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">{copy.audioTitle}</p>
                 </div>
-                <p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Sessiya tugaganda tanlangan ovoz va balandlikda signal yangraydi.</p>
+                <p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">{copy.audioDescription}</p>
               </div>
               <div className="flex max-w-full shrink-0 items-center gap-2">
                 <select
                   value={settings.notificationPreset}
-                  onChange={(event) => onSettingsChange({ ...settings, notificationPreset: event.target.value as PomodoroSoundPreset })}
-                  aria-label="Bildirishnoma ovozi uslubi"
+                  onChange={(event) => {
+                    onSettingsChange({ ...settings, notificationPreset: event.target.value as PomodoroSoundPreset });
+                    setAudioUnavailable(false);
+                    setAudioPreviewed(false);
+                  }}
+                  aria-label={copy.audioStyle}
                   className="w-[190px] max-w-[55vw] min-w-0 rounded-lg border border-border bg-card px-2 py-1.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-[#47796c]/25"
                   data-testid="select-notification-preset"
                 >
                   {POMODORO_SOUND_PRESETS.map((preset) => (
-                    <option key={preset.value} value={preset.value}>{preset.label}</option>
+                    <option key={preset.value} value={preset.value}>{FOCUS_SOUND_PRESET_LABELS[language][preset.value]}</option>
                   ))}
                 </select>
-                <button type="button" role="switch" aria-checked={settings.notificationSound} aria-label="Bildirishnoma ovozini yoqish" onClick={() => onSettingsChange({ ...settings, notificationSound: !settings.notificationSound })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.notificationSound ? 'bg-[#47796c]' : 'bg-muted'}`} data-testid="switch-notification-sound"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.notificationSound ? 'left-6' : 'left-1'}`} /></button>
+                <button type="button" role="switch" aria-checked={settings.notificationSound} aria-label={copy.audioToggle} onClick={() => onSettingsChange({ ...settings, notificationSound: !settings.notificationSound })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.notificationSound ? 'bg-[#47796c]' : 'bg-muted'}`} data-testid="switch-notification-sound"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.notificationSound ? 'left-6' : 'left-1'}`} /></button>
               </div>
             </div>
             <div className="mt-4 flex min-w-0 items-center gap-3">
-              <label htmlFor="notification-volume" className="shrink-0 text-[10px] font-medium text-muted-foreground">Ovoz balandligi</label>
+              <label htmlFor="notification-volume" className="shrink-0 text-[10px] font-medium text-muted-foreground">{copy.volume}</label>
               <input
                 id="notification-volume"
                 type="range"
@@ -906,16 +1053,21 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
                 max={100}
                 step={1}
                 value={settings.notificationVolume}
-                onChange={(event) => onSettingsChange({ ...settings, notificationVolume: safePomodoroSoundVolume(event.target.value) })}
-                aria-label="Ovoz balandligi"
+                onChange={(event) => {
+                  onSettingsChange({ ...settings, notificationVolume: safePomodoroSoundVolume(event.target.value) });
+                  setAudioUnavailable(false);
+                  setAudioPreviewed(false);
+                }}
+                aria-label={copy.volume}
                 aria-valuetext={`${settings.notificationVolume}%`}
                 className="h-2 min-w-0 flex-1 cursor-pointer accent-[#47796c]"
                 data-testid="slider-notification-volume"
               />
               <output htmlFor="notification-volume" className="w-9 shrink-0 text-right font-mono text-[10px] text-muted-foreground" data-testid="value-notification-volume">{settings.notificationVolume}%</output>
             </div>
-            <button type="button" onClick={testNotificationSound} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground" data-testid="button-test-notification"><Volume2 size={13} /> Ovozini sinash</button>
-            {audioUnavailable && <p className="mt-2 text-[10px] text-destructive" role="status" data-testid="status-audio-unavailable">Bu brauzerda ovoz ijrosi qo‘llab-quvvatlanmaydi.</p>}
+            <button type="button" onClick={testNotificationSound} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground" data-testid="button-test-notification"><Volume2 size={13} /> {copy.preview}</button>
+            {audioUnavailable && <p className="mt-2 text-[10px] text-destructive" role="status" data-testid="status-audio-unavailable">{copy.audioUnavailable}</p>}
+            {!audioUnavailable && audioPreviewed && <p className="mt-2 text-[10px] text-muted-foreground" role="status" data-testid="status-audio-preview">{settings.notificationVolume === 0 ? copy.previewSilent : copy.previewSuccess}</p>}
           </div>
           <div className={`min-w-0 rounded-2xl border p-5 ${settings.strictMode ? 'border-[#c8aa71] bg-[#fff8e7]' : 'border-border/70 bg-card'}`}><div className="flex min-w-0 items-start justify-between gap-4"><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><ShieldCheck size={16} className="shrink-0 text-muted-foreground" /><p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">Qat’iy rejim</p></div><p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Faol bo‘lsa, diqqat davri tugamaguncha uni o‘tkazib yuborish tugmasi ishlamaydi.</p></div><button type="button" role="switch" aria-checked={settings.strictMode} onClick={() => onSettingsChange({ ...settings, strictMode: !settings.strictMode })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.strictMode ? 'bg-[#9b6543]' : 'bg-muted'}`} data-testid="switch-strict-mode"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.strictMode ? 'left-6' : 'left-1'}`} /></button></div>{settings.strictMode && <p className="mt-4 break-words rounded-xl bg-[#f3e3bd] px-3 py-2 text-[10px] font-medium text-[#745a2f] [overflow-wrap:anywhere]" role="status" data-testid="status-strict-mode">Qat’iy rejim yoqilgan: diqqat paytida o‘tkazish yopiq, qayta boshlash va pauza esa mavjud.</p>}</div>
         </div>

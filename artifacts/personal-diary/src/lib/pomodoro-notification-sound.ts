@@ -1,6 +1,7 @@
 export const POMODORO_SOUND_PRESETS = [
-  { value: 'zen-bowl', label: 'Zen Gong / Singing Bowl' },
-  { value: 'digital-chime', label: 'Digital Chime / Bell Trio' },
+  { value: 'zen-bowl', label: 'Zen Gong' },
+  { value: 'digital-chime', label: 'Digital Chime' },
+  { value: 'bell-trio', label: 'Bell Trio' },
   { value: 'marimba-strum', label: 'Marimba Melodic Strum' },
   { value: 'soft-flute', label: 'Soft Flute / Acoustic Chord' },
 ] as const;
@@ -53,7 +54,21 @@ const SOUND_NOTES: Record<PomodoroSoundPreset, SynthNote[]> = {
       ],
     },
   ],
-  'digital-chime': [784, 988, 1175].map((frequency, index) => ({
+  'digital-chime': [1046.5, 1318.5].map((frequency, index) => ({
+    frequency,
+    offset: index * 0.12,
+    duration: 0.9,
+    attack: 0.004,
+    release: 0.58,
+    hold: false,
+    waveform: 'sine',
+    harmonics: [
+      { ratio: 1, level: 0.17 },
+      { ratio: 2.76, level: 0.065 },
+      { ratio: 5.4, level: 0.018 },
+    ],
+  })),
+  'bell-trio': [784, 988, 1175].map((frequency, index) => ({
     frequency,
     offset: index * 0.17,
     duration: 1.15,

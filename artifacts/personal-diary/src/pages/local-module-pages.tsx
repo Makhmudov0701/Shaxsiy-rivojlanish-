@@ -7,6 +7,29 @@ import { PrivateVault } from '@/components/private-vault';
 import { personalDevelopmentBackLabel, useI18n } from '@/lib/i18n';
 import { getVaultCopy } from '@/lib/vault-i18n';
 
+const habitsPageCopy = {
+  uz: {
+    eyebrow: 'Shaxsiy rivojlanish ritmi',
+    title: 'Odatlar',
+    description: 'Har kuni kichik bir qadamni belgilab, o‘zingizga bergan va’dalaringizni sokin kuzating.',
+  },
+  en: {
+    eyebrow: 'Personal development rhythm',
+    title: 'Habits',
+    description: 'Track one small daily step and follow through on the promises you make to yourself.',
+  },
+  ru: {
+    eyebrow: 'Ритм личностного роста',
+    title: 'Привычки',
+    description: 'Отмечайте небольшой шаг каждый день и спокойно следите за обещаниями, которые даёте себе.',
+  },
+  ko: {
+    eyebrow: '자기계발의 리듬',
+    title: '습관',
+    description: '매일 작은 한 걸음을 표시하고 스스로에게 한 약속을 차분히 지켜 보세요.',
+  },
+} as const;
+
 export function ModulePageFrame({
   eyebrow,
   title,
@@ -25,7 +48,7 @@ export function ModulePageFrame({
   const { language } = useI18n();
   return (
     <DiaryShell>
-      <div className="mx-auto max-w-[1120px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
+      <div className="mx-auto w-full min-w-0 max-w-[1120px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
         <Link href="/user-portal" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-module-back">
           <ChevronLeft size={17} /> {backLabel ?? personalDevelopmentBackLabel(language)}
         </Link>
@@ -52,13 +75,15 @@ export function UserStoragePage({ children }: { children: (userId: string) => Re
 }
 
 export function HabitsPage() {
+  const { language } = useI18n();
+  const copy = habitsPageCopy[language];
   return (
     <UserStoragePage>
       {(userId) => (
         <ModulePageFrame
-          eyebrow="Kundalik ritm"
-          title="Odatlar"
-          description="Har kuni kichik bir qadamni belgilab, o‘zingizga bergan va’dalaringizni sokin kuzating."
+          eyebrow={copy.eyebrow}
+          title={copy.title}
+          description={copy.description}
           icon={<CalendarCheck2 size={22} strokeWidth={1.7} />}
         >
           <HabitTracker storageKey={`kundalik-odatlar-${userId}`} />

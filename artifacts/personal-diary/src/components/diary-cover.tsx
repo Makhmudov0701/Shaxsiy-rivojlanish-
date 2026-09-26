@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useUser } from '@clerk/react';
+import { personalDevelopmentLabel, useI18n } from '@/lib/i18n';
 import { Check, CircleAlert, ImagePlus, LoaderCircle, Palette, RotateCcw, Upload } from 'lucide-react';
 import {
   compressDiaryCoverImage,
@@ -111,6 +112,7 @@ export function DiaryCoverBackdrop() {
 }
 
 export function DiaryCoverSettingsPanel() {
+  const { language } = useI18n();
   const { settings, status, error: storageError, save } = useDiaryCover();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [panelError, setPanelError] = useState('');
@@ -227,7 +229,7 @@ export function DiaryCoverSettingsPanel() {
           {activeImage && !previewFailed && <img src={activeImage} alt="" aria-hidden="true" className="absolute inset-0 size-full object-cover" onError={() => setPreviewFailed(true)} />}
           <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/40 to-black/15" />
           <div className="relative z-10">
-            <span className="font-mono text-[8px] uppercase tracking-[.16em] text-white/70">Shaxsiy kundalik</span>
+            <span className="font-mono text-[8px] uppercase tracking-[.16em] text-white/70">{personalDevelopmentLabel(language)}</span>
             <p className="mt-2 font-serif text-[27px] leading-none">Yangi sahifa</p>
             {previewFailed && <span className="mt-2 inline-block text-[9px] text-white/80">Rasm yuklanmadi</span>}
           </div>

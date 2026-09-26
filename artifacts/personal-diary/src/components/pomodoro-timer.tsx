@@ -65,7 +65,7 @@ const COPY: Record<AppLanguage, {
     unsupportedNotification: 'Bu brauzer bildirishnomalarni qo‘llab-quvvatlamaydi. Ovozli eslatma baribir ishlaydi.',
     deniedNotification: 'Bildirishnoma ruxsati berilmadi. Ovozli eslatma baribir ishlaydi.',
     completion: (mode) => mode === 'focus' ? 'Diqqat vaqti tugadi. Endi tanaffus qilish vaqti.' : 'Tanaffus tugadi. Yana bir diqqat davrini boshlashingiz mumkin.',
-    notificationTitle: 'Shaxsiy kundalik', timerToggle: 'Diqqat taymerini ochish yoki yopish', startTimer: 'Taymerni boshlash', pauseTimer: 'Taymerni pauza qilish', resetTimer: 'Taymerni qayta tiklash',
+    notificationTitle: 'Shaxsiy rivojlanish', timerToggle: 'Diqqat taymerini ochish yoki yopish', startTimer: 'Taymerni boshlash', pauseTimer: 'Taymerni pauza qilish', resetTimer: 'Taymerni qayta tiklash',
     modeTab: (label) => `${label} rejimini tanlash`,
   },
   en: {
@@ -81,7 +81,7 @@ const COPY: Record<AppLanguage, {
     unsupportedNotification: 'This browser does not support notifications. The sound reminder will still work.',
     deniedNotification: 'Notification permission was not granted. The sound reminder will still work.',
     completion: (mode) => mode === 'focus' ? 'Focus time is over. It is time to take a break.' : 'Break time is over. You can start another focus session.',
-    notificationTitle: 'Personal diary', timerToggle: 'Open or close focus timer', startTimer: 'Start timer', pauseTimer: 'Pause timer', resetTimer: 'Reset timer',
+    notificationTitle: 'Personal Development', timerToggle: 'Open or close focus timer', startTimer: 'Start timer', pauseTimer: 'Pause timer', resetTimer: 'Reset timer',
     modeTab: (label) => `Select ${label} mode`,
   },
   ru: {
@@ -97,7 +97,7 @@ const COPY: Record<AppLanguage, {
     unsupportedNotification: 'Этот браузер не поддерживает уведомления. Звуковое напоминание всё равно будет работать.',
     deniedNotification: 'Разрешение на уведомления не предоставлено. Звуковое напоминание всё равно будет работать.',
     completion: (mode) => mode === 'focus' ? 'Время концентрации закончилось. Пора сделать перерыв.' : 'Перерыв закончился. Можно начать новый период концентрации.',
-    notificationTitle: 'Личный дневник', timerToggle: 'Открыть или закрыть таймер концентрации', startTimer: 'Запустить таймер', pauseTimer: 'Приостановить таймер', resetTimer: 'Сбросить таймер',
+    notificationTitle: 'Личностное развитие', timerToggle: 'Открыть или закрыть таймер концентрации', startTimer: 'Запустить таймер', pauseTimer: 'Приостановить таймер', resetTimer: 'Сбросить таймер',
     modeTab: (label) => `Выбрать режим «${label}»`,
   },
   ko: {
@@ -113,7 +113,7 @@ const COPY: Record<AppLanguage, {
     unsupportedNotification: '이 브라우저는 알림을 지원하지 않습니다. 소리 알림은 계속 작동합니다.',
     deniedNotification: '알림 권한이 허용되지 않았습니다. 소리 알림은 계속 작동합니다.',
     completion: (mode) => mode === 'focus' ? '집중 시간이 끝났습니다. 이제 휴식할 시간입니다.' : '휴식 시간이 끝났습니다. 다시 집중 세션을 시작할 수 있습니다.',
-    notificationTitle: '개인 일기', timerToggle: '집중 타이머 열기 또는 닫기', startTimer: '타이머 시작', pauseTimer: '타이머 일시정지', resetTimer: '타이머 재설정',
+    notificationTitle: '자기계발', timerToggle: '집중 타이머 열기 또는 닫기', startTimer: '타이머 시작', pauseTimer: '타이머 일시정지', resetTimer: '타이머 재설정',
     modeTab: (label) => `${label} 모드 선택`,
   },
 };
