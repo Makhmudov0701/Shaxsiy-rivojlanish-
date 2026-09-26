@@ -3,9 +3,11 @@ import { ChevronLeft, TimerReset } from 'lucide-react';
 import { Link } from 'wouter';
 import { DiaryShell } from '@/components/diary-ui';
 import { FocusTodoWorkspace } from '@/components/focus-todo-module';
+import { personalDevelopmentBackLabel, useI18n } from '@/lib/i18n';
 
 export function FocusTodoPage() {
   const { isLoaded, user } = useUser();
+  const { language } = useI18n();
 
   if (!isLoaded || !user) {
     return (
@@ -23,7 +25,7 @@ export function FocusTodoPage() {
       <div className="box-border min-h-[100dvh] w-full min-w-0 max-w-full">
         <div className="box-border flex min-h-12 w-full min-w-0 max-w-full items-center justify-between gap-4 border-b border-[#d8d1bd] bg-[#f2efe5] px-5 py-2 dark:border-[#41453d] dark:bg-[#1d211e] sm:px-8 lg:px-12">
           <Link href="/user-portal" className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-focus-back">
-            <ChevronLeft size={15} /> Kundalikka qaytish
+            <ChevronLeft size={15} /> {personalDevelopmentBackLabel(language)}
           </Link>
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="grid size-7 place-items-center rounded-lg bg-[#e2eee7] text-[#47796c]"><TimerReset size={14} /></span>

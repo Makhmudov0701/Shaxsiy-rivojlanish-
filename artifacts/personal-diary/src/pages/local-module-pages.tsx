@@ -4,7 +4,7 @@ import { CalendarCheck2, ChevronLeft, LockKeyhole } from 'lucide-react';
 import { DiaryShell } from '@/components/diary-ui';
 import { HabitTracker } from '@/components/diary-modules';
 import { PrivateVault } from '@/components/private-vault';
-import { useI18n } from '@/lib/i18n';
+import { personalDevelopmentBackLabel, useI18n } from '@/lib/i18n';
 import { getVaultCopy } from '@/lib/vault-i18n';
 
 export function ModulePageFrame({
@@ -12,7 +12,7 @@ export function ModulePageFrame({
   title,
   description,
   icon,
-  backLabel = 'Kundalikka qaytish',
+  backLabel,
   children,
 }: {
   eyebrow: string;
@@ -22,11 +22,12 @@ export function ModulePageFrame({
   backLabel?: string;
   children: React.ReactNode;
 }) {
+  const { language } = useI18n();
   return (
     <DiaryShell>
       <div className="mx-auto max-w-[1120px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
         <Link href="/user-portal" className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-module-back">
-          <ChevronLeft size={17} /> {backLabel}
+          <ChevronLeft size={17} /> {backLabel ?? personalDevelopmentBackLabel(language)}
         </Link>
         <div className="mt-6 flex items-start gap-3 sm:gap-4">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-[#e7def0] text-[#5b3f69] dark:bg-[#3b3044] dark:text-[#d8bce2]">{icon}</span>

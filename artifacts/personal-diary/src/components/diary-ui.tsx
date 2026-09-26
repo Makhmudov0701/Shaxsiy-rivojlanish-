@@ -9,7 +9,7 @@ import { AmbientSoundControl } from '@/components/ambient-sound';
 import { QuickCaptureLauncher } from '@/components/quick-capture-launcher';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
-import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText, useI18n } from '@/lib/i18n';
+import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, personalDevelopmentLabel, translateUiText, useI18n } from '@/lib/i18n';
 import { vaultNavigationLabel } from '@/lib/vault-i18n';
 import { applyThemePreference, readProfilePreferences, updateProfilePreference, type ThemePreference } from '@/lib/profile-preferences';
 
@@ -203,10 +203,11 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = location.split('?')[0];
   const sectionId = sectionIdForPath(pathname);
+  const mainSectionLabel = personalDevelopmentLabel(language);
   const profileLabel = { uz: 'Shaxsiy profil', en: 'Personal profile', ru: 'Личный профиль', ko: '개인 프로필' }[language];
   const pageTitle = pathname === '/profile' ? profileLabel : pathname === '/vault' ? vaultNavigationLabel(language) : sectionId
     ? translateUiText(sectionMotivationContent[sectionId].title)
-    : 'Shaxsiy kundalik';
+    : mainSectionLabel;
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
   const brainGymLabel = { uz: 'Xotira va miya', en: 'Memory & Brain Gym', ru: 'Память и мозг', ko: '기억력 훈련' }[language];
@@ -247,7 +248,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
             <div className="mt-8 pb-2">
               <p className="mb-3 px-3 text-[12px] font-semibold text-sidebar-foreground/55">Asosiy bo‘limlar</p>
               <nav className="space-y-1">
-                <SidebarNavLink href="/user-portal" label="Kundalik" icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected} onNavigate={closeMobile} testId="link-portal" />
+                <SidebarNavLink href="/user-portal" label={mainSectionLabel} icon={<BookOpen size={20} strokeWidth={1.8} />} active={mainDiarySelected} onNavigate={closeMobile} testId="link-portal" />
                 <SidebarNavLink href="/pomodoro" label="Diqqat" icon={<Clock3 size={20} strokeWidth={1.8} />} active={pomodoroSelected} onNavigate={closeMobile} testId="link-pomodoro" />
                 <SidebarNavLink href="/goals" label="Maqsadlar" icon={<Star size={20} strokeWidth={1.8} />} active={pathname === '/goals'} onNavigate={closeMobile} testId="link-goals" />
                 <SidebarNavLink href="/tasks" label="Topshiriqlar" icon={<ListTodo size={20} strokeWidth={1.8} />} active={pathname === '/tasks'} onNavigate={closeMobile} testId="link-tasks" />

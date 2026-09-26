@@ -20,7 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { BookOpenCheck, Check, ChevronLeft, Edit3, Layers3, Lightbulb, Loader2, Plus, RotateCcw, Trash2, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { formatContentDeleteConfirmation, getCurrentIntlLocale, useI18n, type AppLanguage } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale, personalDevelopmentBackLabel, useI18n, type AppLanguage } from '@/lib/i18n';
 import { generateFlashcardExamples, type FlashcardExampleSuggestion } from '@/lib/flashcard-context';
 import { useForm } from 'react-hook-form';
 import { Link } from 'wouter';
@@ -283,6 +283,7 @@ function formatDue(value: string) {
 }
 
 export function RepetitionPage() {
+  const { language } = useI18n();
   const queryClient = useQueryClient();
   const timeZone = getTimeZone();
   const decksQuery = useListRepetitionDecks();
@@ -330,7 +331,7 @@ export function RepetitionPage() {
 
   return <DiaryShell>
     <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-8 lg:px-12 lg:py-10">
-      <Link href="/user-portal" className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="link-repetition-back"><ChevronLeft size={16} /> Kundalikka qaytish</Link>
+      <Link href="/user-portal" className="inline-flex min-h-10 items-center gap-2 rounded-xl px-2 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="link-repetition-back"><ChevronLeft size={16} /> {personalDevelopmentBackLabel(language)}</Link>
       <div className="mt-7 flex flex-col justify-between gap-6 lg:flex-row lg:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Sokin yodlash</p><h1 className="mt-2 font-serif text-[clamp(2.6rem,6vw,5.2rem)] leading-[.9] tracking-[-.055em]">Takrorlash<span className="text-primary">.</span></h1><p className="mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground">So‘zlarni shoshmasdan o‘rganing. Har bir kart sizga kerak bo‘lgan paytda qaytib keladi.</p></div><button type="button" onClick={() => setCardDialog(null)} aria-haspopup="dialog" aria-expanded={cardDialog !== false} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-sm transition-[transform,background-color] hover:-translate-y-0.5 hover:bg-primary/90 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2" data-testid="button-add-card"><Plus size={18} /> Yangi kart</button></div>
       {errorQuery && <div className="mt-7"><ErrorState message="Ma’lumotlarni yuklashda xatolik yuz berdi." onRetry={retryAll} /></div>}
       <section className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -28,13 +28,39 @@ type TranslationRow = {
   ko: string;
 };
 
+const personalDevelopmentTitleCopy: TranslationRow = {
+  uz: "Shaxsiy rivojlanish",
+  en: "Personal Development",
+  ru: "Личностный рост",
+  ko: "자기계발",
+};
+
+const personalDevelopmentBackCopy: TranslationRow = {
+  uz: "Shaxsiy rivojlanishga qaytish",
+  en: "Back to Personal Development",
+  ru: "Вернуться к личностному росту",
+  ko: "자기계발로 돌아가기",
+};
+
+const personalDevelopmentSectionsCopy: TranslationRow = {
+  uz: "Shaxsiy rivojlanish bo‘limlari",
+  en: "Personal Development sections",
+  ru: "Разделы личностного роста",
+  ko: "자기계발 섹션",
+};
+
 type CopyCatalog = {
   translations: TranslationRow[];
 };
 
 const catalog = copyData as CopyCatalog;
 const translations = new Map<string, Record<AppLanguage, string>>();
-for (const { uz, en, ru, ko } of catalog.translations) {
+for (const { uz, en, ru, ko } of [
+  ...catalog.translations,
+  personalDevelopmentTitleCopy,
+  personalDevelopmentBackCopy,
+  personalDevelopmentSectionsCopy,
+]) {
   translations.set(uz, { uz, en, ru, ko });
 }
 
@@ -53,6 +79,18 @@ function readStoredLanguage(): AppLanguage {
 }
 
 let currentLanguage = readStoredLanguage();
+
+export function personalDevelopmentLabel(language: AppLanguage = currentLanguage): string {
+  return personalDevelopmentTitleCopy[language];
+}
+
+export function personalDevelopmentBackLabel(language: AppLanguage = currentLanguage): string {
+  return personalDevelopmentBackCopy[language];
+}
+
+export function personalDevelopmentSectionsLabel(language: AppLanguage = currentLanguage): string {
+  return personalDevelopmentSectionsCopy[language];
+}
 
 export function getCurrentLanguage(): AppLanguage {
   return currentLanguage;

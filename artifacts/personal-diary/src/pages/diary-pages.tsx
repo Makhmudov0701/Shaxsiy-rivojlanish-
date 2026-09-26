@@ -4,7 +4,7 @@ import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp, useUser } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, Bold, CalendarDays, Check, ChevronDown, CircleAlert, Download, Eye, FileJson, FileText, FolderOpen, Heart, ImagePlus, Italic, List, LoaderCircle, LockKeyhole, Mic, MicOff, Pencil, Plus, Quote, Search, ShieldCheck, Star, Upload, X } from 'lucide-react';
-import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale, getCurrentLanguage, LanguageSelector, useI18n } from '@/lib/i18n';
+import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale, getCurrentLanguage, LanguageSelector, personalDevelopmentBackLabel, personalDevelopmentSectionsLabel, useI18n } from '@/lib/i18n';
 import { DAILY_STICKER_COPY, DAILY_STICKER_OPTIONS } from '@/lib/daily-stickers';
 import {
   DiaryEntryInput,
@@ -324,7 +324,7 @@ export function UserPortalPage() {
           <div className="mt-5"><OnThisDayAndHeatmap entries={allEntries.data ?? []} loading={allEntries.isLoading} /></div>
         </div>
       </details>
-      <div className="mt-8 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2" role="tablist" aria-label="Kundalik bo‘limlari">
+      <div className="mt-8 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-2" role="tablist" aria-label={personalDevelopmentSectionsLabel(language)}>
         {([['entries', 'Yozuvlar'], ['calendar', 'Taqvim'], ['folders', 'Mavzular'], ['analytics', 'Kayfiyat']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={activeView === value} onClick={() => navigateView(value)} className={`min-h-12 rounded-2xl px-4 py-3 text-[14px] font-semibold transition-colors ${activeView === value ? 'bg-primary text-primary-foreground' : 'border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-${value}`}>{label}</button>)}
       </div>
      {activeView === 'calendar' && <CalendarAnalytics mode="calendar" />}
@@ -497,7 +497,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
     setContent(`${content.trim()}${content.trim() ? '\n\n' : ''}> ${reflectionPrompt}\n\n`);
   };
    return <DiaryShell><div className="mx-auto max-w-[900px] px-4 py-5 sm:px-8 sm:py-7 lg:px-12 lg:py-10">
-       <div className="flex flex-wrap items-center justify-between gap-3"><Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-back"><ArrowLeft size={17} /> {isNew ? 'Kundalikka qaytish' : 'Yozuvga qaytish'}</Link>{!isNew && entry && <button type="button" onClick={exportPdf} disabled={pending || exportingPdf} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-[13px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:cursor-wait disabled:opacity-60" data-testid="button-export-entry-pdf"><Download size={16} />{exportingPdf ? 'Tayyorlanmoqda…' : 'PDF olish'}</button>}</div>
+       <div className="flex flex-wrap items-center justify-between gap-3"><Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-testid="link-back"><ArrowLeft size={17} /> {isNew ? personalDevelopmentBackLabel(language) : 'Yozuvga qaytish'}</Link>{!isNew && entry && <button type="button" onClick={exportPdf} disabled={pending || exportingPdf} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 text-[13px] font-semibold text-foreground transition-colors hover:border-[#b89c5c] disabled:cursor-wait disabled:opacity-60" data-testid="button-export-entry-pdf"><Download size={16} />{exportingPdf ? 'Tayyorlanmoqda…' : 'PDF olish'}</button>}</div>
        <div className="mt-5"><PomodoroTimer /></div>
       <div className="mt-5">
        <div className="diary-cover diary-notebook border border-card-border bg-card" data-testid="entry-notebook">
