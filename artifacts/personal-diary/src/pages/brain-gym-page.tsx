@@ -131,7 +131,7 @@ const copy: Record<AppLanguage, Copy> = {
     yourAnswer: 'Javobingiz',
     sequencePlaceholder: '9 ta raqamni ketma-ket kiriting',
     submit: 'Tekshirish',
-    typeStory: 'Ularni bog‘laydigan jonli hikoya yozing',
+    typeStory: 'To‘rtta so‘zni tartib bilan bog‘laydigan jonli hikoya yozing',
     completeRound: 'Raundni yakunlash',
     storyRequired: 'Hikoya qisqa bo‘lsa ham yozing.',
     tipLabel: 'Bugungi kichik qadam',
@@ -163,7 +163,7 @@ const copy: Record<AppLanguage, Copy> = {
   },
   en: {
     eyebrow: 'A quiet practice room',
-    title: 'Memory gym',
+    title: 'Memory & Brain Gym',
     description: 'Learn how memory works, then try short, low-pressure exercises that leave room for curiosity.',
     back: 'Back to diary',
     science: 'The science shelf',
@@ -195,7 +195,7 @@ const copy: Record<AppLanguage, Copy> = {
     yourAnswer: 'Your answer',
     sequencePlaceholder: 'Enter the 9 digits in order',
     submit: 'Check sequence',
-    typeStory: 'Write a vivid story that connects them',
+    typeStory: 'Write a vivid story that links all four words in order',
     completeRound: 'Complete round',
     storyRequired: 'Write even a very short story first.',
     tipLabel: 'A small step for today',
@@ -259,7 +259,7 @@ const copy: Record<AppLanguage, Copy> = {
     yourAnswer: 'Ваш ответ',
     sequencePlaceholder: 'Введите 9 цифр по порядку',
     submit: 'Проверить',
-    typeStory: 'Напишите яркую историю, которая их соединит',
+    typeStory: 'Напишите яркую историю, которая по порядку свяжет все четыре слова',
     completeRound: 'Завершить раунд',
     storyRequired: 'Сначала напишите хотя бы короткую историю.',
     tipLabel: 'Маленький шаг на сегодня',
@@ -323,7 +323,7 @@ const copy: Record<AppLanguage, Copy> = {
     yourAnswer: '내 답',
     sequencePlaceholder: '9개의 숫자를 순서대로 입력',
     submit: '순서 확인',
-    typeStory: '둘을 연결하는 생생한 이야기를 써보세요',
+    typeStory: '네 단어를 순서대로 연결하는 생생한 이야기를 써보세요',
     completeRound: '라운드 완료',
     storyRequired: '아주 짧아도 먼저 이야기를 써주세요.',
     tipLabel: '오늘의 작은 한 걸음',
@@ -437,17 +437,20 @@ const dailyTips: Record<AppLanguage, string[]> = {
   ko: ['평소 리듬에 가까운 시간에 잠자리에 들어 보세요. 기억은 연습만의 일이 아닙니다.', '다양하고 균형 잡힌 식사를 선택하세요. 단 하나의 음식이 기억력을 빠르게 해결해 주지는 않습니다.', '5–10분 걷거나 스트레칭해 보세요. 움직임은 생각에 부드러운 전환을 줍니다.', '페이지를 덮고 방금 배운 것 세 가지를 스스로 물어보세요.'],
 };
 
-const wordPairs: Record<AppLanguage, [string, string][]> = {
-  uz: [['oyna', 'kompas'], ['qalam', 'bulut'], ['chiroq', 'daryo'], ['kalit', 'anor']],
-  en: [['lantern', 'compass'], ['pencil', 'cloud'], ['window', 'river'], ['key', 'pomegranate']],
-  ru: [['фонарь', 'компас'], ['карандаш', 'облако'], ['окно', 'река'], ['ключ', 'гранат']],
-  ko: [['등불', '나침반'], ['연필', '구름'], ['창문', '강'], ['열쇠', '석류']],
+const wordPairs: Record<AppLanguage, [string, string, string, string][]> = {
+  uz: [['oyna', 'kompas', 'anor', 'sham'], ['qalam', 'bulut', 'soat', 'qayiq'], ['chiroq', 'daryo', 'non', 'kalit'], ['kitob', 'qush', 'piyola', 'oy']],
+  en: [['lantern', 'compass', 'pomegranate', 'shoe'], ['pencil', 'cloud', 'teacup', 'bridge'], ['window', 'river', 'candle', 'bicycle'], ['key', 'feather', 'orange', 'clock']],
+  ru: [['фонарь', 'компас', 'гранат', 'башмак'], ['карандаш', 'облако', 'чашка', 'мост'], ['окно', 'река', 'свеча', 'велосипед'], ['ключ', 'перо', 'апельсин', 'часы']],
+  ko: [['등불', '나침반', '석류', '구두'], ['연필', '구름', '찻잔', '다리'], ['창문', '강', '촛불', '자전거'], ['열쇠', '깃털', '귤', '시계']],
 };
 
 const today = () => localDateKey(new Date());
 
 function completion(exercise: BrainGymCompletion['exercise'], score: number, possible: number): BrainGymCompletion {
-  return { id: crypto.randomUUID(), exercise, date: today(), completedAt: new Date().toISOString(), score, possible };
+  const id = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `brain-gym-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+  return { id, exercise, date: today(), completedAt: new Date().toISOString(), score, possible };
 }
 
 function Panel({ children, className = '', testId }: { children: ReactNode; className?: string; testId?: string }) {
@@ -467,17 +470,26 @@ function randomMatrix() {
 
 function NumberMatrix({ copy: c, disabled, onComplete }: { copy: Copy; disabled: boolean; onComplete: (score: number, possible: number) => void }) {
   const [phase, setPhase] = useState<'idle' | 'showing' | 'input' | 'result'>('idle');
+  const [countdown, setCountdown] = useState(3);
   const [answer, setAnswer] = useState('');
   const [score, setScore] = useState<number | null>(null);
   const [sequence, setSequence] = useState(randomMatrix);
 
   useEffect(() => {
     if (phase !== 'showing') return undefined;
-    const timer = window.setTimeout(() => setPhase('input'), 3000);
-    return () => window.clearTimeout(timer);
+    setCountdown(3);
+    const timers = [
+      window.setTimeout(() => setCountdown(2), 1000),
+      window.setTimeout(() => setCountdown(1), 2000),
+      window.setTimeout(() => {
+        setCountdown(0);
+        setPhase('input');
+      }, 3000),
+    ];
+    return () => timers.forEach(window.clearTimeout);
   }, [phase]);
 
-  const start = () => { setSequence(randomMatrix()); setAnswer(''); setScore(null); setPhase('showing'); };
+  const start = () => { setSequence(randomMatrix()); setCountdown(3); setAnswer(''); setScore(null); setPhase('showing'); };
   const grade = () => {
     if (answer.replace(/\D/g, '').length < 9) return;
     const typed = answer.replace(/\D/g, '').slice(0, 9).split('').map(Number);
@@ -493,7 +505,7 @@ function NumberMatrix({ copy: c, disabled, onComplete }: { copy: Copy; disabled:
       {(phase === 'showing' ? sequence : Array(9).fill(null)).map((digit, index) => <span key={`${sequence[index]}-${index}`} className={`grid aspect-square place-items-center rounded-xl border text-[24px] font-semibold transition-opacity duration-300 ${phase === 'showing' ? 'border-[#c8a963] bg-[#fffaf0] text-[#30243f]' : 'border-[#d9cba9] bg-[#faf6e9] text-transparent'}`} data-testid={`cell-number-${index}`}>{digit}</span>)}
     </div>
     {phase === 'idle' && <button type="button" disabled={disabled} onClick={start} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#30243f] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] transition-transform hover:-translate-y-0.5 disabled:opacity-45" data-testid="button-start-number-matrix"><Eye size={16} />{c.start}</button>}
-    {phase === 'showing' && <p className="mt-4 text-center font-mono text-[11px] text-[#9a6b23]" role="status" data-testid="status-number-countdown">3 {c.seconds} · {c.lookClosely}</p>}
+    {phase === 'showing' && <p className="mt-4 text-center font-mono text-[11px] text-[#9a6b23]" role="status" aria-live="off" data-testid="status-number-countdown">{countdown} {c.seconds} · {c.lookClosely}</p>}
     {phase === 'input' && <div className="mt-5 flex flex-col gap-2 sm:flex-row"><input inputMode="numeric" disabled={disabled} maxLength={9} value={answer} onChange={(event) => setAnswer(event.target.value.replace(/\D/g, ''))} placeholder={c.sequencePlaceholder} aria-label={c.sequencePlaceholder} className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#d9cba9] bg-card px-3 text-[13px] outline-none focus:border-[#9a6b23] disabled:opacity-60" data-testid="input-number-sequence" /><button type="button" onClick={grade} disabled={disabled || answer.length < 9} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-submit-number-matrix"><Check size={16} />{c.submit}</button></div>}
     {phase === 'result' && score !== null && <><div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-card p-3.5" role="status" data-testid="status-number-result"><span className="text-[13px] font-semibold">{c.practiceResult}: <strong className="font-serif text-[24px]">{score}</strong> {c.of} 9</span><button type="button" disabled={disabled} onClick={() => { setSequence(randomMatrix()); setPhase('idle'); }} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border px-3 text-[12px] font-semibold hover:bg-muted disabled:opacity-45" data-testid="button-reset-number-matrix"><RotateCcw size={14} />{c.reset}</button></div><div className="mt-3 flex justify-center gap-1.5" aria-label={c.positionResult} data-testid="status-number-position-results">{sequence.map((digit, index) => <span key={`result-${index}`} className={`grid size-7 place-items-center rounded-lg text-[11px] font-bold ${answer[index] === String(digit) ? 'bg-[#d8eade] text-[#35614f]' : 'bg-[#f4ddd4] text-[#8f3f2d]'}`} data-testid={`status-number-position-${index}`}>{answer[index] === String(digit) ? <Check size={13} /> : <X size={13} />}</span>)}</div></>}
   </div>;
@@ -503,11 +515,11 @@ function WordChain({ copy: c, language, disabled, onComplete }: { copy: Copy; la
   const index = new Date().getDate() % wordPairs[language].length;
   const [story, setStory] = useState('');
   const [done, setDone] = useState(false);
-  const [first, second] = wordPairs[language][index];
+  const words = wordPairs[language][index];
   return <div className="mt-6 rounded-[22px] border border-[#d8e4dd] bg-[#edf5f0] p-4 sm:p-5" data-testid="exercise-word-chain">
     <p className="font-mono text-[10px] uppercase tracking-[.14em] text-[#47796c]">02 / {c.wordChainTitle}</p>
     <h3 className="mt-1 font-serif text-[24px]">{c.wordChainTitle}</h3>
-    <div className="mt-5 flex items-center justify-center gap-3 text-center"><span className="rounded-2xl bg-card px-4 py-3 font-serif text-[23px]">{first}</span><Waves size={18} className="text-[#9a6b23]" /><span className="rounded-2xl bg-card px-4 py-3 font-serif text-[23px]">{second}</span></div>
+    <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-center" role="group" aria-label={c.typeStory}>{words.map((word, index) => <span className="contents" key={`${word}-${index}`}><span className="max-w-full break-words rounded-2xl bg-card px-3 py-2 font-serif text-[19px] sm:px-4 sm:py-3 sm:text-[23px]" data-testid={`text-word-chain-${index}`}>{word}</span>{index < words.length - 1 && <Waves size={16} className="shrink-0 text-[#9a6b23]" aria-hidden="true" />}</span>)}</div>
     <label htmlFor="word-story" className="mt-5 block text-[12px] font-semibold text-[#47796c]">{c.typeStory}</label>
     <textarea id="word-story" disabled={disabled} value={story} onChange={(event) => setStory(event.target.value)} rows={4} maxLength={1200} placeholder={language === 'en' ? 'Make it surprising, sensory, and yours…' : language === 'ru' ? 'Пусть она будет неожиданной и образной…' : language === 'ko' ? '뜻밖이고 감각적인 이야기로 만들어 보세요…' : 'Uni kutilmagan va jonli qiling…'} className="mt-2 w-full resize-y rounded-xl border border-[#cbdcd2] bg-card px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#47796c] disabled:opacity-60" data-testid="input-word-story" />
     <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><p className="text-[11px] italic text-muted-foreground" data-testid="status-word-storage">{c.noStorySaved}</p>{done ? <span className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#d8eade] px-4 text-[13px] font-semibold text-[#35614f]" role="status" data-testid="status-word-complete"><Check size={16} />{c.practiceComplete}</span> : <button type="button" disabled={disabled || !story.trim()} onClick={() => { setDone(true); onComplete(1, 1); }} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#47796c] px-4 py-2.5 text-[13px] font-semibold text-[#fffaf0] disabled:opacity-45" data-testid="button-complete-word-chain"><Sparkles size={16} />{c.completeRound}</button>}</div>
@@ -591,7 +603,7 @@ function RecallPractice({ copy: c, language, factsForLanguage, progress, save, d
 function BrainGymContent({ userId }: { userId: string }) {
   const { language } = useI18n();
   const c = copy[language];
-  const store = useBrainGymProgress(userId, 'Xotira gimnastikasi');
+  const store = useBrainGymProgress(userId, c.title);
   const [openGuide, setOpenGuide] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [noticeTone, setNoticeTone] = useState<'success' | 'error'>('success');
