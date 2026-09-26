@@ -162,10 +162,10 @@ function safeDuration(value: unknown, fallback: number) {
 }
 
 function parseDurationInput(value: string): number | null {
-  if (!/^\d+$/.test(value)) return null;
+  if (!value.trim()) return null;
   const parsed = Number(value);
-  if (!Number.isSafeInteger(parsed) || parsed < 1) return null;
-  return Math.min(MAX_TIMER_MINUTES, parsed);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.min(MAX_TIMER_MINUTES, Math.max(1, Math.trunc(parsed)));
 }
 
 function safeWorkspace(value: unknown): WorkspaceData {
@@ -798,13 +798,14 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
       setDrafts((current) => ({ ...current, [key]: value }));
       return;
     }
-    setDrafts((current) => ({ ...current, [key]: Number(value) > MAX_TIMER_MINUTES ? String(MAX_TIMER_MINUTES) : value }));
+    setDrafts((current) => ({ ...current, [key]: String(minutes) }));
     applyDuration(key, minutes);
   };
 
   const finishDurationEdit = (key: DurationSettingKey) => {
-    const minutes = parseDurationInput(drafts[key]);
-    setDrafts((current) => ({ ...current, [key]: String(minutes ?? settings[key]) }));
+    const minutes = parseDurationInput(drafts[key]) ?? settings[key];
+    setDrafts((current) => ({ ...current, [key]: String(minutes) }));
+    applyDuration(key, minutes);
   };
 
   const durationFields: Array<{ key: DurationSettingKey; label: string }> = [

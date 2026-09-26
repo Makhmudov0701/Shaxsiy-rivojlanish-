@@ -21,6 +21,7 @@ import { BooksPage } from '@/pages/books-page';
 import RepetitionPage from '@/pages/repetition-page';
 import TasksPage from '@/pages/tasks-page';
 import { ProfilePage } from '@/pages/profile-page';
+import { BrainGymPage } from '@/pages/brain-gym-page';
 import {
   Redirect,
   Route,
@@ -166,6 +167,9 @@ function Router() {
         </Route>
         <Route path="/repetition">
           <ProtectedPage><RepetitionPage /></ProtectedPage>
+        </Route>
+        <Route path="/brain-gym">
+          <ProtectedPage><BrainGymPage /></ProtectedPage>
         </Route>
         <Route path="/pomodoro">
           <ProtectedPage><FocusTodoPage /></ProtectedPage>

@@ -15,6 +15,7 @@ import { calendarNavigationLabel, formatDiaryEntryCount, formatRecordedDays, get
 import { DAILY_STICKER_COPY, getDailySticker } from '@/lib/daily-stickers';
 import { EMPTY_ENERGY_LOG, energyStorageKey, isEnergyLog, useLocalModuleStorage, type EnergyLog } from '@/lib/local-module-storage';
 import { readFocusWorkspace, type FocusWorkspaceData } from '@/lib/focus-workspace-data';
+import { useBrainGymProgress, type BrainGymCompletion } from '@/lib/brain-gym-progress';
 
 type AnalyticsMode = 'calendar' | 'analytics';
 
@@ -84,6 +85,7 @@ function buildDailyActivity(
   entries: DiaryEntry[],
   focus: FocusWorkspaceData,
   reviewActivity: ReadonlyArray<{ reviewedOn: string; count: number }>,
+  exerciseCompletions: ReadonlyArray<BrainGymCompletion>,
 ): ActivityDay[] {
   const daily = new Map<string, ActivityDay>();
   const getDay = (date: string) => {
@@ -95,6 +97,7 @@ function buildDailyActivity(
       tasksCompleted: 0,
       pomodoroMinutes: 0,
       flashcardsReviewed: 0,
+      exerciseCompletions: 0,
     };
     daily.set(date, next);
     return next;
@@ -118,6 +121,10 @@ function buildDailyActivity(
   for (const review of reviewActivity) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(review.reviewedOn) || !Number.isFinite(review.count) || review.count <= 0) continue;
     getDay(review.reviewedOn).flashcardsReviewed += review.count;
+  }
+  for (const completion of exerciseCompletions) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(completion.date)) continue;
+    getDay(completion.date).exerciseCompletions += 1;
   }
   return [...daily.values()].sort((left, right) => left.date.localeCompare(right.date));
 }
@@ -287,6 +294,7 @@ function EnergyTrendChart({ energyLog, status, error, visibleMonth }: { energyLo
 export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
   const [visibleMonth, setVisibleMonth] = useState(() => new Date());
   const { user } = useUser();
+  const brainGym = useBrainGymProgress(user?.id ?? 'pending-user', 'Brain Gym');
   const energyKey = user?.id ? energyStorageKey(user.id) : 'kundalik-energiya-kutilyapti';
   const energy = useLocalModuleStorage(energyKey, EMPTY_ENERGY_LOG, isEnergyLog, 'Energiya');
   const entriesQuery = useListDiaryEntries(undefined, { query: { queryKey: getListDiaryEntriesQueryKey() } });
@@ -310,8 +318,8 @@ export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
   const currentFocusSnapshot = focusSnapshot?.userId === user?.id ? focusSnapshot : null;
   const focusData = currentFocusSnapshot?.data ?? EMPTY_FOCUS_WORKSPACE;
   const activityDays = useMemo(
-    () => buildDailyActivity(entries, focusData, repetitionStats.data?.reviewActivity ?? []),
-    [entries, focusData, repetitionStats.data?.reviewActivity],
+    () => buildDailyActivity(entries, focusData, repetitionStats.data?.reviewActivity ?? [], brainGym.value.completions),
+    [entries, focusData, repetitionStats.data?.reviewActivity, brainGym.value.completions],
   );
   const retryActivity = () => {
     void entriesQuery.refetch();
@@ -319,9 +327,19 @@ export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
     void dailyStickersQuery.refetch();
     if (user?.id) setFocusSnapshot({ userId: user.id, ...readFocusWorkspace(user.id) });
   };
+  const analyticsPartialData = mode === 'analytics' && (
+    entriesQuery.isLoading
+    || entriesQuery.isError
+    || repetitionStats.isLoading
+    || repetitionStats.isError
+    || !currentFocusSnapshot
+    || Boolean(currentFocusSnapshot?.error)
+    || brainGym.status === 'loading'
+    || brainGym.status === 'error'
+  );
 
-  if (entriesQuery.isLoading) return <section className="mt-10 rounded-[28px] border border-card-border bg-card/70 p-5 sm:p-7" aria-label={mode === 'calendar' ? 'Taqvim yuklanmoqda' : 'Kayfiyat tahlili yuklanmoqda'}><div className="skeleton h-3 w-32 rounded-full" /><div className="mt-3 skeleton h-9 w-72 max-w-full rounded-lg" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><CalendarSkeleton /><div className="skeleton h-56 rounded-2xl" /></div></section>;
-  if (entriesQuery.isError) return <section className="mt-10 rounded-[28px] border border-[#ecc6bd] bg-[#fff0ec] p-7" aria-label="Tahlil xatosi"><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Kuzatuvlar</p><h2 className="mt-3 font-serif text-[30px]">Tahlilni hozircha ochib bo‘lmadi.</h2><p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">Yozuvlaringiz yuklangach, shu yerda kunlar ritmi va kayfiyatlar ko‘rinadi.</p><button type="button" onClick={() => entriesQuery.refetch()} className="mt-5 rounded-xl border border-destructive/30 bg-card px-4 py-2.5 text-[11px] font-semibold text-destructive" data-testid="button-retry-analytics">Qayta urinish</button></section>;
+  if (mode === 'calendar' && entriesQuery.isLoading) return <section className="mt-10 rounded-[28px] border border-card-border bg-card/70 p-5 sm:p-7" aria-label="Taqvim yuklanmoqda"><div className="skeleton h-3 w-32 rounded-full" /><div className="mt-3 skeleton h-9 w-72 max-w-full rounded-lg" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><CalendarSkeleton /><div className="skeleton h-56 rounded-2xl" /></div></section>;
+  if (mode === 'calendar' && entriesQuery.isError) return <section className="mt-10 rounded-[28px] border border-[#ecc6bd] bg-[#fff0ec] p-7" aria-label="Tahlil xatosi"><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Kuzatuvlar</p><h2 className="mt-3 font-serif text-[30px]">Tahlilni hozircha ochib bo‘lmadi.</h2><p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">Yozuvlaringiz yuklangach, shu yerda kunlar ritmi va kayfiyatlar ko‘rinadi.</p><button type="button" onClick={() => entriesQuery.refetch()} className="mt-5 rounded-xl border border-destructive/30 bg-card px-4 py-2.5 text-[11px] font-semibold text-destructive" data-testid="button-retry-analytics">Qayta urinish</button></section>;
 
-  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} dailyStickers={dailyStickersQuery.data ?? []} stickerLoadError={dailyStickersQuery.isError} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <><ActivityHeatmap days={activityDays} loading={repetitionStats.isLoading || !currentFocusSnapshot} error={repetitionStats.isError || Boolean(currentFocusSnapshot?.error)} onRetry={retryActivity} /><MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /><EnergyTrendChart energyLog={energy.value} status={energy.status} error={energy.error} visibleMonth={visibleMonth} /></>}</section>;
+  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} dailyStickers={dailyStickersQuery.data ?? []} stickerLoadError={dailyStickersQuery.isError} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <><ActivityHeatmap days={activityDays} loading={false} error={false} partialData={analyticsPartialData} onRetry={retryActivity} /><MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /><EnergyTrendChart energyLog={energy.value} status={energy.status} error={energy.error} visibleMonth={visibleMonth} /></>}</section>;
 }

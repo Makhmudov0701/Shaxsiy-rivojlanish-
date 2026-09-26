@@ -229,25 +229,9 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                 aria-live="polite"
               >
                 <div className="relative">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-7 place-items-center rounded-lg" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
-                      <Icon size={14} />
-                    </span>
-                    <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{translateUiText("Bugungi motivatsiya", language)}</p>
-                  </div>
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{translateUiText("Bugungi motivatsiya", language)}</p>
                 </div>
                 <div className="relative flex min-h-[220px] min-w-0 flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
-                  <span
-                    aria-hidden="true"
-                    className="mb-4 grid size-12 place-items-center rounded-2xl border text-[25px] shadow-sm"
-                    style={{
-                      color: section.accent,
-                      backgroundColor: `${section.accent}20`,
-                      borderColor: `${section.accent}42`,
-                    }}
-                  >
-                    {currentEntry.emoji}
-                  </span>
                   <p className="min-w-0 max-w-full break-words font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
                     “{currentEntry.text}”
                   </p>

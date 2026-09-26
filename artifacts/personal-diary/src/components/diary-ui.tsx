@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, UserCircle, X } from 'lucide-react';
+import { BarChart3, BookMarked, BookOpen, Brain, CalendarCheck2, CalendarDays, ChevronDown, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, UserCircle, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -209,7 +209,8 @@ export function DiaryShell({ children }: { children: ReactNode }) {
     : 'Shaxsiy kundalik';
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
-  const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || (pathname === '/user-portal' && portalView !== 'entries');
+  const brainGymLabel = { uz: 'Xotira va miya', en: 'Memory & Brain Gym', ru: 'Память и мозг', ko: '기억력 훈련' }[language];
+  const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/brain-gym' || (pathname === '/user-portal' && portalView !== 'entries');
   const pomodoroSelected = pathname === '/pomodoro';
   const repetitionSelected = pathname === '/repetition';
 
@@ -264,6 +265,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
               <SidebarNavLink href="/user-portal?view=folders" label="Mavzular" icon={<FolderOpen size={20} />} active={pathname === '/user-portal' && portalView === 'folders'} onNavigate={closeMobile} testId="link-folders-tags" />
               <SidebarNavLink href="/user-portal?view=analytics" label="Kayfiyat" icon={<BarChart3 size={20} />} active={pathname === '/user-portal' && portalView === 'analytics'} onNavigate={closeMobile} testId="link-analytics" />
               <SidebarNavLink href="/ideas" label="G‘oyalar" icon={<Lightbulb size={20} />} active={pathname === '/ideas'} onNavigate={closeMobile} testId="link-ideas" />
+              <SidebarNavLink href="/brain-gym" label={brainGymLabel} icon={<Brain size={20} />} active={pathname === '/brain-gym'} onNavigate={closeMobile} testId="link-brain-gym" />
               <SidebarNavLink href="/habits" label="Odatlar" icon={<CalendarCheck2 size={20} />} active={pathname === '/habits'} onNavigate={closeMobile} testId="link-habits" />
               <SidebarNavLink href="/settings" label="Sozlamalar" icon={<Settings size={20} />} active={pathname === '/settings'} onNavigate={closeMobile} testId="link-settings" />
             </nav>}

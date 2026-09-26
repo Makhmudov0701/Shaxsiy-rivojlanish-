@@ -7,6 +7,7 @@ export type ActivityDay = {
   tasksCompleted: number;
   pomodoroMinutes: number;
   flashcardsReviewed: number;
+  exerciseCompletions: number;
 };
 
 export type ActivityHeatmapProps = {
@@ -14,6 +15,7 @@ export type ActivityHeatmapProps = {
   loading?: boolean;
   error?: boolean;
   onRetry?: () => void;
+  partialData?: boolean;
 };
 
 type Period = 'weekly' | 'monthly' | 'yearly';
@@ -30,12 +32,15 @@ type Copy = {
   errorDescription: string;
   retry: string;
   noActivity: string;
+  formula: string;
+  partialData: string;
   recorded: string;
   metricLabels: {
     journalEntries: string;
     tasksCompleted: string;
     pomodoroMinutes: string;
     flashcardsReviewed: string;
+    exerciseCompletions: string;
   };
   monthLabel: (date: Date) => string;
   dateLabel: (date: Date) => string;
@@ -79,8 +84,9 @@ function startOfWeek(date: Date): Date {
 function metricValue(day: ActivityDay): number {
   return Math.max(0, Number.isFinite(day.journalEntries) ? day.journalEntries : 0)
     + Math.max(0, Number.isFinite(day.tasksCompleted) ? day.tasksCompleted : 0)
-    + Math.max(0, Number.isFinite(day.pomodoroMinutes) ? day.pomodoroMinutes / 25 : 0)
-    + Math.max(0, Number.isFinite(day.flashcardsReviewed) ? day.flashcardsReviewed / 10 : 0);
+    + Math.floor(Math.max(0, Number.isFinite(day.pomodoroMinutes) ? day.pomodoroMinutes / 25 : 0))
+    + Math.floor(Math.max(0, Number.isFinite(day.flashcardsReviewed) ? day.flashcardsReviewed / 10 : 0))
+    + Math.max(0, Number.isFinite(day.exerciseCompletions) ? day.exerciseCompletions : 0);
 }
 
 function metricCount(value: number): string {
@@ -103,12 +109,15 @@ function createCopy(language: AppLanguage): Copy {
       errorDescription: 'Ma’lumotlarni olishda muammo yuz berdi. Yana bir bor urinib ko‘ring.',
       retry: 'Qayta urinish',
       noActivity: 'Bu davrda faollik hali qayd etilmagan.',
+      formula: '1 ball: yozuv, topshiriq yoki mashq · 25 daq. Pomodoro · 10 kartochka',
+      partialData: 'Ayrim manbalar mavjud emas; ular vaqtincha 0 ball sifatida hisoblanadi.',
       recorded: 'qayd etilgan kun',
       metricLabels: {
         journalEntries: 'Kundalik yozuvlari',
         tasksCompleted: 'Bajarilgan topshiriqlar',
         pomodoroMinutes: 'Pomodoro daqiqalari',
         flashcardsReviewed: 'Ko‘rilgan kartochkalar',
+        exerciseCompletions: 'Bajarilgan mashqlar',
       },
     },
     en: {
@@ -123,12 +132,15 @@ function createCopy(language: AppLanguage): Copy {
       errorDescription: 'Something went wrong while getting your data. Try once more.',
       retry: 'Try again',
       noActivity: 'No activity has been recorded in this period yet.',
+      formula: '1 point: entry, task, or exercise · 25 Pomodoro min · 10 flashcards',
+      partialData: 'Some sources are unavailable; they temporarily contribute 0 points.',
       recorded: 'recorded day',
       metricLabels: {
         journalEntries: 'Journal entries',
         tasksCompleted: 'Tasks completed',
         pomodoroMinutes: 'Pomodoro minutes',
         flashcardsReviewed: 'Flashcards reviewed',
+        exerciseCompletions: 'Exercises completed',
       },
     },
     ru: {
@@ -143,12 +155,15 @@ function createCopy(language: AppLanguage): Copy {
       errorDescription: 'При загрузке данных произошла ошибка. Попробуйте ещё раз.',
       retry: 'Повторить',
       noActivity: 'За этот период активность ещё не записана.',
+      formula: '1 балл: запись, задача или упражнение · 25 мин Pomodoro · 10 карточек',
+      partialData: 'Некоторые источники недоступны; временно они дают 0 баллов.',
       recorded: 'день записан',
       metricLabels: {
         journalEntries: 'Записи дневника',
         tasksCompleted: 'Выполненные задачи',
         pomodoroMinutes: 'Минуты Pomodoro',
         flashcardsReviewed: 'Повторенные карточки',
+        exerciseCompletions: 'Выполненные упражнения',
       },
     },
     ko: {
@@ -163,12 +178,15 @@ function createCopy(language: AppLanguage): Copy {
       errorDescription: '데이터를 가져오는 중 문제가 발생했습니다. 다시 시도해 주세요.',
       retry: '다시 시도',
       noActivity: '이 기간에는 아직 기록된 활동이 없습니다.',
+      formula: '1점: 기록·작업·운동 · 포모도로 25분 · 플래시카드 10장',
+      partialData: '일부 데이터를 사용할 수 없어 해당 항목은 일시적으로 0점으로 계산됩니다.',
       recorded: '기록된 날',
       metricLabels: {
         journalEntries: '일기 기록',
         tasksCompleted: '완료한 작업',
         pomodoroMinutes: '포모도로 시간(분)',
         flashcardsReviewed: '복습한 플래시카드',
+        exerciseCompletions: '완료한 운동',
       },
     },
   };
@@ -187,12 +205,11 @@ function createCopy(language: AppLanguage): Copy {
   };
 }
 
-function activityLevel(score: number, maximum: number): number {
-  if (score <= 0 || maximum <= 0) return 0;
-  const ratio = score / maximum;
-  if (ratio <= 0.25) return 1;
-  if (ratio <= 0.5) return 2;
-  if (ratio <= 0.75) return 3;
+function activityLevel(score: number): number {
+  if (score <= 0) return 0;
+  if (score < 3) return 1;
+  if (score < 6) return 2;
+  if (score < 10) return 3;
   return 4;
 }
 
@@ -221,7 +238,7 @@ function ActivityCell({
 }) {
   const date = parseLocalDate(day.date);
   if (!date) return null;
-  const accessibleLabel = `${copy.dateLabel(date)}. ${copy.metricLabels.journalEntries}: ${metricCount(day.journalEntries)}. ${copy.metricLabels.tasksCompleted}: ${metricCount(day.tasksCompleted)}. ${copy.metricLabels.pomodoroMinutes}: ${metricCount(day.pomodoroMinutes)}. ${copy.metricLabels.flashcardsReviewed}: ${metricCount(day.flashcardsReviewed)}.`;
+  const accessibleLabel = `${copy.dateLabel(date)}. ${copy.metricLabels.journalEntries}: ${metricCount(day.journalEntries)}. ${copy.metricLabels.tasksCompleted}: ${metricCount(day.tasksCompleted)}. ${copy.metricLabels.pomodoroMinutes}: ${metricCount(day.pomodoroMinutes)}. ${copy.metricLabels.flashcardsReviewed}: ${metricCount(day.flashcardsReviewed)}. ${copy.metricLabels.exerciseCompletions}: ${metricCount(day.exerciseCompletions)}.`;
   return (
     <div
       role="gridcell"
@@ -238,6 +255,7 @@ function ActivityCell({
           <p>{copy.metricLabels.tasksCompleted}: {metricCount(day.tasksCompleted)}</p>
           <p>{copy.metricLabels.pomodoroMinutes}: {metricCount(day.pomodoroMinutes)}</p>
           <p>{copy.metricLabels.flashcardsReviewed}: {metricCount(day.flashcardsReviewed)}</p>
+          <p>{copy.metricLabels.exerciseCompletions}: {metricCount(day.exerciseCompletions)}</p>
         </div>
       </div>
     </div>
@@ -255,7 +273,7 @@ function LoadingState({ label }: { label: string }) {
   );
 }
 
-export function ActivityHeatmap({ days, loading = false, error = false, onRetry }: ActivityHeatmapProps) {
+export function ActivityHeatmap({ days, loading = false, error = false, onRetry, partialData = false }: ActivityHeatmapProps) {
   const { language } = useI18n();
   const [period, setPeriod] = useState<Period>('monthly');
   const copy = useMemo(() => createCopy(language), [language]);
@@ -273,12 +291,14 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
         tasksCompleted: existing.tasksCompleted + Math.max(0, day.tasksCompleted || 0),
         pomodoroMinutes: existing.pomodoroMinutes + Math.max(0, day.pomodoroMinutes || 0),
         flashcardsReviewed: existing.flashcardsReviewed + Math.max(0, day.flashcardsReviewed || 0),
+        exerciseCompletions: existing.exerciseCompletions + Math.max(0, day.exerciseCompletions || 0),
       } : {
         date: day.date,
         journalEntries: Math.max(0, day.journalEntries || 0),
         tasksCompleted: Math.max(0, day.tasksCompleted || 0),
         pomodoroMinutes: Math.max(0, day.pomodoroMinutes || 0),
         flashcardsReviewed: Math.max(0, day.flashcardsReviewed || 0),
+        exerciseCompletions: Math.max(0, day.exerciseCompletions || 0),
       });
     }
 
@@ -296,7 +316,6 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
       const date = parseLocalDate(day.date);
       return date !== null && date >= rangeStart && date <= rangeEnd;
     });
-    const maximum = Math.max(0, ...inRange.map(metricValue));
     const byDate = new Map(inRange.map((day) => [day.date, day]));
     const total = Math.round(inRange.reduce((sum, day) => sum + metricValue(day), 0));
     const recordedDays = inRange.filter((day) => metricValue(day) > 0).length;
@@ -317,12 +336,13 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
               tasksCompleted: 0,
               pomodoroMinutes: 0,
               flashcardsReviewed: 0,
+              exerciseCompletions: 0,
             };
-            return { day, level: activityLevel(metricValue(day), maximum) };
+            return { day, level: activityLevel(metricValue(day)) };
           }),
         };
       });
-      return { period, months, days: [], maximum, total, recordedDays };
+      return { period, months, days: [], total, recordedDays };
     }
 
     const count = period === 'weekly' ? 7 : rangeEnd.getDate();
@@ -336,10 +356,11 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
         tasksCompleted: 0,
         pomodoroMinutes: 0,
         flashcardsReviewed: 0,
+        exerciseCompletions: 0,
       };
-      return { day, level: activityLevel(metricValue(day), maximum) };
+      return { day, level: activityLevel(metricValue(day)) };
     });
-    return { period, months: [], days: cells, maximum, total, recordedDays };
+    return { period, months: [], days: cells, total, recordedDays };
   }, [days, period, today]);
 
   return (
@@ -348,7 +369,8 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
         <div className="min-w-0">
           <p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">{copy.activity}</p>
           <h2 id="activity-heatmap-title" className="mt-1.5 font-serif text-[26px] leading-none tracking-[-.035em]">{copy.title}</h2>
-          <p className="mt-2 max-w-md text-[11px] leading-relaxed text-muted-foreground">{copy.description}</p>
+           <p className="mt-2 max-w-md text-[11px] leading-relaxed text-muted-foreground">{copy.description}</p>
+           <p className="mt-1 max-w-md text-[10px] leading-relaxed text-muted-foreground/80" data-testid="activity-points-formula">{copy.formula}</p>
         </div>
         <div className="grid grid-cols-3 rounded-xl border border-border bg-background/70 p-1" role="group" aria-label={copy.title}>
           {(['weekly', 'monthly', 'yearly'] as Period[]).map((item) => (
@@ -374,7 +396,8 @@ export function ActivityHeatmap({ days, loading = false, error = false, onRetry 
         </div>
       ) : (
         <>
-          <div className="mt-5 flex items-end justify-between gap-3">
+           {partialData && <p className="mt-4 rounded-xl border border-[#e1d4ac] bg-[#faf2dc] px-3 py-2 text-[10px] leading-relaxed text-[#755b25]" role="status" data-testid="activity-heatmap-partial-data">{copy.partialData}</p>}
+           <div className="mt-5 flex items-end justify-between gap-3">
             <p className="text-[10px] text-muted-foreground">{copy.summary(model.recordedDays, model.total)}</p>
             {model.recordedDays === 0 && <span className="text-right text-[10px] text-muted-foreground">{copy.noActivity}</span>}
           </div>

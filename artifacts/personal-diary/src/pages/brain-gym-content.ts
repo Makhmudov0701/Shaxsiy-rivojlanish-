@@ -1,0 +1,1 @@
+export { BRAIN_GYM_FACT_IDS } from '@/lib/brain-gym-ids';
