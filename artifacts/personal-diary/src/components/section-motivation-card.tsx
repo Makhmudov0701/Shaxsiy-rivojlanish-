@@ -1,4 +1,4 @@
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { Check, ChevronDown, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   generateMotivationEntry,
@@ -16,10 +16,13 @@ import {
   randomMotivationStride,
 } from "@/components/section-motivation-rotation";
 import {
-  sectionDailyGuides,
+  SECTION_DAILY_GUIDE_POOL_SIZE,
+  generateSectionDailyGuide,
+  sectionGuideBenefitsHeading,
+  sectionGuideFooterLabel,
   sectionGuideHeading,
-  sectionGuideKindLabels,
-} from "@/components/section-daily-guides";
+  sectionCardControls,
+} from "@/components/section-daily-guide-generator";
 import { translateUiText, useI18n } from "@/lib/i18n";
 
 const collapsedStoragePrefix = "kundalik-section-info-collapsed-";
@@ -59,14 +62,13 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
   const section = sectionMotivationContent[sectionId];
   const category = section.motivationCategory;
   const poolSize = getMotivationPoolSize(category);
-  const dailyGuides = sectionDailyGuides[sectionId];
   const [today, setToday] = useState(localDateKey);
   const [expanded, setExpanded] = useState(() => initialExpandedState(sectionId));
   const [manualSelection, setManualSelection] = useState<ManualQuoteSelection | null>(null);
   const Icon = section.icon;
   const dailyIndex = dailyMotivationIndex(category, userId, today);
-  const dailyGuideIndex = dailySectionGuideIndex(sectionId, userId, today, dailyGuides.length);
-  const dailyGuide = dailyGuides[dailyGuideIndex];
+  const dailyGuideIndex = dailySectionGuideIndex(sectionId, userId, today, SECTION_DAILY_GUIDE_POOL_SIZE);
+  const dailyGuide = generateSectionDailyGuide(sectionId, dailyGuideIndex, language);
   const manualSelectionIsCurrent = manualSelection?.date === today
     && manualSelection.userId === userId
     && manualSelection.sectionId === sectionId;
@@ -166,7 +168,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
             className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-border/80 bg-background/55 px-3 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
             data-testid={`button-toggle-section-info-${sectionId}`}
           >
-            <span className="hidden sm:inline">{expanded ? "Yig‘ish" : "Ochish"}</span>
+            <span className="hidden sm:inline">{expanded ? sectionCardControls[language].collapse : sectionCardControls[language].expand}</span>
             <ChevronDown size={16} className={`transition-transform duration-300 ${expanded ? "rotate-180" : ""}`} />
           </button>
         </div>
@@ -183,19 +185,37 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                 aria-live="polite"
                 data-testid={`card-daily-section-guide-${sectionId}`}
               >
-                <div className="flex min-w-0 items-start justify-start gap-2">
-                  <span className="shrink-0 rounded-full px-2 py-1 text-[9px] font-semibold" style={{ color: section.accent, backgroundColor: `${section.accent}20` }}>
-                    {sectionGuideKindLabels[language][dailyGuide.kind]}
-                  </span>
+                <div className="min-w-0">
+                  <p
+                    className="min-w-0 break-words font-serif text-[clamp(1.2rem,1.7vw,1.55rem)] leading-[1.3] tracking-[-0.015em] text-foreground [overflow-wrap:anywhere]"
+                    data-testid={`text-daily-section-guide-${sectionId}`}
+                  >
+                    {dailyGuide.intro}
+                  </p>
+                  <div className="mt-6">
+                    <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {sectionGuideBenefitsHeading[language]}
+                    </p>
+                    <ul className="mt-3 space-y-2.5">
+                      {dailyGuide.benefits.map((benefit, index) => (
+                        <li key={`${dailyGuideIndex}-${index}`} className="flex min-w-0 items-start gap-2.5">
+                          <span
+                            className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full"
+                            style={{ color: section.accent, backgroundColor: `${section.accent}20` }}
+                            aria-hidden="true"
+                          >
+                            <Check size={13} strokeWidth={2.4} />
+                          </span>
+                          <span className="min-w-0 break-words text-[13px] leading-relaxed text-foreground/85 [overflow-wrap:anywhere]">
+                            {benefit}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-                <p
-                  className="my-auto min-w-0 break-words py-6 font-serif text-[clamp(1.35rem,2vw,1.75rem)] leading-[1.2] tracking-[-0.02em] text-foreground [overflow-wrap:anywhere]"
-                  data-testid={`text-daily-section-guide-${sectionId}`}
-                >
-                  {dailyGuide.text[language]}
-                </p>
                 <p className="border-t border-border/60 pt-3 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {translateUiText(section.title, language)} · {dailyGuideIndex + 1}/{dailyGuides.length}
+                  {translateUiText(section.title, language)} {sectionGuideFooterLabel[language]} · {dailyGuideIndex + 1}/{SECTION_DAILY_GUIDE_POOL_SIZE}
                 </p>
               </article>
 
@@ -244,11 +264,11 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                     onClick={showNextQuote}
                     disabled={!expanded}
                     className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-border/60 bg-background/70 px-3 text-[11px] font-semibold text-foreground transition-colors hover:bg-background"
-                    aria-label="Keyingi motivatsion fikrni ko‘rsatish"
+                    aria-label={sectionCardControls[language].nextQuoteAriaLabel}
                     data-testid={`button-next-daily-quote-${sectionId}`}
                   >
                     <RefreshCw size={13} />
-                    <span>Keyingisi</span>
+                    <span>{sectionCardControls[language].nextQuote}</span>
                   </button>
                 </div>
               </article>

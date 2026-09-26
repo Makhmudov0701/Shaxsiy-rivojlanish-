@@ -1,7 +1,8 @@
 import type { MotivationCategory } from "@/components/section-motivation-content";
 import { translateUiText, type AppLanguage } from "@/lib/i18n";
 
-export const MOTIVATION_POOL_SIZE = 10_000;
+export const MOTIVATION_POOL_SIZE = 100_000;
+const MOTIVATION_ACTION_FRAMING_COUNT = 10;
 
 export interface MotivationEntry {
   emoji: string;
@@ -14,6 +15,57 @@ interface MotivationTemplates {
   wisdoms: readonly string[];
   actions: readonly string[];
 }
+
+const actionFramings: Record<AppLanguage, readonly string[]> = {
+  uz: [
+    "Amaliy qadam",
+    "Bugun sinab ko‘ring",
+    "Hozir tanlang",
+    "Kichik boshlanish",
+    "O‘zingizga eslatma",
+    "Davom ettirish uchun",
+    "Bir daqiqalik reja",
+    "Keyingi foydali ish",
+    "Bugungi niyat",
+    "Harakat uchun",
+  ],
+  en: [
+    "A practical step",
+    "Try this today",
+    "Choose now",
+    "A small beginning",
+    "A reminder to yourself",
+    "To keep going",
+    "A one-minute plan",
+    "One useful next step",
+    "Today's intention",
+    "For action",
+  ],
+  ru: [
+    "Практический шаг",
+    "Попробуйте сегодня",
+    "Выберите сейчас",
+    "Небольшое начало",
+    "Напоминание себе",
+    "Чтобы продолжить",
+    "План на одну минуту",
+    "Полезный следующий шаг",
+    "Намерение на сегодня",
+    "Для действия",
+  ],
+  ko: [
+    "실천할 한 걸음",
+    "오늘 시도해 보세요",
+    "지금 선택해 보세요",
+    "작은 시작",
+    "스스로에게 전하는 메모",
+    "계속 이어가기 위해",
+    "1분 계획",
+    "다음에 할 유용한 일",
+    "오늘의 다짐",
+    "실천을 위해",
+  ],
+};
 
 const motivationTemplates = {
   diary: {
@@ -316,7 +368,12 @@ const motivationTemplates = {
 
 function assertPoolSize(category: MotivationCategory) {
   const templates = motivationTemplates[category];
-  const size = templates.openers.length * templates.wisdoms.length * templates.actions.length;
+  const baseSize = templates.openers.length * templates.wisdoms.length * templates.actions.length;
+  const framingCounts = Object.values(actionFramings).map((framings) => framings.length);
+  if (framingCounts.some((count) => count !== MOTIVATION_ACTION_FRAMING_COUNT)) {
+    throw new Error(`Motivation action framing must provide ${MOTIVATION_ACTION_FRAMING_COUNT} translations in every language.`);
+  }
+  const size = baseSize * framingCounts[0];
   if (size !== MOTIVATION_POOL_SIZE) {
     throw new Error(`${category} motivation templates must produce ${MOTIVATION_POOL_SIZE} quotes; received ${size}.`);
   }
@@ -335,17 +392,22 @@ export function generateMotivationEntry(
   const templates = motivationTemplates[category];
   const poolSize = assertPoolSize(category);
   const safeIndex = ((Math.floor(index) % poolSize) + poolSize) % poolSize;
-  const actionIndex = safeIndex % templates.actions.length;
-  const wisdomIndex = Math.floor(safeIndex / templates.actions.length) % templates.wisdoms.length;
-  const openerIndex = Math.floor(safeIndex / (templates.actions.length * templates.wisdoms.length));
+  const baseSize = templates.openers.length * templates.wisdoms.length * templates.actions.length;
+  const baseIndex = safeIndex % baseSize;
+  const actionIndex = baseIndex % templates.actions.length;
+  const wisdomIndex = Math.floor(baseIndex / templates.actions.length) % templates.wisdoms.length;
+  const openerIndex = Math.floor(baseIndex / (templates.actions.length * templates.wisdoms.length));
+  const actionFramingIndex = Math.floor(safeIndex / baseSize);
   const opener = templates.openers[openerIndex];
   const wisdom = templates.wisdoms[wisdomIndex];
   const action = templates.actions[actionIndex];
+  const outputLanguage = language ?? "uz";
+  const actionFraming = actionFramings[outputLanguage][actionFramingIndex];
   const localize = (text: string) =>
     language ? translateUiText(text, language) : text;
 
   return {
     emoji: templates.emojis[safeIndex % templates.emojis.length],
-    text: `${localize(opener)} ${localize(wisdom)} ${localize(action)}`,
+    text: `${localize(opener)} ${localize(wisdom)} ${actionFraming}: ${localize(action)}`,
   };
 }
