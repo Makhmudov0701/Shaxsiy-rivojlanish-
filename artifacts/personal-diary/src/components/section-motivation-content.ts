@@ -22,7 +22,7 @@ export type SectionId =
   | "habits"
   | "vault";
 
-export type MotivationCategory = "diary" | "focus" | "repetition" | "tasks";
+export type MotivationCategory = "diary" | "focus" | "repetition" | "tasks" | "goals" | "books";
 
 export interface SectionMotivationContent {
   id: SectionId;
@@ -60,7 +60,7 @@ export const sectionMotivationContent: Record<SectionId, SectionMotivationConten
     motivationLabel: "Maqsad eslatmasi",
     accent: "#bf9a4d",
     icon: Star,
-    motivationCategory: "tasks",
+    motivationCategory: "goals",
   },
   tasks: {
     id: "tasks",
@@ -78,7 +78,7 @@ export const sectionMotivationContent: Record<SectionId, SectionMotivationConten
     motivationLabel: "O‘qishdan qayd",
     accent: "#657fa3",
     icon: BookMarked,
-    motivationCategory: "diary",
+    motivationCategory: "books",
   },
   repetition: {
     id: "repetition",

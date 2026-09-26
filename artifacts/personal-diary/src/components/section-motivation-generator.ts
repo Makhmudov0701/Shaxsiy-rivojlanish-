@@ -1,4 +1,6 @@
 import type { MotivationCategory } from "@/components/section-motivation-content";
+import { booksMotivationTemplates } from "@/components/section-motivation-books-content";
+import { goalsMotivationTemplates } from "@/components/section-motivation-goals-content";
 import { translateUiText, type AppLanguage } from "@/lib/i18n";
 
 export const MOTIVATION_POOL_SIZE = 100_000;
@@ -15,6 +17,17 @@ interface MotivationTemplates {
   wisdoms: readonly string[];
   actions: readonly string[];
 }
+
+type LocalizedMotivationText = Record<AppLanguage, string>;
+
+interface LocalizedMotivationTemplates {
+  emojis: readonly string[];
+  openers: readonly LocalizedMotivationText[];
+  wisdoms: readonly LocalizedMotivationText[];
+  actions: readonly LocalizedMotivationText[];
+}
+
+type MotivationTemplateBank = MotivationTemplates | LocalizedMotivationTemplates;
 
 const actionFramings: Record<AppLanguage, readonly string[]> = {
   uz: [
@@ -364,10 +377,16 @@ const motivationTemplates = {
       "O‘zingizni kichik yutuq uchun samimiy tabriklang.",
     ],
   },
-} satisfies Record<MotivationCategory, MotivationTemplates>;
+} satisfies Record<Exclude<MotivationCategory, "books" | "goals">, MotivationTemplates>;
+
+function getMotivationTemplates(category: MotivationCategory): MotivationTemplateBank {
+  if (category === "books") return booksMotivationTemplates;
+  if (category === "goals") return goalsMotivationTemplates;
+  return motivationTemplates[category];
+}
 
 function assertPoolSize(category: MotivationCategory) {
-  const templates = motivationTemplates[category];
+  const templates = getMotivationTemplates(category);
   const baseSize = templates.openers.length * templates.wisdoms.length * templates.actions.length;
   const framingCounts = Object.values(actionFramings).map((framings) => framings.length);
   if (framingCounts.some((count) => count !== MOTIVATION_ACTION_FRAMING_COUNT)) {
@@ -389,7 +408,7 @@ export function generateMotivationEntry(
   index: number,
   language?: AppLanguage,
 ): MotivationEntry {
-  const templates = motivationTemplates[category];
+  const templates = getMotivationTemplates(category);
   const poolSize = assertPoolSize(category);
   const safeIndex = ((Math.floor(index) % poolSize) + poolSize) % poolSize;
   const baseSize = templates.openers.length * templates.wisdoms.length * templates.actions.length;
@@ -403,8 +422,10 @@ export function generateMotivationEntry(
   const action = templates.actions[actionIndex];
   const outputLanguage = language ?? "uz";
   const actionFraming = actionFramings[outputLanguage][actionFramingIndex];
-  const localize = (text: string) =>
-    language ? translateUiText(text, language) : text;
+  const localize = (text: string | LocalizedMotivationText) =>
+    typeof text === "string"
+      ? translateUiText(text, outputLanguage)
+      : text[outputLanguage];
 
   return {
     emoji: templates.emojis[safeIndex % templates.emojis.length],

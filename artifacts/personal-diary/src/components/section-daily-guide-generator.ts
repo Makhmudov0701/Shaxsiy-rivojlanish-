@@ -1,5 +1,6 @@
 import type { AppLanguage } from "@/lib/i18n";
 import type { SectionId } from "@/components/section-motivation-content";
+import { sectionSpecificGuideContent } from "@/components/section-daily-guide-content";
 
 type LocalizedText = Record<AppLanguage, string>;
 type BenefitSlot = "action" | "clarity" | "continuity";
@@ -118,8 +119,8 @@ const sectionGuideContexts: Record<SectionId, SectionGuideContext> = {
     topic: localized("Diqqat mashg‘uloti", "A focus session", "Сеанс концентрации", "집중 시간"),
     benefitLabels: [
       localized("Bitta vazifaga diqqat", "Focus on one task", "Внимание к одной задаче", "한 가지 일에 집중하기"),
-      localized("Rejalangan tanaffus", "Planned breaks", "Запланированные перерывы", "휴식 계획하기"),
-      localized("Ishdagi siljish", "Progress at work", "Продвижение в работе", "일의 진전 확인하기"),
+      localized("Vazifa va vaqtni aniqlashtirish", "Clarifying tasks and time", "Ясность задач и времени", "할 일과 시간을 명확히 하기"),
+      localized("Ishdagi izchil siljish", "Steady progress at work", "Устойчивый прогресс в работе", "꾸준한 업무 진행"),
     ],
   },
   goals: {
@@ -141,17 +142,17 @@ const sectionGuideContexts: Record<SectionId, SectionGuideContext> = {
   books: {
     topic: localized("O‘qish qaydi", "A reading note", "Заметка о чтении", "독서 기록"),
     benefitLabels: [
-      localized("Muhim fikrlar", "Key ideas", "Важные мысли", "핵심 생각"),
-      localized("O‘qilganlarni eslash", "Remembering what you read", "Запоминание прочитанного", "읽은 내용 기억하기"),
-      localized("Bilimni qo‘llash", "Putting ideas into practice", "Применение идей", "생각을 실천하기"),
+      localized("O‘qish va muhim fikrlar", "Reading and key ideas", "Чтение и ключевые мысли", "읽기와 핵심 생각"),
+      localized("O‘qilganlarni anglash", "Understanding what you read", "Понимание прочитанного", "읽은 내용 이해하기"),
+      localized("O‘qishni davom ettirish va qo‘llash", "Sustaining reading and applying ideas", "Продолжать читать и применять идеи", "독서를 이어가고 생각을 실천하기"),
     ],
   },
   repetition: {
     topic: localized("Takrorlash mashqi", "A review session", "Сеанс повторения", "복습 시간"),
     benefitLabels: [
       localized("Faol eslash", "Active recall", "Активное вспоминание", "능동적으로 떠올리기"),
-      localized("Muntazam takror", "Regular review", "Регулярное повторение", "꾸준한 복습"),
-      localized("Uzoq muddatli xotira", "Long-term memory", "Долговременная память", "장기 기억"),
+      localized("O‘zlashtirishni tekshirish", "Checking what you know", "Проверка знаний", "학습 내용 확인"),
+      localized("Oraliqli takror va uzoq xotira", "Spaced review and lasting memory", "Интервальное повторение и долговременная память", "간격 복습과 장기 기억"),
     ],
   },
   ideas: {
@@ -233,13 +234,24 @@ export const sectionCardControls: Record<
 
 const benefitVariantCount = benefitDetails.action.length;
 const guideCombinationCapacity = guideIntroTemplates.length * benefitVariantCount ** 3;
+const sectionGuidesAreComplete = Object.values(sectionSpecificGuideContent).every((content) =>
+  content.intros.length === guideIntroTemplates.length
+  && Object.values(content.details).every((variants) => variants.length === benefitVariantCount),
+);
 
 if (
   guideIntroTemplates.length !== 13
   || Object.values(benefitDetails).some((variants) => variants.length !== benefitVariantCount)
   || guideCombinationCapacity < SECTION_DAILY_GUIDE_POOL_SIZE
+  || !sectionGuidesAreComplete
 ) {
-  throw new Error("Section guide templates must produce at least 100,000 combinations.");
+  throw new Error("Section guide templates must provide 100,000 combinations and complete contextual translations.");
+}
+
+function hasSectionSpecificGuideContent(
+  sectionId: SectionId,
+): sectionId is keyof typeof sectionSpecificGuideContent {
+  return sectionId in sectionSpecificGuideContent;
 }
 
 export function generateSectionDailyGuide(
@@ -249,18 +261,23 @@ export function generateSectionDailyGuide(
 ): SectionDailyGuide {
   const safeIndex = ((Math.floor(index) % SECTION_DAILY_GUIDE_POOL_SIZE) + SECTION_DAILY_GUIDE_POOL_SIZE) % SECTION_DAILY_GUIDE_POOL_SIZE;
   const context = sectionGuideContexts[sectionId];
+  const sectionContent = hasSectionSpecificGuideContent(sectionId)
+    ? sectionSpecificGuideContent[sectionId]
+    : null;
+  const introTemplates = sectionContent?.intros ?? guideIntroTemplates;
+  const sectionBenefits = sectionContent?.details ?? benefitDetails;
   const introIndex = safeIndex % guideIntroTemplates.length;
   const actionIndex = Math.floor(safeIndex / guideIntroTemplates.length) % benefitVariantCount;
   const clarityIndex = Math.floor(safeIndex / (guideIntroTemplates.length * benefitVariantCount)) % benefitVariantCount;
   const continuityIndex = Math.floor(safeIndex / (guideIntroTemplates.length * benefitVariantCount ** 2)) % benefitVariantCount;
-  const intro = guideIntroTemplates[introIndex][language].replace("{topic}", context.topic[language]);
+  const intro = introTemplates[introIndex][language].replace("{topic}", context.topic[language]);
 
   return {
     intro,
     benefits: [
-      `${context.benefitLabels[0][language]}: ${benefitDetails.action[actionIndex][language]}`,
-      `${context.benefitLabels[1][language]}: ${benefitDetails.clarity[clarityIndex][language]}`,
-      `${context.benefitLabels[2][language]}: ${benefitDetails.continuity[continuityIndex][language]}`,
+      `${context.benefitLabels[0][language]}: ${sectionBenefits.action[actionIndex][language]}`,
+      `${context.benefitLabels[1][language]}: ${sectionBenefits.clarity[clarityIndex][language]}`,
+      `${context.benefitLabels[2][language]}: ${sectionBenefits.continuity[continuityIndex][language]}`,
     ],
   };
 }
