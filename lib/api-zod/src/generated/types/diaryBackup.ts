@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DiaryBackupDailySticker } from './diaryBackupDailySticker';
 import type { DiaryBackupEntry } from './diaryBackupEntry';
 
 export interface DiaryBackup {
@@ -12,4 +13,5 @@ export interface DiaryBackup {
   version: number;
   exportedAt: Date;
   entries: DiaryBackupEntry[];
+  dailyStickers?: DiaryBackupDailySticker[];
 }

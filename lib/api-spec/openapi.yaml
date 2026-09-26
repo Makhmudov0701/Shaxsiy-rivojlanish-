@@ -60,6 +60,59 @@ paths:
                 $ref: "#/components/schemas/DiaryWeeklySummary"
         "401":
           $ref: "#/components/responses/Unauthorized"
+  /diary/daily-stickers:
+    get:
+      operationId: listDiaryDailyStickers
+      tags: [diary]
+      summary: List the signed-in user's daily stickers
+      responses:
+        "200":
+          description: Daily stickers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiaryDailySticker"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /diary/daily-stickers/{date}:
+    put:
+      operationId: upsertDiaryDailySticker
+      tags: [diary]
+      summary: Set the signed-in user's sticker for a calendar date
+      parameters:
+        - $ref: "#/components/parameters/DiaryStickerDate"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DiaryDailyStickerInput"
+      responses:
+        "200":
+          description: Daily sticker
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiaryDailySticker"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      operationId: deleteDiaryDailySticker
+      tags: [diary]
+      summary: Remove the signed-in user's sticker for a calendar date
+      parameters:
+        - $ref: "#/components/parameters/DiaryStickerDate"
+      responses:
+        "204":
+          description: Daily sticker deleted
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /diary/entries:
     get:
       operationId: listDiaryEntries
@@ -883,6 +936,13 @@ components:
       schema:
         type: integer
         minimum: 1
+    DiaryStickerDate:
+      name: date
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
     TaskId:
       name: id
       in: path
@@ -940,6 +1000,30 @@ components:
     Mood:
       type: string
       enum: [peaceful, happy, grateful, energized, thoughtful, sad, anxious]
+    DiarySticker:
+      type: string
+      enum: [productive, study, calm, busy, happy, creative, rest, social]
+    DiaryDailySticker:
+      type: object
+      required: [date, sticker, createdAt, updatedAt]
+      properties:
+        date:
+          type: string
+          format: date
+        sticker:
+          $ref: "#/components/schemas/DiarySticker"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    DiaryDailyStickerInput:
+      type: object
+      required: [sticker]
+      properties:
+        sticker:
+          $ref: "#/components/schemas/DiarySticker"
     DiaryEntry:
       type: object
       required: [id, title, content, mood, folder, tags, favorite, entryDate, createdAt, updatedAt, photos]
@@ -1265,6 +1349,21 @@ components:
           maxItems: 8
           items:
             $ref: "#/components/schemas/DiaryBackupPhoto"
+    DiaryBackupDailySticker:
+      type: object
+      required: [date, sticker]
+      properties:
+        date:
+          type: string
+          format: date
+        sticker:
+          $ref: "#/components/schemas/DiarySticker"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
     DiaryBackup:
       type: object
       required: [version, exportedAt, entries]
@@ -1279,6 +1378,10 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/DiaryBackupEntry"
+        dailyStickers:
+          type: array
+          items:
+            $ref: "#/components/schemas/DiaryBackupDailySticker"
     RestoreDiaryBackupResult:
       type: object
       required: [entriesRestored, photosRestored]

@@ -57,6 +57,53 @@ export const GetDiaryWeeklySummaryResponse = zod.object({
 
 
 /**
+ * @summary List the signed-in user's daily stickers
+ */
+export const ListDiaryDailyStickersResponseItem = zod.object({
+  "date": zod.coerce.date(),
+  "sticker": zod.enum(['productive', 'study', 'calm', 'busy', 'happy', 'creative', 'rest', 'social']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListDiaryDailyStickersResponse = zod.array(ListDiaryDailyStickersResponseItem)
+
+
+/**
+ * @summary Set the signed-in user's sticker for a calendar date
+ */
+export const upsertDiaryDailyStickerPathDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const UpsertDiaryDailyStickerParams = zod.object({
+  "date": zod.coerce.string().regex(upsertDiaryDailyStickerPathDateRegExp)
+})
+
+export const UpsertDiaryDailyStickerBody = zod.object({
+  "sticker": zod.enum(['productive', 'study', 'calm', 'busy', 'happy', 'creative', 'rest', 'social'])
+})
+
+export const UpsertDiaryDailyStickerResponse = zod.object({
+  "date": zod.coerce.date(),
+  "sticker": zod.enum(['productive', 'study', 'calm', 'busy', 'happy', 'creative', 'rest', 'social']),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove the signed-in user's sticker for a calendar date
+ */
+export const deleteDiaryDailyStickerPathDateRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const DeleteDiaryDailyStickerParams = zod.object({
+  "date": zod.coerce.string().regex(deleteDiaryDailyStickerPathDateRegExp)
+})
+
+export const DeleteDiaryDailyStickerResponse = zod.void()
+
+
+/**
  * Returns the signed-in user's diary entries with optional search and filters.
  * @summary List diary entries
  */
@@ -603,7 +650,13 @@ export const DownloadDiaryBackupResponse = zod.object({
   "size": zod.number().int().min(downloadDiaryBackupResponseEntriesItemPhotosItemSizeMin),
   "data": zod.string().describe('Base64-encoded private media bytes')
 })).max(downloadDiaryBackupResponseEntriesItemPhotosMax)
-}))
+})),
+  "dailyStickers": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "sticker": zod.enum(['productive', 'study', 'calm', 'busy', 'happy', 'creative', 'rest', 'social']),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})).optional()
 })
 
 
@@ -647,7 +700,13 @@ export const RestoreDiaryBackupBody = zod.object({
   "size": zod.number().int().min(restoreDiaryBackupBodyEntriesItemPhotosItemSizeMin),
   "data": zod.string().describe('Base64-encoded private media bytes')
 })).max(restoreDiaryBackupBodyEntriesItemPhotosMax)
-}))
+})),
+  "dailyStickers": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "sticker": zod.enum(['productive', 'study', 'calm', 'busy', 'happy', 'creative', 'rest', 'social']),
+  "createdAt": zod.coerce.date().optional(),
+  "updatedAt": zod.coerce.date().optional()
+})).optional()
 })
 
 export const restoreDiaryBackupResponseEntriesRestoredMin = 0;

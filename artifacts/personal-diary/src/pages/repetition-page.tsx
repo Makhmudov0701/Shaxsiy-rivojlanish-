@@ -20,7 +20,8 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { BookOpenCheck, Check, ChevronLeft, Edit3, Layers3, Lightbulb, Loader2, Plus, RotateCcw, Trash2, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { formatContentDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale, useI18n, type AppLanguage } from '@/lib/i18n';
+import { generateFlashcardExamples, type FlashcardExampleSuggestion } from '@/lib/flashcard-context';
 import { useForm } from 'react-hook-form';
 import { Link } from 'wouter';
 import { z } from 'zod';
@@ -41,6 +42,68 @@ const cardSchema = z.object({
 type DeckForm = z.infer<typeof deckSchema>;
 type CardForm = z.infer<typeof cardSchema>;
 type Notice = { message: string; tone?: 'success' | 'error' } | null;
+
+const exampleCopy: Record<AppLanguage, {
+  language: string;
+  placeholder: string;
+  hint: string;
+  generate: string;
+  generated: string;
+  missing: string;
+  suggestions: string;
+  suggestion: string;
+  use: string;
+  used: string;
+}> = {
+  uz: {
+    language: 'Misol tili',
+    placeholder: 'Misol jumla yoki yodlash uchun eslatma...',
+    hint: 'Kartadagi old va orqa tomondan qisqa misollar yarating.',
+    generate: 'Misollar yaratish',
+    generated: 'Ikki tahrirlanadigan misol tayyorlandi.',
+    missing: 'Avval old va orqa tomonlarni to‘ldiring.',
+    suggestions: 'Tavsiya etilgan misollar',
+    suggestion: 'Misol',
+    use: 'Qo‘llash',
+    used: 'Misol eslatmaga qo‘shildi.',
+  },
+  en: {
+    language: 'Example language',
+    placeholder: 'An example sentence or memory note...',
+    hint: 'Create short examples from both sides of the card.',
+    generate: 'Generate examples',
+    generated: 'Two editable examples are ready.',
+    missing: 'Fill in both sides of the card first.',
+    suggestions: 'Suggested examples',
+    suggestion: 'Example',
+    use: 'Use',
+    used: 'Example added to the note.',
+  },
+  ru: {
+    language: 'Язык примера',
+    placeholder: 'Пример предложения или заметка для запоминания...',
+    hint: 'Создайте короткие примеры по обеим сторонам карточки.',
+    generate: 'Создать примеры',
+    generated: 'Готовы два редактируемых примера.',
+    missing: 'Сначала заполните обе стороны карточки.',
+    suggestions: 'Предложенные примеры',
+    suggestion: 'Пример',
+    use: 'Использовать',
+    used: 'Пример добавлен в заметку.',
+  },
+  ko: {
+    language: '예문 언어',
+    placeholder: '예문 또는 암기 메모...',
+    hint: '카드의 앞면과 뒷면으로 짧은 예문을 만듭니다.',
+    generate: '예문 만들기',
+    generated: '편집할 수 있는 예문 두 개가 준비되었습니다.',
+    missing: '먼저 카드의 앞면과 뒷면을 입력하세요.',
+    suggestions: '추천 예문',
+    suggestion: '예문',
+    use: '사용',
+    used: '예문이 메모에 추가되었습니다.',
+  },
+};
 
 const ratingMeta: Array<{ key: RepetitionRating; label: string; detail: string; className: string }> = [
   { key: 'again', label: 'Yana', detail: '1 daqiqada', className: 'border-rose-500/30 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20' },
@@ -102,10 +165,20 @@ function DeckFormDialog({ deck, decks, onClose, onDone, setNotice }: { deck: Rep
 
 function CardFormDialog({ card, decks, decksLoading, defaultDeckId, onClose, onCreateDeck, onDone, setNotice }: { card: RepetitionCard | null; decks: RepetitionDeck[]; decksLoading: boolean; defaultDeckId: number | null; onClose: () => void; onCreateDeck: () => void; onDone: () => void; setNotice: (notice: Notice) => void }) {
   const queryClient = useQueryClient();
+  const { language } = useI18n();
   const form = useForm<CardForm>({ resolver: zodResolver(cardSchema), defaultValues: { deckId: card?.deckId ?? defaultDeckId ?? 0, front: card?.front ?? '', back: card?.back ?? '', pronunciation: card?.pronunciation ?? '', exampleSentence: card?.exampleSentence ?? '' } });
   const create = useCreateRepetitionCard();
   const update = useUpdateRepetitionCard();
   const busy = create.isPending || update.isPending;
+  const [exampleLanguage, setExampleLanguage] = useState<AppLanguage>(language);
+  const [suggestions, setSuggestions] = useState<FlashcardExampleSuggestion[]>([]);
+  const [exampleStatus, setExampleStatus] = useState('');
+  const frontValue = form.watch('front');
+  const backValue = form.watch('back');
+  const exampleValue = form.watch('exampleSentence');
+  useEffect(() => {
+    setExampleLanguage(language);
+  }, [language]);
   useEffect(() => {
     if (!card && defaultDeckId !== null) {
       form.setValue('deckId', defaultDeckId, { shouldDirty: false });
@@ -137,7 +210,31 @@ function CardFormDialog({ card, decks, decksLoading, defaultDeckId, onClose, onC
       <FormField control={form.control} name="front" render={({ field }) => <FormItem><FormLabel>Old tomoni</FormLabel><FormControl><Textarea {...field} rows={4} placeholder="Savol, so‘z yoki tushuncha" data-testid="textarea-card-front" /></FormControl><FormMessage /></FormItem>} />
       <FormField control={form.control} name="back" render={({ field }) => <FormItem><FormLabel>Orqa tomoni</FormLabel><FormControl><Textarea {...field} rows={4} placeholder="Javob, tarjima yoki izoh" data-testid="textarea-card-back" /></FormControl><FormMessage /></FormItem>} />
       <FormField control={form.control} name="pronunciation" render={({ field }) => <FormItem><FormLabel>Talaffuz ko‘rsatmasi <span className="font-normal text-muted-foreground">(ixtiyoriy, IPA)</span></FormLabel><FormControl><Input {...field} placeholder="Masalan, /həˈloʊ/" data-testid="input-card-pronunciation" /></FormControl><FormMessage /></FormItem>} />
-      <FormField control={form.control} name="exampleSentence" render={({ field }) => <FormItem><FormLabel>Kontekstli misol yoki eslatma <span className="font-normal text-muted-foreground">(ixtiyoriy)</span></FormLabel><FormControl><Textarea {...field} rows={3} placeholder="Misol jumla yoki yodlash uchun eslatma..." data-testid="textarea-card-example" /></FormControl><FormMessage /></FormItem>} />
+       <FormField control={form.control} name="exampleSentence" render={({ field }) => <FormItem>
+         <div className="flex flex-wrap items-end justify-between gap-3">
+           <FormLabel>Kontekstli misol yoki eslatma <span className="font-normal text-muted-foreground">(ixtiyoriy)</span></FormLabel>
+           <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+             <span>{exampleCopy[language].language}</span>
+             <select value={exampleLanguage} onChange={(event) => setExampleLanguage(event.target.value as AppLanguage)} className="h-9 rounded-lg border border-input bg-background px-2 text-xs font-semibold text-foreground outline-none focus:ring-2 focus:ring-ring" aria-label={exampleCopy[language].language} data-testid="select-example-language">
+               <option value="uz">UZ</option><option value="en">EN</option><option value="ru">RU</option><option value="ko">KO</option>
+             </select>
+           </label>
+         </div>
+         <FormControl><Textarea {...field} rows={3} maxLength={2000} placeholder={exampleCopy[language].placeholder} data-testid="textarea-card-example" /></FormControl>
+         <div className="flex flex-wrap items-center justify-between gap-2">
+           <p className="text-[11px] leading-relaxed text-muted-foreground">{exampleCopy[language].hint}</p>
+           <button type="button" onClick={() => { const next = generateFlashcardExamples(frontValue, backValue, exampleLanguage); setSuggestions(next); setExampleStatus(next.length ? exampleCopy[language].generated : exampleCopy[language].missing); }} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-primary/30 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid="button-generate-examples"><Lightbulb size={14} /> {exampleCopy[language].generate}</button>
+         </div>
+         {exampleStatus && <p className="text-[11px] text-muted-foreground" role="status" data-testid="status-example-generator">{exampleStatus}</p>}
+         {suggestions.length > 0 && <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3" data-testid="panel-example-suggestions">
+           <p className="text-[10px] font-semibold uppercase tracking-[.12em] text-primary">{exampleCopy[language].suggestions}</p>
+           {suggestions.map((suggestion, index) => <div key={suggestion.id} className="flex items-start gap-2">
+             <Textarea value={suggestion.text} onChange={(event) => setSuggestions((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, text: event.target.value } : item))} rows={2} maxLength={240} className="min-h-16 flex-1 text-xs" aria-label={`${exampleCopy[language].suggestion} ${index + 1}`} data-testid={`textarea-example-suggestion-${index}`} />
+             <button type="button" onClick={() => { const addition = suggestion.text.trim(); if (!addition) return; const current = exampleValue.trim(); const next = current ? `${current}\n${addition}` : addition; field.onChange(next.slice(0, 2000)); setExampleStatus(exampleCopy[language].used); }} className="min-h-9 shrink-0 rounded-lg border border-border px-2.5 text-[11px] font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary" data-testid={`button-use-example-${index}`}>{exampleCopy[language].use}</button>
+           </div>)}
+         </div>}
+         <FormMessage />
+       </FormItem>} />
       <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="min-h-11 rounded-xl px-4 text-sm font-semibold text-muted-foreground hover:bg-muted" data-testid="button-cancel-card">Bekor qilish</button><button type="submit" disabled={busy || decks.length === 0} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" data-testid="button-save-card">{busy && <Loader2 size={15} className="animate-spin" />} {card ? 'Saqlash' : 'Qo‘shish'}</button></div>
     </form></Form>
   </DialogFrame>;

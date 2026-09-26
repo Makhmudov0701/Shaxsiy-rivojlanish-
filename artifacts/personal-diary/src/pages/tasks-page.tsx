@@ -2,11 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Task, TaskCategory, TaskInput, TaskPriority, TaskSubtask, TaskUpdate } from '@workspace/api-client-react';
 import { getListTasksQueryKey, useCreateTask, useDeleteTask, useListTasks, useUpdateTask } from '@workspace/api-client-react';
-import { CalendarDays, Check, Circle, Clock3, ListTodo, Pencil, Plus, Timer, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Archive, CalendarDays, Check, Circle, Clock3, ListTodo, Pencil, Plus, Timer, Trash2, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { formatContentDeleteConfirmation, formatSubtaskCompletionAriaLabel, formatTaskPomodoroAriaLabel, getCurrentIntlLocale } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, formatSubtaskCompletionAriaLabel, formatTaskPomodoroAriaLabel, getCurrentIntlLocale, useI18n } from '@/lib/i18n';
 import { DiaryShell } from '@/components/diary-ui';
 import { Form } from '@/components/ui/form';
 import { PomodoroTimer } from '@/components/pomodoro-timer';
@@ -62,6 +62,10 @@ const priorities: Record<TaskPriority, { label: string; className: string }> = {
 function taskIsInCurrentPeriod(task: Task, filter: TaskFilter) {
   if (filter === 'all' || filter === task.category) return true;
   return false;
+}
+
+function isArchivedTask(task: Task, now = Date.now()) {
+  return task.completed && Boolean(task.completedAt) && now - Date.parse(task.completedAt as string) > 7 * 24 * 60 * 60 * 1000;
 }
 
 function formatDueDate(value: string) {
@@ -144,6 +148,13 @@ function TaskForm({
 }
 
 export function TasksPage() {
+  const { language } = useI18n();
+  const archiveCopy = {
+    uz: { active: 'Faol', archived: 'Arxiv', archivedTitle: 'Arxivlangan topshiriqlar', empty: 'Arxiv hozircha bo‘sh.', restoreHint: 'Bajarilmagan deb belgilasangiz, qaytadi.' },
+    en: { active: 'Active', archived: 'Archived', archivedTitle: 'Archived tasks', empty: 'Your archive is empty for now.', restoreHint: 'Mark a task incomplete to restore it.' },
+    ru: { active: 'Активные', archived: 'Архив', archivedTitle: 'Архивированные задачи', empty: 'Архив пока пуст.', restoreHint: 'Снимите отметку выполнения, чтобы вернуть задачу.' },
+    ko: { active: '활성', archived: '보관함', archivedTitle: '보관된 작업', empty: '보관된 작업이 없습니다.', restoreHint: '완료 표시를 해제하면 다시 활성화됩니다.' },
+  }[language];
   const queryClient = useQueryClient();
   const tasksQuery = useListTasks();
   const createTask = useCreateTask();
@@ -157,10 +168,19 @@ export function TasksPage() {
   const [toggleError, setToggleError] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pomodoroTask, setPomodoroTask] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [archiveNow, setArchiveNow] = useState(() => Date.now());
 
   const tasks = tasksQuery.data ?? [];
+  useEffect(() => {
+    const interval = window.setInterval(() => setArchiveNow(Date.now()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const archivedTasks = useMemo(() => tasks.filter((task) => isArchivedTask(task, archiveNow)), [archiveNow, tasks]);
   const visibleTasks = useMemo(() => {
-    const filtered = tasks.filter((task) => taskIsInCurrentPeriod(task, filter));
+    const filtered = tasks.filter((task) => (showArchived ? isArchivedTask(task, archiveNow) : !isArchivedTask(task, archiveNow))
+      && taskIsInCurrentPeriod(task, filter));
     return [...filtered].sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       const priorityOrder: Record<TaskPriority, number> = { high: 0, normal: 1, low: 2 };
@@ -170,7 +190,7 @@ export function TasksPage() {
       if (b.dueDate) return 1;
       return b.createdAt.localeCompare(a.createdAt);
     });
-  }, [filter, tasks]);
+  }, [archiveNow, filter, showArchived, tasks]);
 
   const completedCount = visibleTasks.filter((task) => task.completed).length;
   const mutationPending = createTask.isPending || updateTask.isPending;
@@ -269,8 +289,11 @@ export function TasksPage() {
           <div className="rounded-[22px] border border-card-border bg-card px-5 py-4 sm:col-span-2"><div className="flex items-center justify-between gap-3"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Sokin ritm</p><span className="font-mono text-[11px] text-muted-foreground">{visibleTasks.length ? Math.round((completedCount / visibleTasks.length) * 100) : 0}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#6ea883] transition-[width] duration-500" style={{ width: `${visibleTasks.length ? (completedCount / visibleTasks.length) * 100 : 0}%` }} /></div><p className="mt-2 text-[11px] text-muted-foreground">Bugungi rejalaringizga bosim emas, aniqlik qo‘shing.</p></div>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center gap-2 rounded-[22px] border border-card-border bg-card p-2" role="tablist" aria-label="Topshiriqlar filtri">
+         <div className="mt-8 flex flex-wrap items-center gap-2 rounded-[22px] border border-card-border bg-card p-2" role="tablist" aria-label="Topshiriqlar filtri">
           {filters.map((item) => <button key={item.value} type="button" role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)} className={`min-h-10 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${filter === item.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-task-filter-${item.value}`}>{item.label}</button>)}
+           <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+           <button type="button" role="tab" aria-selected={showArchived} onClick={() => setShowArchived(true)} className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${showArchived ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid="tab-task-archived"><Archive size={14} />{archiveCopy.archived}<span className="font-mono text-[10px] opacity-75">{archivedTasks.length}</span></button>
+           {showArchived && <button type="button" role="tab" aria-selected={!showArchived} onClick={() => setShowArchived(false)} className="min-h-10 rounded-xl px-3.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="tab-task-active">{archiveCopy.active}</button>}
         </div>
 
         {deleteError && <p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-[12px] text-destructive" role="alert" data-testid="status-task-delete-error">{deleteError}</p>}
@@ -280,7 +303,7 @@ export function TasksPage() {
         ) : tasksQuery.isError ? (
           <div className="mt-5 rounded-[24px] border border-destructive/30 bg-destructive/10 px-6 py-12 text-center" role="alert" data-testid="status-tasks-error"><ListTodo size={23} className="mx-auto text-destructive" /><h2 className="mt-3 font-serif text-2xl">Topshiriqlarni yuklab bo‘lmadi.</h2><p className="mt-2 text-[12px] text-muted-foreground">Aloqani tekshirib, qayta urinib ko‘ring.</p><button type="button" onClick={() => tasksQuery.refetch()} className="mt-5 rounded-xl border border-border bg-card px-4 py-2.5 text-[12px] font-semibold hover:bg-muted" data-testid="button-retry-tasks">Qayta urinish</button></div>
         ) : visibleTasks.length ? (
-          <div className="mt-5 space-y-3" aria-label="Topshiriqlar ro‘yxati">
+           <div className="mt-5 space-y-3" aria-label={showArchived ? archiveCopy.archivedTitle : 'Topshiriqlar ro‘yxati'}>
             {visibleTasks.map((task) => {
               const meta = categories[task.category];
               return (
@@ -290,7 +313,8 @@ export function TasksPage() {
                     <button type="button" onClick={() => toggleTask(task)} disabled={updateTask.isPending} className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${task.completed ? 'border-[#6ea883] bg-[#6ea883] text-[#17221c]' : 'border-border text-transparent hover:border-[#6ea883]'}`} aria-label={task.completed ? 'Bajarilmagan deb belgilash' : 'Bajarildi deb belgilash'} aria-pressed={task.completed} data-testid={`button-toggle-task-${task.id}`}>{task.completed ? <Check size={15} strokeWidth={2.5} /> : <Circle size={13} />}</button>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${meta.className}`}>{meta.label}</span><span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${priorities[task.priority].className}`}>{priorities[task.priority].label}</span>{task.dueDate && <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarDays size={12} />{formatDueDate(task.dueDate)}</span>}</div>
-                      <h2 className={`mt-2 break-words text-[15px] font-semibold leading-snug transition-all duration-300 ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`} data-testid={`text-task-title-${task.id}`}>{task.title}</h2>
+                       <h2 className={`mt-2 break-words text-[15px] font-semibold leading-snug transition-all duration-300 ${task.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`} data-testid={`text-task-title-${task.id}`}>{task.title}</h2>
+                       {showArchived && <p className="mt-1 text-[10px] text-muted-foreground">{archiveCopy.restoreHint}</p>}
                       {task.description && <p className={`mt-1.5 line-clamp-2 text-[12px] leading-relaxed text-muted-foreground ${task.completed ? 'line-through' : ''}`}>{task.description}</p>}
                        {task.subtasks.length > 0 && <div className="mt-3" data-testid={`task-subtasks-${task.id}`}><p className="mb-1 text-[10px] font-semibold text-muted-foreground">{task.subtasks.filter((subtask) => subtask.completed).length}/{task.subtasks.length} qadam bajarildi</p><ul className="space-y-1">{task.subtasks.map((subtask) => <li key={subtask.id} className="flex items-center gap-2"><input type="checkbox" checked={subtask.completed} disabled={updateTask.isPending} onChange={() => toggleSubtask(task, subtask.id)} aria-label={formatSubtaskCompletionAriaLabel(subtask.title)} className="size-4 accent-[#47796c] disabled:opacity-50" /><span className={`min-w-0 break-words text-[11px] ${subtask.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>{subtask.title}</span></li>)}</ul></div>}
                     </div>
@@ -305,7 +329,7 @@ export function TasksPage() {
             })}
           </div>
         ) : (
-          <div className="mt-5 rounded-[24px] border border-dashed border-border bg-card/50 px-6 py-16 text-center" data-testid="status-tasks-empty"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-muted text-muted-foreground"><Clock3 size={24} strokeWidth={1.5} /></span><h2 className="mt-5 font-serif text-[28px]">{tasks.length ? 'Bu filtrda topshiriq yo‘q.' : 'Rejalaringiz uchun joy tayyor.'}</h2><p className="mx-auto mt-2 max-w-sm text-[12px] leading-relaxed text-muted-foreground">{tasks.length ? 'Boshqa filtrni tanlang yoki yangi topshiriq qo‘shing.' : 'Birinchi topshirig‘ingizni yozing — keyin uni bajarish ancha yengil bo‘ladi.'}</p><button type="button" onClick={openCreate} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-[12px] font-semibold text-primary-foreground" data-testid="button-empty-create-task"><Plus size={16} /> Yangi topshiriq</button></div>
+           <div className="mt-5 rounded-[24px] border border-dashed border-border bg-card/50 px-6 py-16 text-center" data-testid="status-tasks-empty"><span className="mx-auto grid size-14 place-items-center rounded-2xl bg-muted text-muted-foreground"><Clock3 size={24} strokeWidth={1.5} /></span><h2 className="mt-5 font-serif text-[28px]">{showArchived ? archiveCopy.empty : tasks.length ? 'Bu filtrda topshiriq yo‘q.' : 'Rejalaringiz uchun joy tayyor.'}</h2><p className="mx-auto mt-2 max-w-sm text-[12px] leading-relaxed text-muted-foreground">{showArchived ? archiveCopy.restoreHint : tasks.length ? 'Boshqa filtrni tanlang yoki yangi topshiriq qo‘shing.' : 'Birinchi topshirig‘ingizni yozing — keyin uni bajarish ancha yengil bo‘ladi.'}</p>{!showArchived && <button type="button" onClick={openCreate} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 text-[12px] font-semibold text-primary-foreground" data-testid="button-empty-create-task"><Plus size={16} /> Yangi topshiriq</button>}</div>
         )}
       </div>
 

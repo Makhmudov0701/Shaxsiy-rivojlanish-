@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
-import { db, diaryEntriesTable, diaryPhotosTable } from "@workspace/db";
+import { db, diaryDailyStickersTable, diaryEntriesTable, diaryPhotosTable } from "@workspace/db";
 import {
   DownloadDiaryBackupResponse,
   ExportDiaryQueryParams,
@@ -271,10 +271,16 @@ protectedRouter.get("/diary/export", async (req, res): Promise<void> => {
 });
 
 protectedRouter.get("/diary/backup", async (_req, res): Promise<void> => {
+  const userId = userIdFrom(res);
   const backup = {
     version: 1,
     exportedAt: new Date(),
-    entries: await listBackupEntries(userIdFrom(res)),
+    entries: await listBackupEntries(userId),
+    dailyStickers: (await db
+      .select()
+      .from(diaryDailyStickersTable)
+      .where(eq(diaryDailyStickersTable.userId, userId)))
+      .map(({ stickerDate, sticker, createdAt, updatedAt }) => ({ date: stickerDate, sticker, createdAt, updatedAt })),
   };
   res.setHeader("Content-Disposition", 'attachment; filename="shaxsiy-kundalik-zaxira.json"');
   res.json(DownloadDiaryBackupResponse.parse(backup));
@@ -298,6 +304,7 @@ protectedRouter.post("/diary/backup/restore", async (req, res): Promise<void> =>
   const userId = userIdFrom(res);
   let photosRestored = 0;
   await db.transaction(async (tx) => {
+    await tx.delete(diaryDailyStickersTable).where(eq(diaryDailyStickersTable.userId, userId));
     await tx.delete(diaryPhotosTable).where(eq(diaryPhotosTable.userId, userId));
     await tx.delete(diaryEntriesTable).where(eq(diaryEntriesTable.userId, userId));
 
@@ -330,6 +337,15 @@ protectedRouter.post("/diary/backup/restore", async (req, res): Promise<void> =>
         });
         photosRestored += 1;
       }
+    }
+    for (const sticker of parsed.data.dailyStickers ?? []) {
+      await tx.insert(diaryDailyStickersTable).values({
+        userId,
+        stickerDate: dateOnly(sticker.date),
+        sticker: sticker.sticker,
+        ...(sticker.createdAt ? { createdAt: sticker.createdAt } : {}),
+        ...(sticker.updatedAt ? { updatedAt: sticker.updatedAt } : {}),
+      });
     }
   });
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useUser } from '@clerk/react';
-import { formatContentDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale, useI18n } from '@/lib/i18n';
 import { useForm } from 'react-hook-form';
 import { BookOpen, Check, Pencil, Plus, Quote, Search, Star, Trash2, X } from 'lucide-react';
 import { Form } from '@/components/ui/form';
@@ -13,10 +13,19 @@ type BookFormValues = { title: string; author: string; status: BookStatus; takea
 const emptyBookForm: BookFormValues = { title: '', author: '', status: 'reading', takeaways: '' };
 const statusLabels: Record<BookStatus, string> = { reading: 'O‘qiyapman', finished: 'Tugatdim', wishlist: 'O‘qimoqchiman' };
 const bookStatusOptions: BookStatus[] = ['reading', 'finished', 'wishlist'];
-const statusFilters = ['all', 'reading', 'finished', 'wishlist'] as const;
+const statusFilters = ['all', 'reading', 'finished', 'wishlist', 'favorites'] as const;
 type StatusFilter = (typeof statusFilters)[number];
 
+const bookCopy = {
+  uz: { all: 'Barchasi', favorites: 'Sevimlilar', favoriteAdd: 'Kitobni sevimlilarga qo‘shish', favoriteRemove: 'Kitobni sevimlilardan olish', favoriteSaved: 'Kitob sevimlilari yangilandi.', quoteFavoriteAdd: 'Iqtibosni sevimlilarga qo‘shish', quoteFavoriteRemove: 'Iqtibosni sevimlilardan olish', quoteSaved: 'Iqtibos yangilandi.' },
+  en: { all: 'All', favorites: 'Favorites', favoriteAdd: 'Add book to favorites', favoriteRemove: 'Remove book from favorites', favoriteSaved: 'Book favorites updated.', quoteFavoriteAdd: 'Add quote to favorites', quoteFavoriteRemove: 'Remove quote from favorites', quoteSaved: 'Quote updated.' },
+  ru: { all: 'Все', favorites: 'Избранное', favoriteAdd: 'Добавить книгу в избранное', favoriteRemove: 'Убрать книгу из избранного', favoriteSaved: 'Избранное книги обновлено.', quoteFavoriteAdd: 'Добавить цитату в избранное', quoteFavoriteRemove: 'Убрать цитату из избранного', quoteSaved: 'Цитата обновлена.' },
+  ko: { all: '전체', favorites: '즐겨찾기', favoriteAdd: '책을 즐겨찾기에 추가', favoriteRemove: '책을 즐겨찾기에서 제거', favoriteSaved: '책 즐겨찾기가 업데이트되었습니다.', quoteFavoriteAdd: '인용문을 즐겨찾기에 추가', quoteFavoriteRemove: '인용문을 즐겨찾기에서 제거', quoteSaved: '인용문이 업데이트되었습니다.' },
+} as const;
+
 function BookTracker({ storageKey }: { storageKey: string }) {
+  const { language } = useI18n();
+  const copy = bookCopy[language];
   const store = useLocalModuleStorage(storageKey, EMPTY_BOOKS, isTrackedBookList, 'Kitoblar');
   const form = useForm<BookFormValues>({ defaultValues: emptyBookForm });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,7 +41,9 @@ function BookTracker({ storageKey }: { storageKey: string }) {
   const visibleBooks = useMemo(() => {
     const query = search.trim().toLocaleLowerCase(getCurrentIntlLocale());
     return [...store.value]
-      .filter((book) => (filter === 'all' || book.status === filter)
+      .filter((book) => (filter === 'all' || filter === 'favorites'
+        ? filter === 'all' || Boolean(book.favorite) || book.quotes.some((quote) => quote.favorite)
+        : book.status === filter)
         && (!query || `${book.title} ${book.author} ${book.takeaways} ${book.quotes.map((item) => item.text).join(' ')}`.toLocaleLowerCase(getCurrentIntlLocale()).includes(query)))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [filter, search, store.value]);
@@ -52,6 +63,7 @@ function BookTracker({ storageKey }: { storageKey: string }) {
       status: values.status,
       takeaways: values.takeaways.trim(),
       quotes: current?.quotes ?? [],
+      favorite: current?.favorite,
       createdAt: current?.createdAt ?? now,
       updatedAt: now,
     };
@@ -101,7 +113,14 @@ function BookTracker({ storageKey }: { storageKey: string }) {
       updatedAt: new Date().toISOString(),
       quotes: book.quotes.map((item) => item.id === quoteId ? { ...item, favorite: !item.favorite } : item),
     } : book));
-    if (saved) showNotice('Iqtibos yangilandi.');
+    if (saved) showNotice(copy.quoteSaved);
+  };
+
+  const toggleBookFavorite = (bookId: string) => {
+    const saved = store.save(store.value.map((book) => book.id === bookId
+      ? { ...book, favorite: !book.favorite, updatedAt: new Date().toISOString() }
+      : book));
+    if (saved) showNotice(copy.favoriteSaved);
   };
 
   const deleteQuote = (bookId: string, quoteId: string) => {
@@ -145,7 +164,7 @@ function BookTracker({ storageKey }: { storageKey: string }) {
         <div className="rounded-[24px] border border-card-border bg-card p-4 shadow-sm sm:p-5">
           <label htmlFor="book-search" className="sr-only">Kitoblardan qidirish</label>
           <div className="flex min-h-12 items-center gap-3 rounded-xl border border-border bg-background px-3.5"><Search size={18} className="shrink-0 text-muted-foreground" /><input id="book-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Kitob yoki muallif nomini yozing..." className="min-w-0 flex-1 bg-transparent py-3 text-[13px] outline-none placeholder:text-muted-foreground/65" data-testid="input-book-search" /><span className="text-[12px] text-muted-foreground">{store.value.length}</span></div>
-          <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Kitoblar holati">{statusFilters.map((value) => <button key={value} type="button" role="tab" aria-selected={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-xl px-3 py-2 text-[13px] font-medium ${filter === value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`} data-testid={`tab-book-${value}`}>{value === 'all' ? 'Barchasi' : statusLabels[value]}</button>)}</div>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap" role="tablist" aria-label="Kitoblar holati">{statusFilters.map((value) => <button key={value} type="button" role="tab" aria-selected={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-xl px-3 py-2 text-[13px] font-medium ${filter === value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`} data-testid={`tab-book-${value}`}>{value === 'all' ? copy.all : value === 'favorites' ? copy.favorites : statusLabels[value]}</button>)}</div>
         </div>
         {store.status === 'loading' ? <div className="mt-4 h-48 rounded-[22px] skeleton" aria-label="Kitoblar yuklanmoqda" /> : store.status === 'error' ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-[12px]" role="alert">{store.error}</div> : visibleBooks.length ? (
           <div className="mt-4 grid gap-4">
@@ -153,11 +172,11 @@ function BookTracker({ storageKey }: { storageKey: string }) {
               <article key={book.id} className="rounded-[22px] border border-card-border bg-card p-5 shadow-sm sm:p-6" data-testid={`card-book-${book.id}`}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#8a5f7a]">{book.author || 'Muallif ko‘rsatilmagan'}</p><h3 className="mt-1 break-words font-serif text-[26px] leading-tight">{book.title}</h3>{book.takeaways && <div className="mt-4 rounded-xl bg-[#f7f0df] p-3.5 dark:bg-[#2d281f]"><p className="font-mono text-[9px] uppercase tracking-[.12em] text-muted-foreground">Asosiy xulosalar</p><p className="mt-2 whitespace-pre-wrap text-[11px] leading-relaxed">{book.takeaways}</p></div>}</div>
-                   <div className="flex items-center gap-1.5"><select value={book.status} onChange={(event) => updateStatus(book.id, event.target.value as BookStatus)} aria-label={`${book.title} holati`} className="min-h-11 max-w-[150px] rounded-full border border-[#d8ccb0] bg-background px-3 text-[12px] outline-none focus:border-[#b89c5c]" data-testid={`select-book-status-${book.id}`}>{bookStatusOptions.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select><button type="button" onClick={() => editBook(book)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Kitobni tahrirlash" data-testid={`button-edit-book-${book.id}`}><Pencil size={17} /></button><button type="button" onClick={() => deleteBook(book)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Kitobni o‘chirish" data-testid={`button-delete-book-${book.id}`}><Trash2 size={17} /></button></div>
+                    <div className="flex items-center gap-1.5"><select value={book.status} onChange={(event) => updateStatus(book.id, event.target.value as BookStatus)} aria-label={`${book.title} holati`} className="min-h-11 max-w-[150px] rounded-full border border-[#d8ccb0] bg-background px-3 text-[12px] outline-none focus:border-[#b89c5c]" data-testid={`select-book-status-${book.id}`}>{bookStatusOptions.map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select><button type="button" onClick={() => toggleBookFavorite(book.id)} className={`grid size-11 place-items-center rounded-xl ${book.favorite ? 'bg-[#f8e9bf] text-[#a66a13]' : 'text-muted-foreground hover:bg-muted'}`} aria-label={book.favorite ? copy.favoriteRemove : copy.favoriteAdd} aria-pressed={book.favorite === true} data-testid={`button-favorite-book-${book.id}`}><Star size={17} fill={book.favorite ? 'currentColor' : 'none'} /></button><button type="button" onClick={() => editBook(book)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Kitobni tahrirlash" data-testid={`button-edit-book-${book.id}`}><Pencil size={17} /></button><button type="button" onClick={() => deleteBook(book)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Kitobni o‘chirish" data-testid={`button-delete-book-${book.id}`}><Trash2 size={17} /></button></div>
                 </div>
                 <div className="mt-5 border-t border-border/70 pt-4">
                   <div className="flex items-center gap-2"><Quote size={14} className="text-[#9a6b23]" /><p className="font-mono text-[9px] uppercase tracking-[.14em] text-muted-foreground">Muhim iqtiboslar</p><span className="font-mono text-[9px] text-muted-foreground">{book.quotes.length}</span></div>
-                   {book.quotes.length > 0 && <ul className="mt-3 space-y-2">{book.quotes.map((quote) => <li key={quote.id} className="flex items-start gap-2 rounded-xl bg-background/70 p-3" data-testid={`quote-${quote.id}`}><p className="min-w-0 flex-1 whitespace-pre-wrap py-2 text-[13px] italic leading-relaxed">“{quote.text}”</p><button type="button" onClick={() => toggleQuote(book.id, quote.id)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${quote.favorite ? 'bg-[#f8e9bf] text-[#a66a13]' : 'text-muted-foreground hover:bg-muted'}`} aria-label={quote.favorite ? 'Iqtibosni sevimlilardan olish' : 'Iqtibosni sevimlilarga qo‘shish'} aria-pressed={quote.favorite} data-testid={`button-favorite-quote-${quote.id}`}><Star size={17} fill={quote.favorite ? 'currentColor' : 'none'} /></button><button type="button" onClick={() => deleteQuote(book.id, quote.id)} className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:text-destructive" aria-label="Iqtibosni o‘chirish" data-testid={`button-delete-quote-${quote.id}`}><X size={17} /></button></li>)}</ul>}
+                    {book.quotes.length > 0 && <ul className="mt-3 space-y-2">{book.quotes.map((quote) => <li key={quote.id} className="flex items-start gap-2 rounded-xl bg-background/70 p-3" data-testid={`quote-${quote.id}`}><p className="min-w-0 flex-1 whitespace-pre-wrap py-2 text-[13px] italic leading-relaxed">“{quote.text}”</p><button type="button" onClick={() => toggleQuote(book.id, quote.id)} className={`grid size-11 shrink-0 place-items-center rounded-xl ${quote.favorite ? 'bg-[#f8e9bf] text-[#a66a13]' : 'text-muted-foreground hover:bg-muted'}`} aria-label={quote.favorite ? copy.quoteFavoriteRemove : copy.quoteFavoriteAdd} aria-pressed={quote.favorite} data-testid={`button-favorite-quote-${quote.id}`}><Star size={17} fill={quote.favorite ? 'currentColor' : 'none'} /></button><button type="button" onClick={() => deleteQuote(book.id, quote.id)} className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:text-destructive" aria-label="Iqtibosni o‘chirish" data-testid={`button-delete-quote-${quote.id}`}><X size={17} /></button></li>)}</ul>}
                    <div className="mt-3 flex gap-2"><input value={quoteDrafts[book.id] ?? ''} onChange={(event) => setQuoteDrafts((current) => ({ ...current, [book.id]: event.target.value }))} maxLength={800} placeholder="Yodda qolgan jumlani yozing..." className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2.5 text-[13px] outline-none placeholder:text-muted-foreground/65 focus:border-[#b89c5c]" aria-label="Yangi iqtibos" data-testid={`input-book-quote-${book.id}`} /><button type="button" onClick={() => addQuote(book)} className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-[#eee8d5] px-4 py-2.5 text-[13px] font-semibold text-[#756d5e] hover:bg-[#e5d9bc] dark:bg-[#413a2b] dark:text-[#d2c6a9]" data-testid={`button-add-book-quote-${book.id}`}><Plus size={17} />Qo‘shish</button></div>
                 </div>
               </article>

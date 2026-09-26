@@ -22,6 +22,31 @@ export const Mood = {
   anxious: 'anxious',
 } as const;
 
+export type DiarySticker = typeof DiarySticker[keyof typeof DiarySticker];
+
+
+export const DiarySticker = {
+  productive: 'productive',
+  study: 'study',
+  calm: 'calm',
+  busy: 'busy',
+  happy: 'happy',
+  creative: 'creative',
+  rest: 'rest',
+  social: 'social',
+} as const;
+
+export interface DiaryDailySticker {
+  date: string;
+  sticker: DiarySticker;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DiaryDailyStickerInput {
+  sticker: DiarySticker;
+}
+
 export interface DiaryPhoto {
   id: number;
   entryId: number;
@@ -256,11 +281,19 @@ export interface DiaryBackupEntry {
   photos: DiaryBackupPhoto[];
 }
 
+export interface DiaryBackupDailySticker {
+  date: string;
+  sticker: DiarySticker;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface DiaryBackup {
   /** @minimum 1 */
   version: number;
   exportedAt: string;
   entries: DiaryBackupEntry[];
+  dailyStickers?: DiaryBackupDailySticker[];
 }
 
 export interface RestoreDiaryBackupResult {

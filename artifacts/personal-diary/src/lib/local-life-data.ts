@@ -40,7 +40,7 @@ export type BookStatus = 'reading' | 'finished' | 'wishlist';
 export type BookQuote = {
   id: string;
   text: string;
-  favorite: boolean;
+  favorite?: boolean;
   createdAt: string;
 };
 
@@ -51,6 +51,8 @@ export type TrackedBook = {
   status: BookStatus;
   takeaways: string;
   quotes: BookQuote[];
+  /** Optional for backwards-compatible localStorage records. */
+  favorite?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -125,12 +127,13 @@ export function isTrackedBookList(value: unknown): value is TrackedBook[] {
     && typeof item.author === 'string'
     && bookStatuses.includes(item.status as BookStatus)
     && typeof item.takeaways === 'string'
+    && (item.favorite === undefined || typeof item.favorite === 'boolean')
     && Array.isArray(item.quotes)
     && item.quotes.every((quote) =>
       isObject(quote)
       && typeof quote.id === 'string'
       && typeof quote.text === 'string'
-      && typeof quote.favorite === 'boolean'
+       && (quote.favorite === undefined || typeof quote.favorite === 'boolean')
       && isTimestamp(quote.createdAt),
     )
     && isTimestamp(item.createdAt)

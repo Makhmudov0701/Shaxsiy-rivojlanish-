@@ -1,6 +1,6 @@
 import express, { Router, type IRouter } from "express";
 import { and, asc, desc, eq, gte, ilike, inArray, lte, or, sql } from "drizzle-orm";
-import { db, diaryEntriesTable, diaryPhotosTable } from "@workspace/db";
+import { db, diaryDailyStickersTable, diaryEntriesTable, diaryPhotosTable } from "@workspace/db";
 import {
   CreateDiaryEntryBody,
   CreateDiaryEntryResponse,
@@ -22,6 +22,11 @@ import {
   UpdateDiaryEntryBody,
   UpdateDiaryEntryParams,
   UpdateDiaryEntryResponse,
+  ListDiaryDailyStickersResponse,
+  UpsertDiaryDailyStickerBody,
+  UpsertDiaryDailyStickerParams,
+  UpsertDiaryDailyStickerResponse,
+  DeleteDiaryDailyStickerParams,
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 
@@ -39,8 +44,14 @@ function userIdFrom(res: { locals: { userId?: string } }): string {
   return userId;
 }
 
-function dateOnly(value: Date): string {
-  return value.toISOString().slice(0, 10);
+function dateOnly(value: Date | string): string {
+  return typeof value === "string" ? value : value.toISOString().slice(0, 10);
+}
+
+function isValidDateOnly(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value.startsWith("0000")) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
 
 function calculateStreak(dates: string[]): number {
@@ -214,6 +225,62 @@ protectedRouter.get("/diary/weekly-summary", async (_req, res): Promise<void> =>
       ...reflection,
     }),
   );
+});
+
+protectedRouter.get("/diary/daily-stickers", async (_req, res): Promise<void> => {
+  const userId = userIdFrom(res);
+  const stickers = await db
+    .select()
+    .from(diaryDailyStickersTable)
+    .where(eq(diaryDailyStickersTable.userId, userId))
+    .orderBy(desc(diaryDailyStickersTable.stickerDate));
+  res.json(ListDiaryDailyStickersResponse.parse(stickers.map(({ stickerDate, ...sticker }) => ({ ...sticker, date: stickerDate }))));
+});
+
+protectedRouter.put("/diary/daily-stickers/:date", async (req, res): Promise<void> => {
+  const userId = userIdFrom(res);
+  const params = UpsertDiaryDailyStickerParams.safeParse(req.params);
+  const body = UpsertDiaryDailyStickerBody.safeParse(req.body);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!isValidDateOnly(params.data.date)) {
+    res.status(400).json({ error: "Sana noto‘g‘ri." });
+    return;
+  }
+  if (!body.success) {
+    res.status(400).json({ error: body.error.message });
+    return;
+  }
+  const stickerDate = dateOnly(params.data.date);
+  const [sticker] = await db
+    .insert(diaryDailyStickersTable)
+    .values({ userId, stickerDate, sticker: body.data.sticker })
+    .onConflictDoUpdate({
+      target: [diaryDailyStickersTable.userId, diaryDailyStickersTable.stickerDate],
+      set: { sticker: body.data.sticker, updatedAt: new Date() },
+    })
+    .returning();
+  res.json(UpsertDiaryDailyStickerResponse.parse(sticker && { ...sticker, date: sticker.stickerDate }));
+});
+
+protectedRouter.delete("/diary/daily-stickers/:date", async (req, res): Promise<void> => {
+  const userId = userIdFrom(res);
+  const params = DeleteDiaryDailyStickerParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  if (!isValidDateOnly(params.data.date)) {
+    res.status(400).json({ error: "Sana noto‘g‘ri." });
+    return;
+  }
+  await db.delete(diaryDailyStickersTable).where(and(
+    eq(diaryDailyStickersTable.userId, userId),
+    eq(diaryDailyStickersTable.stickerDate, dateOnly(params.data.date)),
+  ));
+  res.sendStatus(204);
 });
 
 protectedRouter.get("/diary/entries", async (req, res): Promise<void> => {

@@ -1,16 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { Link } from 'wouter';
 import { useUser } from '@clerk/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { DayButton as DayPickerDayButton } from 'react-day-picker';
 import { Bar, BarChart, Cell, Pie, PieChart, XAxis, YAxis } from 'recharts';
-import { Calendar } from '@/components/ui/calendar';
+import { Calendar, CalendarDayButton } from '@/components/ui/calendar';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { getListDiaryEntriesQueryKey, Mood, useGetRepetitionStats, useListDiaryEntries } from '@workspace/api-client-react';
-import type { DiaryEntry } from '@workspace/api-client-react';
+import { getListDiaryDailyStickersQueryKey, getListDiaryEntriesQueryKey, Mood, useGetRepetitionStats, useListDiaryDailyStickers, useListDiaryEntries } from '@workspace/api-client-react';
+import type { DiaryEntry, DiarySticker } from '@workspace/api-client-react';
 import { ActivityHeatmap, type ActivityDay } from '@/components/activity-heatmap';
 import { moodMeta, MoodBadge } from '@/components/diary-ui';
 import { formatUzbekDate, parseDateValue } from '@/lib/date-utils';
 import { calendarNavigationLabel, formatDiaryEntryCount, formatRecordedDays, getCurrentIntlLocale, getCurrentLanguage, translateUiText } from '@/lib/i18n';
+import { DAILY_STICKER_COPY, getDailySticker } from '@/lib/daily-stickers';
 import { EMPTY_ENERGY_LOG, energyStorageKey, isEnergyLog, useLocalModuleStorage, type EnergyLog } from '@/lib/local-module-storage';
 import { readFocusWorkspace, type FocusWorkspaceData } from '@/lib/focus-workspace-data';
 
@@ -124,7 +126,46 @@ function CalendarSkeleton() {
   return <div className="grid grid-cols-7 gap-2 pt-6" aria-label="Taqvim yuklanmoqda">{Array.from({ length: 35 }, (_, index) => <span key={index} className="skeleton aspect-square rounded-xl" />)}</div>;
 }
 
-function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: DiaryEntry[]; visibleMonth: Date; setVisibleMonth: (date: Date) => void }) {
+const DailyStickerContext = createContext<ReadonlyMap<string, DiarySticker>>(new Map());
+
+function CalendarStickerDayButton(props: ComponentProps<typeof DayPickerDayButton>) {
+  const stickerMap = useContext(DailyStickerContext);
+  const dateKeyValue = dateKey(props.day.date);
+  const sticker = getDailySticker(stickerMap.get(dateKeyValue));
+  const language = getCurrentLanguage();
+  const stickerLabel = sticker?.label[language];
+  const accessibleLabel = [props['aria-label'], stickerLabel].filter(Boolean).join(', ');
+
+  return (
+    <CalendarDayButton
+      {...props}
+      aria-label={stickerLabel ? accessibleLabel : props['aria-label']}
+      title={stickerLabel ?? props.title}
+      data-testid={`calendar-day-${dateKeyValue}`}
+    >
+      {props.children}
+      {sticker && (
+        <span className={`mt-0.5 inline-grid size-4 place-items-center rounded-full text-[9px] leading-none ${sticker.className}`} aria-hidden="true">
+          {sticker.emoji}
+        </span>
+      )}
+    </CalendarDayButton>
+  );
+}
+
+function CalendarView({
+  entries,
+  dailyStickers,
+  stickerLoadError,
+  visibleMonth,
+  setVisibleMonth,
+}: {
+  entries: DiaryEntry[];
+  dailyStickers: Array<{ date: string; sticker: DiarySticker }>;
+  stickerLoadError: boolean;
+  visibleMonth: Date;
+  setVisibleMonth: (date: Date) => void;
+}) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const entriesByDate = useMemo(() => entries.reduce<Record<string, DiaryEntry[]>>((result, entry) => {
     const key = entryDateKey(entry.entryDate);
@@ -137,6 +178,8 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
   });
   const entryDates = Object.keys(entriesByDate).map(parseEntryDate).filter((date): date is Date => date !== null);
   const selectedEntries = selectedDate ? entriesByDate[selectedDate] ?? [] : [];
+  const stickerByDate = useMemo(() => new Map(dailyStickers.map(({ date, sticker }) => [date, sticker] as const)), [dailyStickers]);
+  const stickerCopy = DAILY_STICKER_COPY[getCurrentLanguage()];
   const monthDays = new Set(monthEntries.map((entry) => entryDateKey(entry.entryDate)).filter((key): key is string => key !== null)).size;
 
   return (
@@ -145,17 +188,22 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
         <div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Yozuvlar taqvimi</p><p className="mt-1 font-serif text-[23px] capitalize">{monthLabel(visibleMonth)}</p></div>
         <div className="text-right"><p className="font-serif text-[27px] leading-none">{monthEntries.length}</p><p className="mt-1 text-[10px] text-muted-foreground">{formatRecordedDays(monthDays)}</p></div>
       </div>
-      <Calendar
-        month={visibleMonth}
-        onMonthChange={setVisibleMonth}
-         selected={selectedDate ? parseEntryDate(selectedDate) ?? undefined : undefined}
-        onSelect={(date: Date | undefined) => setSelectedDate(date ? dateKey(date) : null)}
-        modifiers={{ hasEntry: entryDates }}
-        modifiersClassNames={{ hasEntry: 'bg-[#f8e9bf] text-[#6c4c21] rounded-xl' }}
-        className="w-full [--cell-size:clamp(2.25rem,8vw,3.7rem)]"
-        formatters={{ formatCaption: monthLabel }}
-        aria-label="Yozuvlar taqvimi"
-      />
+      <DailyStickerContext.Provider value={stickerByDate}>
+        <Calendar
+          month={visibleMonth}
+          onMonthChange={setVisibleMonth}
+          selected={selectedDate ? parseEntryDate(selectedDate) ?? undefined : undefined}
+          onSelect={(date: Date | undefined) => setSelectedDate(date ? dateKey(date) : null)}
+          modifiers={{ hasEntry: entryDates }}
+          modifiersClassNames={{ hasEntry: 'bg-[#f8e9bf] text-[#6c4c21] rounded-xl' }}
+          components={{ DayButton: CalendarStickerDayButton }}
+          className="w-full [--cell-size:clamp(2.25rem,8vw,3.7rem)]"
+          formatters={{ formatCaption: monthLabel }}
+          aria-label="Yozuvlar taqvimi"
+        />
+      </DailyStickerContext.Provider>
+      <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">{stickerCopy.markerHint}</p>
+      {stickerLoadError && <p className="mt-2 text-[11px] text-destructive" role="alert" data-testid="status-calendar-stickers-error">{stickerCopy.loadError}</p>}
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/70 pt-4 text-[10px] text-muted-foreground"><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[#d9a441]" /> yozuv bor</span><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[#cfc09c] bg-background" /> bo‘sh kun</span><span className="ml-auto">Sanani tanlang</span></div>
       {selectedDate && <div className="mt-5 rounded-2xl border border-[#d9c795] bg-[#faf2dc] p-4 dark:border-[#6b5832] dark:bg-[#332c21]" data-testid="selected-date-entries"><div className="flex items-center justify-between gap-3"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-[#8f601a]">Tanlangan kun</p><button type="button" onClick={() => setSelectedDate(null)} className="text-[10px] text-muted-foreground underline-offset-2 hover:underline" aria-label="Tanlangan sanani yopish">Yopish</button></div><p className="mt-1 font-serif text-[21px]">{formatUzbekDate(selectedDate, { day: 'numeric', month: 'long', year: 'numeric' })}</p>{selectedEntries.length > 0 ? <div className="mt-3 space-y-2">{selectedEntries.map((entry) => <Link key={entry.id} href={`/entry/${entry.id}`} className="group flex items-center justify-between gap-3 rounded-xl border border-[#e3d5ad] bg-card/70 px-3 py-2.5 transition-colors hover:border-[#b89c5c]" data-testid={`calendar-entry-${entry.id}`}><span className="min-w-0 truncate font-serif text-[17px] group-hover:text-[#6c4c21]">{entry.title}</span><MoodBadge mood={entry.mood} small /></Link>)}</div> : <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">Bu kunda yozuv saqlanmagan.</p>}</div>}
     </div>
@@ -242,6 +290,7 @@ export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
   const energyKey = user?.id ? energyStorageKey(user.id) : 'kundalik-energiya-kutilyapti';
   const energy = useLocalModuleStorage(energyKey, EMPTY_ENERGY_LOG, isEnergyLog, 'Energiya');
   const entriesQuery = useListDiaryEntries(undefined, { query: { queryKey: getListDiaryEntriesQueryKey() } });
+  const dailyStickersQuery = useListDiaryDailyStickers({ query: { queryKey: getListDiaryDailyStickersQueryKey(), enabled: mode === 'calendar' } });
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const repetitionStats = useGetRepetitionStats({ timeZone });
   const [focusSnapshot, setFocusSnapshot] = useState<{
@@ -267,11 +316,12 @@ export function CalendarAnalytics({ mode }: { mode: AnalyticsMode }) {
   const retryActivity = () => {
     void entriesQuery.refetch();
     void repetitionStats.refetch();
+    void dailyStickersQuery.refetch();
     if (user?.id) setFocusSnapshot({ userId: user.id, ...readFocusWorkspace(user.id) });
   };
 
   if (entriesQuery.isLoading) return <section className="mt-10 rounded-[28px] border border-card-border bg-card/70 p-5 sm:p-7" aria-label={mode === 'calendar' ? 'Taqvim yuklanmoqda' : 'Kayfiyat tahlili yuklanmoqda'}><div className="skeleton h-3 w-32 rounded-full" /><div className="mt-3 skeleton h-9 w-72 max-w-full rounded-lg" /><div className="mt-8 grid gap-8 lg:grid-cols-2"><CalendarSkeleton /><div className="skeleton h-56 rounded-2xl" /></div></section>;
   if (entriesQuery.isError) return <section className="mt-10 rounded-[28px] border border-[#ecc6bd] bg-[#fff0ec] p-7" aria-label="Tahlil xatosi"><p className="font-mono text-[9px] uppercase tracking-[.18em] text-[#9a6b23]">Kuzatuvlar</p><h2 className="mt-3 font-serif text-[30px]">Tahlilni hozircha ochib bo‘lmadi.</h2><p className="mt-2 max-w-md text-[13px] leading-relaxed text-muted-foreground">Yozuvlaringiz yuklangach, shu yerda kunlar ritmi va kayfiyatlar ko‘rinadi.</p><button type="button" onClick={() => entriesQuery.refetch()} className="mt-5 rounded-xl border border-destructive/30 bg-card px-4 py-2.5 text-[11px] font-semibold text-destructive" data-testid="button-retry-analytics">Qayta urinish</button></section>;
 
-  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <><ActivityHeatmap days={activityDays} loading={repetitionStats.isLoading || !currentFocusSnapshot} error={repetitionStats.isError || Boolean(currentFocusSnapshot?.error)} onRetry={retryActivity} /><MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /><EnergyTrendChart energyLog={energy.value} status={energy.status} error={energy.error} visibleMonth={visibleMonth} /></>}</section>;
+  return <section className="mt-10" aria-label={mode === 'calendar' ? 'Taqvim ko‘rinishi' : 'Kayfiyat tahlili'} data-testid={mode === 'calendar' ? 'calendar-view' : 'mood-analytics'}><div className="mb-5"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">{mode === 'calendar' ? 'Yozuvlar taqvimi' : 'Oylik kuzatuvlar'}</p><h2 className="mt-2 font-serif text-[clamp(2rem,4vw,3.25rem)] leading-none tracking-[-.04em]">{mode === 'calendar' ? 'Kunlar qanday o‘tdi?' : 'Kayfiyatingiz ritmi'}</h2><p className="mt-2 max-w-xl text-[12px] leading-relaxed text-muted-foreground">{mode === 'calendar' ? 'Yozgan kunlaringizga bir qarash — tanlangan kunda yozuvni oching.' : 'Har oyda qayd etilgan kayfiyatlarni ko‘rib, ichki ritmingizni kuzating.'}</p></div>{mode === 'calendar' ? <CalendarView entries={entries} dailyStickers={dailyStickersQuery.data ?? []} stickerLoadError={dailyStickersQuery.isError} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /> : <><ActivityHeatmap days={activityDays} loading={repetitionStats.isLoading || !currentFocusSnapshot} error={repetitionStats.isError || Boolean(currentFocusSnapshot?.error)} onRetry={retryActivity} /><MoodAnalytics entries={entries} visibleMonth={visibleMonth} setVisibleMonth={setVisibleMonth} /><EnergyTrendChart energyLog={energy.value} status={energy.status} error={energy.error} visibleMonth={visibleMonth} /></>}</section>;
 }

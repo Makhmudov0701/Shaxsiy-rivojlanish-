@@ -27,6 +27,8 @@ import type {
   BadRequestResponse,
   ConflictResponse,
   DiaryBackup,
+  DiaryDailySticker,
+  DiaryDailyStickerInput,
   DiaryEntry,
   DiaryEntryInput,
   DiaryEntryUpdate,
@@ -318,6 +320,246 @@ export function useGetDiaryWeeklySummary<TData = Awaited<ReturnType<typeof getDi
 
 
 
+
+export const getListDiaryDailyStickersUrl = () => {
+
+
+
+
+  return `/api/diary/daily-stickers`
+}
+
+/**
+ * @summary List the signed-in user's daily stickers
+ */
+export const listDiaryDailyStickers = async ( options?: Parameters<typeof customFetch>[1]): Promise<DiaryDailySticker[]> => {
+
+  return customFetch<DiaryDailySticker[]>(getListDiaryDailyStickersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDiaryDailyStickersQueryKey = () => {
+    return [
+    `/api/diary/daily-stickers`
+    ] as const;
+    }
+
+
+export const getListDiaryDailyStickersQueryOptions = <TData = Awaited<ReturnType<typeof listDiaryDailyStickers>>, TError = ErrorType<UnauthorizedResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDiaryDailyStickers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDiaryDailyStickersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDiaryDailyStickers>>> = ({ signal }) => listDiaryDailyStickers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDiaryDailyStickers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDiaryDailyStickersQueryResult = NonNullable<Awaited<ReturnType<typeof listDiaryDailyStickers>>>
+export type ListDiaryDailyStickersQueryError = ErrorType<UnauthorizedResponse>
+
+
+/**
+ * @summary List the signed-in user's daily stickers
+ */
+
+export function useListDiaryDailyStickers<TData = Awaited<ReturnType<typeof listDiaryDailyStickers>>, TError = ErrorType<UnauthorizedResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDiaryDailyStickers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDiaryDailyStickersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertDiaryDailyStickerUrl = (date: string,) => {
+
+
+
+
+  return `/api/diary/daily-stickers/${date}`
+}
+
+/**
+ * @summary Set the signed-in user's sticker for a calendar date
+ */
+export const upsertDiaryDailySticker = async (date: string,
+    diaryDailyStickerInput: DiaryDailyStickerInput, options?: Parameters<typeof customFetch>[1]): Promise<DiaryDailySticker> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<DiaryDailySticker>(getUpsertDiaryDailyStickerUrl(date),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(diaryDailyStickerInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertDiaryDailyStickerMutationKey = () => ['upsertDiaryDailySticker'] as const;
+
+export const getUpsertDiaryDailyStickerMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertDiaryDailySticker>>, TError,UpsertDiaryDailyStickerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertDiaryDailySticker>>, TError,UpsertDiaryDailyStickerMutationVariables, TContext> => {
+
+const mutationKey = getUpsertDiaryDailyStickerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertDiaryDailySticker>>, UpsertDiaryDailyStickerMutationVariables> = (props) => {
+          const {date,data} = props ?? {};
+
+          return  upsertDiaryDailySticker(date,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertDiaryDailyStickerMutationResult = NonNullable<Awaited<ReturnType<typeof upsertDiaryDailySticker>>>
+    export type UpsertDiaryDailyStickerMutationBody = BodyType<DiaryDailyStickerInput>
+    export type UpsertDiaryDailyStickerMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type UpsertDiaryDailyStickerMutationVariables = {date: string;data: BodyType<DiaryDailyStickerInput>}
+
+    /**
+ * @summary Set the signed-in user's sticker for a calendar date
+ */
+export const useUpsertDiaryDailySticker = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertDiaryDailySticker>>, TError,UpsertDiaryDailyStickerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertDiaryDailySticker>>,
+        TError,
+        UpsertDiaryDailyStickerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpsertDiaryDailyStickerMutationOptions(options));
+    }
+
+export const getDeleteDiaryDailyStickerUrl = (date: string,) => {
+
+
+
+
+  return `/api/diary/daily-stickers/${date}`
+}
+
+/**
+ * @summary Remove the signed-in user's sticker for a calendar date
+ */
+export const deleteDiaryDailySticker = async (date: string, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteDiaryDailyStickerUrl(date),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteDiaryDailyStickerMutationKey = () => ['deleteDiaryDailySticker'] as const;
+
+export const getDeleteDiaryDailyStickerMutationOptions = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryDailySticker>>, TError,DeleteDiaryDailyStickerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryDailySticker>>, TError,DeleteDiaryDailyStickerMutationVariables, TContext> => {
+
+const mutationKey = getDeleteDiaryDailyStickerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDiaryDailySticker>>, DeleteDiaryDailyStickerMutationVariables> = (props) => {
+          const {date} = props ?? {};
+
+          return  deleteDiaryDailySticker(date,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDiaryDailyStickerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDiaryDailySticker>>>
+
+    export type DeleteDiaryDailyStickerMutationError = ErrorType<BadRequestResponse | UnauthorizedResponse>
+    export type DeleteDiaryDailyStickerMutationVariables = {date: string}
+
+    /**
+ * @summary Remove the signed-in user's sticker for a calendar date
+ */
+export const useDeleteDiaryDailySticker = <TError = ErrorType<BadRequestResponse | UnauthorizedResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDiaryDailySticker>>, TError,DeleteDiaryDailyStickerMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDiaryDailySticker>>,
+        TError,
+        DeleteDiaryDailyStickerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteDiaryDailyStickerMutationOptions(options));
+    }
 
 export const getListDiaryEntriesUrl = (params?: ListDiaryEntriesParams,) => {
   const normalizedParams = new URLSearchParams();

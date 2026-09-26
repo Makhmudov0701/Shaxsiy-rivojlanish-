@@ -6,6 +6,7 @@ import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } from '@/components/rich-text';
 import { AmbientSoundControl } from '@/components/ambient-sound';
+import { QuickCaptureLauncher } from '@/components/quick-capture-launcher';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
 import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText, useI18n } from '@/lib/i18n';
@@ -294,6 +295,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
         {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} userId={user?.id ?? 'anonymous'} />}
         {children}
       </main>
+      <QuickCaptureLauncher />
     </div>
   );
 }
