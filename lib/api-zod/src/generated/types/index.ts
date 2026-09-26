@@ -45,6 +45,7 @@ export * from './repetitionCardInput';
 export * from './repetitionDeck';
 export * from './repetitionDeckInput';
 export * from './repetitionRating';
+export * from './repetitionReviewActivity';
 export * from './repetitionReviewInput';
 export * from './repetitionStats';
 export * from './restoreDiaryBackupResult';

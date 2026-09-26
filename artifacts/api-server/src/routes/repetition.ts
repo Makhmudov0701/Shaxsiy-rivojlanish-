@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ne, sql } from "drizzle-orm";
 import {
   db,
   repetitionCardsTable,
@@ -508,12 +508,29 @@ protectedRouter.get("/repetition/stats", async (req, res): Promise<void> => {
     .where(eq(repetitionReviewLogsTable.userId, userId))
     .orderBy(desc(repetitionReviewLogsTable.reviewedOn))
     .limit(5000);
+  const [year, month, day] = today.split("-").map(Number);
+  const activityStart = new Date(Date.UTC(year, month - 1, day - 364))
+    .toISOString()
+    .slice(0, 10);
+  const reviewActivity = await db
+    .select({
+      reviewedOn: repetitionReviewLogsTable.reviewedOn,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(repetitionReviewLogsTable)
+    .where(and(
+      eq(repetitionReviewLogsTable.userId, userId),
+      gte(repetitionReviewLogsTable.reviewedOn, activityStart),
+    ))
+    .groupBy(repetitionReviewLogsTable.reviewedOn)
+    .orderBy(asc(repetitionReviewLogsTable.reviewedOn));
 
   res.json(GetRepetitionStatsResponse.parse({
     cardsDueToday: cards.filter((card) => toLocalDate(card.dueAt, query.data.timeZone) <= today).length,
     totalCards: cards.length,
     totalLearned: cards.filter((card) => card.learnedAt !== null).length,
     dailyStreak: calculateStreak(reviewDays.map((day) => day.reviewedOn), today),
+    reviewActivity,
   }));
 });
 

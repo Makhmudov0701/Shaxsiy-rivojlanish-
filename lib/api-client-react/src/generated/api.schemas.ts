@@ -456,6 +456,12 @@ export interface RepetitionReviewInput {
   timeZone: string;
 }
 
+export interface RepetitionReviewActivity {
+  reviewedOn: string;
+  /** @minimum 0 */
+  count: number;
+}
+
 export interface RepetitionStats {
   /** @minimum 0 */
   cardsDueToday: number;
@@ -465,6 +471,7 @@ export interface RepetitionStats {
   totalLearned: number;
   /** @minimum 0 */
   dailyStreak: number;
+  reviewActivity: RepetitionReviewActivity[];
 }
 
 /**

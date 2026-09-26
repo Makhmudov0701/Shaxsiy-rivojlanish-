@@ -14,7 +14,8 @@ import { DiaryShell } from '@/components/diary-ui';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useI18n, type AppLanguage } from '@/lib/i18n';
-import { isTrackedBookList, userStorageKey, type TrackedBook } from '@/lib/local-life-data';
+import { isPersonalGoalList, isTrackedBookList, userStorageKey, type PersonalGoal, type TrackedBook } from '@/lib/local-life-data';
+import { getRecordedFocusMinutes, readFocusWorkspace, type FocusWorkspaceData } from '@/lib/focus-workspace-data';
 import {
   applyThemePreference,
   DEFAULT_PROFILE_PREFERENCES,
@@ -121,7 +122,7 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     noData: 'Hali ma’lumot yo‘q',
     refresh: 'Qayta urinish',
     exports: 'Xotiralarni olib chiqing',
-    exportsHint: 'Kundalik, kitob qaydlari va kartochkalarni qurilmangizga bitta fayl qilib saqlang.',
+    exportsHint: 'Kundalik, kitob qaydlari, maqsadlar, topshiriqlar, fokus davrlari va kartochkalarni JSON yoki CSV faylga saqlang.',
     json: 'JSON nusxa',
     csv: 'CSV jadval',
     preparing: 'Tayyorlanmoqda',
@@ -175,7 +176,7 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     noData: 'No data yet',
     refresh: 'Try again',
     exports: 'Take your memories with you',
-    exportsHint: 'Save journal entries, book notes, and flashcards to your device in one file.',
+    exportsHint: 'Save journal entries, book notes, goals, tasks, focus sessions, and flashcards as JSON or CSV.',
     json: 'JSON copy',
     csv: 'CSV table',
     preparing: 'Preparing',
@@ -229,7 +230,7 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     noData: 'Данных пока нет',
     refresh: 'Повторить',
     exports: 'Заберите свои воспоминания',
-    exportsHint: 'Сохраните записи дневника, заметки о книгах и карточки в один файл на устройстве.',
+    exportsHint: 'Сохраните дневник, заметки о книгах, цели, задачи, сеансы фокуса и карточки в формате JSON или CSV.',
     json: 'Копия JSON',
     csv: 'Таблица CSV',
     preparing: 'Подготовка',
@@ -283,7 +284,7 @@ const COPY: Record<AppLanguage, ProfileCopy> = {
     noData: '아직 데이터가 없습니다',
     refresh: '다시 시도',
     exports: '기억을 가져가세요',
-    exportsHint: '일기, 독서 메모와 카드를 한 파일로 기기에 저장합니다.',
+    exportsHint: '일기, 독서 메모, 목표, 작업, 집중 세션과 플래시카드를 JSON 또는 CSV로 저장합니다.',
     json: 'JSON 사본',
     csv: 'CSV 표',
     preparing: '준비 중',
@@ -323,44 +324,67 @@ function csvCell(value: unknown) {
   return `"${text.replaceAll('"', '""').replace(/\r?\n/g, ' ')}"`;
 }
 
-function buildCsv(backup: { entries: unknown[] }, books: TrackedBook[], cards: RepetitionCard[]) {
-  const headers = ['record_type', 'id', 'title', 'author', 'status', 'entry_date', 'content', 'folder', 'mood', 'tags', 'takeaways', 'quotes', 'front', 'back', 'deck', 'due_at', 'learned_at', 'photo_count'];
+function csvTimestamp(value: unknown) {
+  if (typeof value === 'string' && Number.isNaN(Number(value))) return value;
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) && timestamp > 0 ? new Date(timestamp).toISOString() : '';
+}
+
+function buildCsv(
+  backup: { entries: unknown[] },
+  books: TrackedBook[],
+  cards: RepetitionCard[],
+  goals: PersonalGoal[],
+  focus: FocusWorkspaceData,
+  reviewActivity: ReadonlyArray<{ reviewedOn: string; count: number }>,
+) {
+  const headers = ['record_type', 'id', 'parent_id', 'title', 'date', 'content', 'details_json'];
   const rows: unknown[][] = [headers];
   backup.entries.forEach((entry) => {
     const item = entry as Record<string, unknown>;
     const photoCount = Array.isArray(item.photos) ? item.photos.length : 0;
-    rows.push(['journal', '', item.title, '', '', item.entryDate, item.content, item.folder, item.mood, item.tags, '', '', '', '', '', '', '', photoCount]);
+    rows.push(['journal', item.id, '', item.title, item.entryDate, item.content, { folder: item.folder, mood: item.mood, tags: item.tags, photoCount, favorite: item.favorite }]);
   });
   books.forEach((book) => {
-    rows.push(['book', book.id, book.title, book.author, book.status, '', '', '', '', '', book.takeaways, book.quotes, '', '', '', '', '', '']);
+    rows.push(['book', book.id, '', book.title, '', book.takeaways, { author: book.author, status: book.status, quotes: book.quotes }]);
+  });
+  goals.forEach((goal) => {
+    rows.push(['goal', goal.id, '', goal.title, goal.targetDate, goal.description, {
+      horizon: goal.horizon,
+      category: goal.category,
+      motivation: goal.motivation,
+      metric: goal.metric,
+      metricTarget: goal.metricTarget,
+      metricCurrent: goal.metricCurrent,
+      metricUnit: goal.metricUnit,
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
+    }]);
+    goal.tasks.forEach((task) => {
+      rows.push(['goal_task', task.id, goal.id, task.text, '', '', { done: task.done, goalTitle: goal.title }]);
+    });
+  });
+  focus.tasks.forEach((task) => {
+    rows.push(['focus_task', task.id, '', task.title, csvTimestamp(task.completedAt ?? task.createdAt), task.project, task]);
+  });
+  focus.sessions.forEach((session) => {
+    rows.push(['focus_session', session.id, session.taskId, session.mode, csvTimestamp(session.startedAt), session.project, session]);
   });
   cards.forEach((card) => {
-    rows.push(['flashcard', card.id, '', '', '', '', '', '', '', '', '', '', card.front, card.back, card.deckName, card.dueAt, card.learnedAt, '']);
+    rows.push(['flashcard', card.id, '', card.front, card.lastReviewedAt, card.back, {
+      deckName: card.deckName,
+      dueAt: card.dueAt,
+      learnedAt: card.learnedAt,
+      repetitions: card.repetitions,
+      lapses: card.lapses,
+      intervalDays: card.intervalDays,
+      easeFactor: card.easeFactor,
+    }]);
+  });
+  reviewActivity.forEach((day) => {
+    rows.push(['flashcard_review_day', '', '', '', day.reviewedOn, '', { count: day.count }]);
   });
   return `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
-}
-
-function readFocusMinutes(userId: string) {
-  try {
-    const raw = window.localStorage.getItem(`kundalik-focus-todo-${userId}`);
-    const parsed: unknown = raw ? JSON.parse(raw) : null;
-    if (!parsed || typeof parsed !== 'object') return { value: 0, error: raw ? 'focus-read' : null };
-    const rawSessions = (parsed as { sessions?: unknown }).sessions;
-    if (!Array.isArray(rawSessions)) return { value: 0, error: raw ? 'focus-read' : null };
-    const sessions = rawSessions;
-    const minutesTotal = sessions.reduce<number>((total, session) => {
-        if (!session || typeof session !== 'object' || (session as { mode?: unknown }).mode !== 'focus') return total;
-        const startedAt = Number((session as { startedAt?: unknown }).startedAt);
-        const minutes = Number((session as { durationMinutes?: unknown }).durationMinutes);
-        return Number.isFinite(startedAt) && Number.isFinite(minutes) && minutes > 0 ? total + minutes : total;
-      }, 0);
-    return {
-      value: minutesTotal,
-      error: null,
-    };
-  } catch {
-    return { value: 0, error: 'focus-read' };
-  }
 }
 
 function MetricCard({ label, value, accent, testId, hint }: { label: string; value: string; accent: string; testId: string; hint?: string }) {
@@ -385,6 +409,7 @@ export function ProfilePage() {
   const [books, setBooks] = useState<TrackedBook[]>([]);
   const [focusMinutes, setFocusMinutes] = useState(0);
   const [booksStorageError, setBooksStorageError] = useState(false);
+  const [goalsStorageError, setGoalsStorageError] = useState(false);
   const [focusStorageError, setFocusStorageError] = useState(false);
   const [exporting, setExporting] = useState<'json' | 'csv' | ''>('');
   const form = useForm<ProfileFormValues>({ defaultValues: DEFAULT_PROFILE_PREFERENCES });
@@ -400,6 +425,7 @@ export function ProfilePage() {
     if (!user?.id) return;
     setProfileReady(false);
     setBooksStorageError(false);
+    setGoalsStorageError(false);
     setFocusStorageError(false);
     const stored = readProfilePreferences(user.id);
     const next = { ...stored.value, displayName: stored.value.displayName || user.firstName || '' };
@@ -422,8 +448,15 @@ export function ProfilePage() {
       }
     })();
     setBooks(storedBooks);
-    const focus = readFocusMinutes(user.id);
-    setFocusMinutes(focus.value);
+    try {
+      const raw = window.localStorage.getItem(userStorageKey('goals', user.id));
+      const parsed: unknown = raw ? JSON.parse(raw) : [];
+      if (!isPersonalGoalList(parsed)) setGoalsStorageError(true);
+    } catch {
+      setGoalsStorageError(true);
+    }
+    const focus = readFocusWorkspace(user.id);
+    setFocusMinutes(getRecordedFocusMinutes(focus.data));
     if (focus.error) setFocusStorageError(true);
     setProfileUserId(user.id);
     setProfileReady(true);
@@ -486,19 +519,44 @@ export function ProfilePage() {
   });
 
   const exportData = async (kind: 'json' | 'csv') => {
-    if (booksStorageError) {
+    if (booksStorageError || goalsStorageError || focusStorageError) {
       setNotice(text.exportError);
       return;
     }
     setExporting(kind);
     try {
-      const [backupResult, cardsResult] = await Promise.all([backupQuery.refetch(), cardsQuery.refetch()]);
-      if (!backupResult.data || !cardsResult.data) throw new Error('backup-or-cards-unavailable');
-      const payload = { version: 1, exportedAt: new Date().toISOString(), diary: backupResult.data, books, flashcards: cardsResult.data };
+      const [backupResult, cardsResult, statsResult] = await Promise.all([
+        backupQuery.refetch(),
+        cardsQuery.refetch(),
+        repetitionStats.refetch(),
+      ]);
+      if (!backupResult.data || !cardsResult.data || !statsResult.data) throw new Error('export-data-unavailable');
+      const currentFocus = readFocusWorkspace(user.id);
+      const rawGoals = window.localStorage.getItem(userStorageKey('goals', user.id));
+      const parsedGoals: unknown = rawGoals ? JSON.parse(rawGoals) : [];
+      if (currentFocus.error || !isPersonalGoalList(parsedGoals)) throw new Error('local-data-unavailable');
+      const exportedGoals = parsedGoals;
+      const payload = {
+        version: 2,
+        exportedAt: new Date().toISOString(),
+        diary: backupResult.data,
+        books,
+        goals: exportedGoals,
+        focusWorkspace: currentFocus.data,
+        flashcards: cardsResult.data,
+        flashcardReviewActivity: statsResult.data.reviewActivity,
+      };
       if (kind === 'json') {
         downloadBlob(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' }), 'shaxsiy-kundalik-profil.json');
       } else {
-        downloadBlob(new Blob([buildCsv(backupResult.data, books, cardsResult.data)], { type: 'text/csv;charset=utf-8' }), 'shaxsiy-kundalik-profil.csv');
+        downloadBlob(new Blob([buildCsv(
+          backupResult.data,
+          books,
+          cardsResult.data,
+          exportedGoals,
+          currentFocus.data,
+          statsResult.data.reviewActivity,
+        )], { type: 'text/csv;charset=utf-8' }), 'shaxsiy-kundalik-profil.csv');
       }
       setNotice(text.exported);
     } catch {
@@ -518,7 +576,7 @@ export function ProfilePage() {
         </header>
 
         {storageMessage && <div className="mt-6 rounded-2xl border border-[#ecc6bd] bg-[#fff0ec] px-4 py-3 text-[12px] text-[#8f3f2d]" role="alert" data-testid="status-profile-storage-error">{storageMessage}</div>}
-        {(booksStorageError || focusStorageError) && <div className="mt-4 rounded-2xl border border-[#e3d3a8] bg-[#faf3df] px-4 py-3 text-[12px] text-[#765a27]" role="alert" data-testid="status-local-data-error">{text.localStorageError}</div>}
+        {(booksStorageError || goalsStorageError || focusStorageError) && <div className="mt-4 rounded-2xl border border-[#e3d3a8] bg-[#faf3df] px-4 py-3 text-[12px] text-[#765a27]" role="alert" data-testid="status-local-data-error">{text.localStorageError}</div>}
 
         <div className="mt-10 grid gap-5 lg:grid-cols-[1.18fr_.82fr]">
           <section className="rounded-[28px] border border-card-border bg-card p-5 shadow-sm sm:p-7" data-testid="section-profile-form">

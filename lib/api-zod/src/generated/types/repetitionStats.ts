@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { RepetitionReviewActivity } from './repetitionReviewActivity';
 
 export interface RepetitionStats {
   /** @minimum 0 */
@@ -15,4 +16,5 @@ export interface RepetitionStats {
   totalLearned: number;
   /** @minimum 0 */
   dailyStreak: number;
+  reviewActivity: RepetitionReviewActivity[];
 }

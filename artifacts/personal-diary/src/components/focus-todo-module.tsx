@@ -32,8 +32,9 @@ import {
   X,
 } from 'lucide-react';
 import { ambientSounds, useAmbientSound, type AmbientSound } from '@/components/ambient-sound';
+import { getAmbientAudioCopy, getAmbientSoundName } from '@/lib/ambient-audio-copy';
 import { FocusReports } from '@/components/focus-reports';
-import { formatContentDeleteConfirmation, formatTimerDurationAriaLabel, formatTimerDurationFieldLabel, formatTimerPresetsGroupLabel } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, formatTimerDurationAriaLabel, formatTimerDurationFieldLabel, formatTimerPresetsGroupLabel, useI18n } from '@/lib/i18n';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 type WorkspaceTab = 'timer' | 'tasks' | 'reports' | 'settings';
@@ -269,16 +270,21 @@ const SOUND_ICONS: Record<AmbientSound, ReactNode> = {
   'space-rumble': <AudioLines size={16} />,
   waterfall: <Waves size={16} />,
   'lofi-beats': <Music2 size={16} />,
+  'night-wind': <Waves size={16} />,
 };
 
 function AmbientSoundStudio() {
+  const { language } = useI18n();
+  const copy = getAmbientAudioCopy(language);
   const { primary, mix, setSelected, setVolume, setNoiseColor, play, toggle } = useAmbientSound();
   const primaryOption = ambientSounds.find((sound) => sound.value === primary.selected);
   const mixOption = ambientSounds.find((sound) => sound.value === mix.selected);
+  const primaryLabel = primary.selected ? getAmbientSoundName(primary.selected, language) : copy.primarySound;
+  const mixLabel = mix.selected ? getAmbientSoundName(mix.selected, language) : copy.mixLayer;
   const noiseOptions = [
-    { value: 'white' as const, label: 'Oq' },
-    { value: 'pink' as const, label: 'Pushti' },
-    { value: 'brown' as const, label: 'Jigarrang' },
+    { value: 'white' as const, label: copy.noiseColors.white },
+    { value: 'pink' as const, label: copy.noiseColors.pink },
+    { value: 'brown' as const, label: copy.noiseColors.brown },
   ];
 
   const choose = (kind: AmbientSound) => {
@@ -292,9 +298,9 @@ function AmbientSoundStudio() {
   const sourceDetails = (option: typeof primaryOption, testId: string) => option?.sourceUrl && (
     <p className="text-[9px] leading-relaxed text-muted-foreground">
       <a href={option.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={testId}>
-        Manba: {option.attribution ?? 'Mixkit'}
+        {copy.source}: {option.attribution ?? 'Mixkit'}
       </a>
-      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${testId}-license`}>litsenziya</a></>}
+      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${testId}-license`}>{copy.license}</a></>}
     </p>
   );
 
@@ -302,9 +308,9 @@ function AmbientSoundStudio() {
     <section className="border-t border-[#ddd6c5] pt-5 dark:border-[#41453d]" data-testid="ambient-sounds">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">Sokin fon</p>
-          <h2 className="mt-1 font-serif text-[26px] leading-none">Ovozli makon</h2>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">16 ta muhitdan tanlang yoki ikki tovushni alohida boshqaring.</p>
+          <p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#8d7047]">{copy.title}</p>
+          <h2 className="mt-1 font-serif text-[26px] leading-none">{copy.title}</h2>
+          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">{copy.focusAutoPlay}: {copy.focusAutoPlayHint}</p>
         </div>
         <span className={`grid size-9 place-items-center rounded-xl ${primary.playing || mix.playing ? 'bg-[#dcebe4] text-[#47796c]' : 'bg-[#e9e4d4] text-[#887d6b]'}`}><Headphones size={17} /></span>
       </div>
@@ -314,17 +320,17 @@ function AmbientSoundStudio() {
           type="button"
           onClick={() => { void toggle('primary'); }}
           className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white transition-transform hover:scale-105"
-          aria-label={primary.playing ? 'Asosiy fon tovushini to‘xtatish' : 'Asosiy fon tovushini boshlash'}
+          aria-label={`${primary.playing ? copy.pause : copy.start}: ${primaryLabel}`}
           aria-pressed={primary.playing}
           data-testid="button-ambient-studio-toggle"
         >
           {primary.playing ? <Pause size={15} /> : <Play size={15} />}
         </button>
         <div className="min-w-0 flex-1 text-[10px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-ambient-studio">
-          {primary.playing ? <>Asosiy: <span className="font-semibold text-foreground">{primaryOption?.label}</span></> : 'Asosiy tovush pauzada'}
-          {mix.playing && <span className="ml-2 text-[#47796c] dark:text-[#b9d7c4]">+ {mixOption?.label}</span>}
+          {primary.playing ? <>{copy.primarySound}: <span className="font-semibold text-foreground">{primaryLabel}</span></> : copy.primaryPaused}
+          {mix.playing && <span className="ml-2 text-[#47796c] dark:text-[#b9d7c4]">+ {mixLabel}</span>}
         </div>
-        {(primary.playing || mix.playing) && <span className="size-2 animate-pulse rounded-full bg-[#47796c]" aria-label="Faol" />}
+        {(primary.playing || mix.playing) && <span className="size-2 animate-pulse rounded-full bg-[#47796c]" aria-label={copy.active} />}
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-2">
@@ -338,24 +344,23 @@ function AmbientSoundStudio() {
               key={sound.value}
               onClick={() => choose(sound.value)}
               aria-pressed={active}
-              aria-label={`${active ? 'To‘xtatish' : 'Boshlash'}: ${sound.label} · asosiy qatlam`}
+              aria-label={`${active ? copy.pause : copy.start}: ${getAmbientSoundName(sound.value, language)} · ${copy.primarySound}`}
               className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left text-[11px] transition-colors ${active ? 'border-[#87ac99] bg-[#e0eee7] text-[#315d4e] shadow-sm dark:border-[#527a67] dark:bg-[#263e34] dark:text-[#c5e4d2]' : chosen ? 'border-[#c8c1aa] bg-[#f2efe5] text-foreground dark:bg-[#3b3d35]' : mixChosen ? 'border-[#d4b98c] bg-[#f1eadb] text-foreground dark:border-[#766447] dark:bg-[#3b372c]' : 'border-transparent bg-[#eeece2] text-muted-foreground hover:border-[#c8c1aa] hover:text-foreground dark:bg-[#34362f]'}`}
               data-testid={`button-sound-${sound.value}`}
             >
               <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${active ? 'bg-white/70 dark:bg-black/15' : 'bg-white/60 dark:bg-black/10'}`}>{SOUND_ICONS[sound.value]}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{sound.label}</span>
-                <span className="mt-0.5 block truncate text-[9px] opacity-70">{sound.description}</span>
+                <span className="block truncate font-semibold">{getAmbientSoundName(sound.value, language)}</span>
               </span>
-              <span className="shrink-0 opacity-70">{mixChosen && !chosen ? <span className="text-[8px]">2-q</span> : active ? <Pause size={12} /> : <Play size={12} />}</span>
+              <span className="shrink-0 opacity-70">{mixChosen && !chosen ? <span className="text-[8px]">2</span> : active ? <Pause size={12} /> : <Play size={12} />}</span>
             </button>
           );
         })}
       </div>
 
       {primary.selected === 'white-noise' && (
-        <div className="mt-3 rounded-xl bg-[#f5f3ea] p-3 dark:bg-[#30322c]" aria-label="Shovqin rangi">
-          <p className="mb-2 text-[9px] font-medium text-muted-foreground">Shovqin rangi</p>
+        <div className="mt-3 rounded-xl bg-[#f5f3ea] p-3 dark:bg-[#30322c]" aria-label={copy.noiseColor}>
+          <p className="mb-2 text-[9px] font-medium text-muted-foreground">{copy.noiseColor}</p>
           <div className="grid grid-cols-3 gap-1.5">
             {noiseOptions.map((option) => (
               <button
@@ -375,32 +380,31 @@ function AmbientSoundStudio() {
 
       <label className="mt-4 flex items-center gap-3 text-[10px] text-muted-foreground">
         <VolumeX size={13} />
-        <input type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume-primary-studio" />
+        <input type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label={copy.primaryVolume} data-testid="input-ambient-volume-primary-studio" />
         <Volume2 size={13} />
         <span className="w-8 text-right font-mono">{primary.volume}%</span>
       </label>
 
-      <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground">Qayta ijroda qisqa ustma-ust o‘tish ishlaydi. {primary.selected === 'white-noise' ? 'Shovqin brauzerda yaratiladi.' : primaryOption?.duration && ` · ${primaryOption.duration}`}</p>
+      <p className="mt-2 text-[9px] leading-relaxed text-muted-foreground">{copy.crossfadeHint} {primary.selected === 'white-noise' || primary.selected === 'night-wind' ? copy.generatedInBrowser : primaryOption?.duration && ` · ${primaryOption.duration}`}</p>
       {sourceDetails(primaryOption, 'link-ambient-source-primary-studio')}
       {primary.error && <p className="mt-3 text-[10px] text-destructive" role="alert" data-testid="status-audio-error">{primary.error}</p>}
 
       <div className="mt-4 rounded-xl border border-[#ddd6c5] bg-[#f8f6ec] p-3 dark:border-[#41453d] dark:bg-[#2a2d26]" data-testid="ambient-mix-panel">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold">Ikkinchi qatlam</p>
-            <p className="mt-0.5 text-[9px] text-muted-foreground">Mustaqil ovoz darajasi bilan birga ijro eting.</p>
+            <p className="text-[10px] font-semibold">{copy.mixLayer} · {copy.mixOptional}</p>
           </div>
-          {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white" aria-label={mix.playing ? 'Ikkinchi tovushni to‘xtatish' : 'Ikkinchi tovushni boshlash'} aria-pressed={mix.playing} data-testid="button-ambient-mix-studio-toggle">{mix.playing ? <Pause size={13} /> : <Play size={13} />}</button>}
+          {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#47796c] text-white" aria-label={`${mix.playing ? copy.pause : copy.start}: ${mixLabel}`} aria-pressed={mix.playing} data-testid="button-ambient-mix-studio-toggle">{mix.playing ? <Pause size={13} /> : <Play size={13} />}</button>}
         </div>
-        <label className="mt-3 block text-[9px] text-muted-foreground" htmlFor="ambient-mix-select-studio">Aralashtirish uchun tovush</label>
+        <label className="mt-3 block text-[9px] text-muted-foreground" htmlFor="ambient-mix-select-studio">{copy.mixSound}</label>
         <select id="ambient-mix-select-studio" value={mix.selected ?? ''} onChange={(event) => setSelected('mix', event.target.value ? event.target.value as AmbientSound : null)} className="mt-1 w-full rounded-lg border border-[#ddd6c5] bg-white px-2.5 py-2 text-[10px] text-foreground outline-none focus:ring-2 focus:ring-[#87ac99] dark:border-[#41453d] dark:bg-[#22251f]" data-testid="select-ambient-mix-studio">
-          <option value="">Tovush tanlang</option>
-          {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}
+          <option value="">{copy.mixOff}</option>
+          {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{getAmbientSoundName(sound.value, language)}</option>)}
         </select>
         {mix.selected && (
           <>
             {mix.selected === 'white-noise' && (
-              <div className="mt-3 grid grid-cols-3 gap-1.5" aria-label="Ikkinchi qatlam shovqin rangi">
+              <div className="mt-3 grid grid-cols-3 gap-1.5" aria-label={`${copy.mixLayer} ${copy.noiseColor}`}>
                 {noiseOptions.map((option) => (
                   <button
                     type="button"
@@ -417,7 +421,7 @@ function AmbientSoundStudio() {
             )}
             <label className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
               <VolumeX size={13} />
-              <input type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label="Ikkinchi qatlam ovoz balandligi" data-testid="input-ambient-mix-volume-studio" />
+              <input type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="h-1 w-full accent-[#47796c]" aria-label={copy.mixVolume} data-testid="input-ambient-mix-volume-studio" />
               <Volume2 size={13} />
               <span className="w-8 text-right font-mono">{mix.volume}%</span>
             </label>
@@ -453,9 +457,24 @@ function FocusTimer({
   const sessionRef = useRef(onSession);
   const completionRef = useRef('');
   const cancelDurationBlurRef = useRef(false);
+  const focusPlaybackRef = useRef<boolean | null>(null);
+  const { play: playAmbient, pause: pauseAmbient } = useAmbientSound();
   timerRef.current = timer;
   changeRef.current = onTimerChange;
   sessionRef.current = onSession;
+
+  useEffect(() => {
+    const shouldPlay = timer.running && timer.mode === 'focus';
+    if (focusPlaybackRef.current === shouldPlay) return;
+    focusPlaybackRef.current = shouldPlay;
+    if (shouldPlay) {
+      void playAmbient('primary');
+      void playAmbient('mix');
+    } else {
+      pauseAmbient('primary');
+      pauseAmbient('mix');
+    }
+  }, [timer.running, timer.mode, playAmbient, pauseAmbient]);
 
   const modeInfo = { label: MODE_LABELS[timer.mode], seconds: timer.durationMinutes * 60, color: MODE_COLORS[timer.mode] };
   const remaining = timer.running && timer.endAt ? Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000)) : timer.remaining;
@@ -524,15 +543,30 @@ function FocusTimer({
   const startOrPause = () => {
     if (timer.running && timer.endAt) {
       const left = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 1000));
+      focusPlaybackRef.current = false;
+      pauseAmbient('primary');
+      pauseAmbient('mix');
       onTimerChange({ ...timer, remaining: left, running: false, endAt: null });
       return;
     }
     if (timer.remaining <= 0) return;
+    const startsFocus = timer.mode === 'focus';
+    focusPlaybackRef.current = startsFocus;
+    if (startsFocus) {
+      void playAmbient('primary');
+      void playAmbient('mix');
+    } else {
+      pauseAmbient('primary');
+      pauseAmbient('mix');
+    }
     onTimerChange({ ...timer, running: true, endAt: Date.now() + timer.remaining * 1000 });
     setNotice('');
   };
 
   const reset = () => {
+    focusPlaybackRef.current = false;
+    pauseAmbient('primary');
+    pauseAmbient('mix');
     onTimerChange({ ...timer, remaining: timer.durationMinutes * 60, running: false, endAt: null });
     setNotice('');
   };
@@ -542,6 +576,9 @@ function FocusTimer({
       setNotice('Qat’iy rejimda diqqat davrini o‘tkazib yuborib bo‘lmaydi.');
       return;
     }
+    focusPlaybackRef.current = false;
+    pauseAmbient('primary');
+    pauseAmbient('mix');
     const nextCycle = timer.mode === 'focus' ? timer.cycle + 1 : timer.cycle;
     const nextMode: TimerMode = timer.mode === 'focus' ? (nextCycle % 4 === 0 ? 'longBreak' : 'shortBreak') : 'focus';
     const nextDurationMinutes = secondsForMode(nextMode, settings) / 60;

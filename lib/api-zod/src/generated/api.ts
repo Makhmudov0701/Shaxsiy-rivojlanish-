@@ -1014,13 +1014,19 @@ export const getRepetitionStatsResponseTotalLearnedMin = 0;
 
 export const getRepetitionStatsResponseDailyStreakMin = 0;
 
+export const getRepetitionStatsResponseReviewActivityItemCountMin = 0;
+
 
 
 export const GetRepetitionStatsResponse = zod.object({
   "cardsDueToday": zod.number().int().min(getRepetitionStatsResponseCardsDueTodayMin),
   "totalCards": zod.number().int().min(getRepetitionStatsResponseTotalCardsMin),
   "totalLearned": zod.number().int().min(getRepetitionStatsResponseTotalLearnedMin),
-  "dailyStreak": zod.number().int().min(getRepetitionStatsResponseDailyStreakMin)
+  "dailyStreak": zod.number().int().min(getRepetitionStatsResponseDailyStreakMin),
+  "reviewActivity": zod.array(zod.object({
+  "reviewedOn": zod.coerce.date(),
+  "count": zod.number().int().min(getRepetitionStatsResponseReviewActivityItemCountMin)
+}))
 })
 
 

@@ -1,26 +1,15 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AudioLines, Pause, Play, Volume2 } from 'lucide-react';
-import { formatAmbientControlTitle, formatAmbientLayerToggleLabel } from '@/lib/i18n';
+import { formatAmbientControlTitle, formatAmbientLayerToggleLabel, getCurrentLanguage, useI18n } from '@/lib/i18n';
+import {
+  getAmbientAudioCopy,
+  getAmbientSoundName,
+  type AmbientNoiseColor,
+  type AmbientSoundId,
+} from '@/lib/ambient-audio-copy';
 
-export type AmbientSound =
-  | 'rain'
-  | 'storm'
-  | 'forest'
-  | 'forest-night'
-  | 'cafe'
-  | 'white-noise'
-  | 'ocean'
-  | 'fireplace'
-  | 'night-city'
-  | 'lofi-piano'
-  | 'library'
-  | 'train'
-  | 'rain-tent'
-  | 'space-rumble'
-  | 'waterfall'
-  | 'lofi-beats';
-
-export type NoiseColor = 'white' | 'pink' | 'brown';
+export type AmbientSound = AmbientSoundId;
+export type NoiseColor = AmbientNoiseColor;
 export type AudioLayer = 'primary' | 'mix';
 
 export type AmbientSoundOption = {
@@ -168,6 +157,14 @@ export const ambientSounds: AmbientSoundOption[] = [
     duration: '1:59',
     streamUrl: 'https://assets.mixkit.co/music/135/135.mp3',
     sourceUrl: 'https://mixkit.co/free-stock-music/lo-fi-beats/',
+  },
+  {
+    value: 'night-wind',
+    label: 'Tungi shamol',
+    description: 'Past chastotali, mayin shamol shovqini',
+    duration: 'Cheksiz',
+    streamUrl: null,
+    sourceUrl: null,
   },
 ];
 
@@ -318,17 +315,37 @@ function createNoiseBuffer(context: AudioContext, color: NoiseColor) {
 }
 
 async function createPlayback(sound: AmbientSound, noiseColor: NoiseColor): Promise<AudioPlayback> {
-  if (sound === 'white-noise') {
+  if (sound === 'white-noise' || sound === 'night-wind') {
     const AudioContextConstructor = window.AudioContext
       ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextConstructor) throw new Error('unsupported');
     const context = new AudioContextConstructor();
     const source = context.createBufferSource();
     const gain = context.createGain();
-    source.buffer = createNoiseBuffer(context, noiseColor);
+    const isNightWind = sound === 'night-wind';
+    const windFilter = isNightWind ? context.createBiquadFilter() : null;
+    const windLevel = isNightWind ? context.createGain() : null;
+    const gust = isNightWind ? context.createOscillator() : null;
+    const gustDepth = isNightWind ? context.createGain() : null;
+    source.buffer = createNoiseBuffer(context, isNightWind ? 'brown' : noiseColor);
     source.loop = true;
     gain.gain.value = 0;
-    source.connect(gain);
+    if (windFilter && windLevel && gust && gustDepth) {
+      windFilter.type = 'lowpass';
+      windFilter.frequency.value = 420;
+      windFilter.Q.value = 0.65;
+      windLevel.gain.value = 0.32;
+      gust.frequency.value = 0.075;
+      gustDepth.gain.value = 0.1;
+      gust.connect(gustDepth);
+      gustDepth.connect(windLevel.gain);
+      source.connect(windFilter);
+      windFilter.connect(windLevel);
+      windLevel.connect(gain);
+      gust.start();
+    } else {
+      source.connect(gain);
+    }
     gain.connect(context.destination);
     source.start();
     await context.resume();
@@ -337,7 +354,7 @@ async function createPlayback(sound: AmbientSound, noiseColor: NoiseColor): Prom
     let level = 0;
     return {
       sound,
-      noiseColor,
+      noiseColor: isNightWind ? 'brown' : noiseColor,
       get level() { return level; },
       set level(value: number) { level = value; },
       setLevel(value) {
@@ -351,7 +368,12 @@ async function createPlayback(sound: AmbientSound, noiseColor: NoiseColor): Prom
         if (stopped) return;
         stopped = true;
         try { source.stop(); } catch { /* The source may already have stopped. */ }
+        try { gust?.stop(); } catch { /* The oscillator may already have stopped. */ }
         source.disconnect();
+        gust?.disconnect();
+        gustDepth?.disconnect();
+        windFilter?.disconnect();
+        windLevel?.disconnect();
         gain.disconnect();
         void context.close();
         errorHandler = () => undefined;
@@ -546,7 +568,7 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
         },
       }));
     } catch {
-      setSlotState('primary', { error: 'Ovoz sozlamasini saqlab bo‘lmadi.' });
+      setSlotState('primary', { error: getAmbientAudioCopy(getCurrentLanguage()).errors.save });
     }
   }, [setSlotState]);
 
@@ -597,7 +619,7 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
     const current = slotsRef.current[layer];
     const target = sound ?? current.selected;
     if (!target) return;
-    const targetColor = color ?? current.noiseColor;
+    const targetColor = target === 'night-wind' ? 'brown' : color ?? current.noiseColor;
     const wasPlaying = current.playing;
     const existing = playbackRefs.current[layer];
     setSlotState(layer, { selected: target, noiseColor: targetColor, error: '' });
@@ -616,7 +638,7 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
         return;
       } catch {
         if (request === requestRefs.current[layer]) {
-          setSlotState(layer, { error: 'Bu brauzer fon tovushini ishga tushira olmadi.' });
+          setSlotState(layer, { error: getAmbientAudioCopy(getCurrentLanguage()).errors.blocked });
         }
         return;
       }
@@ -641,7 +663,7 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
         incoming.stop();
         setSlotState(layer, {
           playing: false,
-          error: 'Ovoz oqimi uzildi. Internet aloqasini tekshirib qayta boshlang.',
+          error: getAmbientAudioCopy(getCurrentLanguage()).errors.stream,
         });
       });
       playbackRefs.current[layer] = incoming;
@@ -660,7 +682,7 @@ export function AmbientSoundProvider({ children }: { children: ReactNode }) {
         playbackRefs.current[layer] = null;
         setSlotState(layer, { playing: false });
       }
-      setSlotState(layer, { error: 'Tovush yuklanmadi. Internet aloqasini tekshiring.' });
+      setSlotState(layer, { error: getAmbientAudioCopy(getCurrentLanguage()).errors.load });
     }
   }, [clearTransition, fadeBetween, persistSettings, setSlotState]);
 
@@ -765,63 +787,65 @@ export function useAmbientSound() {
 }
 
 export function AmbientSoundControl({ collapsed }: { collapsed: boolean }) {
+  const { language } = useI18n();
+  const copy = getAmbientAudioCopy(language);
   const { primary, mix, setSelected, setVolume, setNoiseColor, toggle } = useAmbientSound();
   const primaryOption = ambientSounds.find((sound) => sound.value === primary.selected);
   const mixOption = ambientSounds.find((sound) => sound.value === mix.selected);
-  const primaryLabel = primaryOption?.label ?? 'Mayin yomg‘ir';
-  const mixLabel = mixOption?.label ?? 'Ikkinchi qatlam';
+  const primaryLabel = primary.selected ? getAmbientSoundName(primary.selected, language) : copy.primarySound;
+  const mixLabel = mix.selected ? getAmbientSoundName(mix.selected, language) : copy.mixLayer;
   const sourceLink = (option: AmbientSoundOption | undefined, id: string) => option?.sourceUrl && (
     <p className="text-[9px] text-sidebar-foreground/55">
       <a href={option.sourceUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={id}>
-        Manba: {option.attribution ?? 'Mixkit'}
+        {copy.source}: {option.attribution ?? 'Mixkit'}
       </a>
-      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${id}-license`}>litsenziya</a></>}
+      {option.licenseUrl && <> · <a href={option.licenseUrl} target="_blank" rel="noreferrer" className="underline underline-offset-2" data-testid={`${id}-license`}>{copy.license}</a></>}
     </p>
   );
 
   return (
-    <section className={`rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-3.5 ${collapsed ? 'md:border-0 md:bg-transparent md:p-0' : ''}`} aria-label="Fon tovushlari" data-testid="ambient-sound-control">
+    <section className={`rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-3.5 ${collapsed ? 'md:border-0 md:bg-transparent md:p-0' : ''}`} aria-label={copy.title} data-testid="ambient-sound-control">
       <div className={`flex items-center gap-2 ${collapsed ? 'md:hidden' : ''}`}>
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary"><AudioLines size={15} /></span>
-        <div className="min-w-0 flex-1"><p className="font-mono text-[8px] uppercase tracking-[.15em] text-sidebar-foreground/55">Fon tovushlari</p><p className="truncate text-[11px] font-medium">{primary.playing ? primaryLabel : 'Tinchlik rejimi'}</p></div>
+        <div className="min-w-0 flex-1"><p className="font-mono text-[8px] uppercase tracking-[.15em] text-sidebar-foreground/55">{copy.title}</p><p className="truncate text-[11px] font-medium">{primary.playing ? primaryLabel : copy.primaryPaused}</p></div>
          <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-transform hover:scale-105" aria-label={formatAmbientLayerToggleLabel(primary.playing, primaryLabel, 'primary')} title={formatAmbientControlTitle(primaryLabel, primary.playing)} data-testid="button-ambient-toggle">{primary.playing ? <Pause size={14} /> : <Play size={14} />}</button>
       </div>
       <div className={`mt-3 space-y-3 ${collapsed ? 'md:hidden' : ''}`}>
-        <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-sound-select">Asosiy tovush</label>
-        <select id="ambient-sound-select" value={primary.selected ?? 'rain'} onChange={(event) => setSelected('primary', event.target.value as AmbientSound)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-sound">{ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}</select>
+        <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-sound-select">{copy.primarySound}</label>
+        <select id="ambient-sound-select" value={primary.selected ?? 'rain'} onChange={(event) => setSelected('primary', event.target.value as AmbientSound)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-sound">{ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{getAmbientSoundName(sound.value, language)}</option>)}</select>
         {primary.selected === 'white-noise' && (
-          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-primary">Shovqin turi
+          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-primary">{copy.noiseType}
             <select id="ambient-noise-color-primary" value={primary.noiseColor} onChange={(event) => setNoiseColor('primary', event.target.value as NoiseColor)} className="mt-1 w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring">
-              {noiseColors.map((color) => <option key={color.value} value={color.value}>{color.label}</option>)}
+              {noiseColors.map((color) => <option key={color.value} value={color.value}>{copy.noiseColors[color.value]}</option>)}
             </select>
           </label>
         )}
-        <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-primary"><Volume2 size={13} /><span className="min-w-0 flex-1">Asosiy ovoz</span><span className="font-mono">{primary.volume}%</span></label>
-        <input id="ambient-volume-primary" type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label="Asosiy ovoz balandligi" data-testid="input-ambient-volume-primary-sidebar" />
+        <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-primary"><Volume2 size={13} /><span className="min-w-0 flex-1">{copy.volume}</span><span className="font-mono">{primary.volume}%</span></label>
+        <input id="ambient-volume-primary" type="range" min={0} max={100} value={primary.volume} onChange={(event) => setVolume('primary', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label={copy.primaryVolume} data-testid="input-ambient-volume-primary-sidebar" />
         {sourceLink(primaryOption, 'link-ambient-source-primary-sidebar')}
         {primary.error && <p className="text-[9px] text-[#f1b6a8]" role="status" data-testid="status-ambient-error">{primary.error}</p>}
 
         <div className="space-y-2 border-t border-sidebar-border/70 pt-3">
-          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-mix-select">Ikkinchi qatlam · ixtiyoriy</label>
+          <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-mix-select">{copy.mixLayer} · {copy.mixOptional}</label>
           <select id="ambient-mix-select" value={mix.selected ?? ''} onChange={(event) => setSelected('mix', event.target.value ? event.target.value as AmbientSound : null)} className="w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring" data-testid="select-ambient-mix">
-            <option value="">O‘chirilgan</option>
-            {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{sound.label}</option>)}
+            <option value="">{copy.mixOff}</option>
+            {ambientSounds.map((sound) => <option key={sound.value} value={sound.value}>{getAmbientSoundName(sound.value, language)}</option>)}
           </select>
           {mix.selected && (
             <>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-7 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary" aria-label={formatAmbientLayerToggleLabel(mix.playing, mixLabel, 'secondary')} title={formatAmbientControlTitle(mixLabel, mix.playing)} data-testid="button-ambient-mix-toggle">{mix.playing ? <Pause size={12} /> : <Play size={12} />}</button>
-                <span className="min-w-0 flex-1 truncate text-[10px]">{mix.playing ? `Ijroda: ${mixLabel}` : mixLabel}</span>
+                <span className="min-w-0 flex-1 truncate text-[10px]">{mix.playing ? `${copy.playingPrefix}: ${mixLabel}` : mixLabel}</span>
               </div>
               {mix.selected === 'white-noise' && (
-                <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-mix">Shovqin turi
+                <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-noise-color-mix">{copy.noiseType}
                   <select id="ambient-noise-color-mix" value={mix.noiseColor} onChange={(event) => setNoiseColor('mix', event.target.value as NoiseColor)} className="mt-1 w-full rounded-lg border border-sidebar-border bg-sidebar px-2.5 py-2 text-[10px] text-sidebar-foreground outline-none focus:ring-2 focus:ring-sidebar-ring">
-                    {noiseColors.map((color) => <option key={color.value} value={color.value}>{color.label}</option>)}
+                    {noiseColors.map((color) => <option key={color.value} value={color.value}>{copy.noiseColors[color.value]}</option>)}
                   </select>
                 </label>
               )}
-              <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-mix"><Volume2 size={13} /><span className="min-w-0 flex-1">Ikkinchi ovoz</span><span className="font-mono">{mix.volume}%</span></label>
-              <input id="ambient-volume-mix" type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label="Ikkinchi qatlam ovoz balandligi" data-testid="input-ambient-mix-volume-sidebar" />
+              <label className="flex items-center gap-2 text-[9px] text-sidebar-foreground/65" htmlFor="ambient-volume-mix"><Volume2 size={13} /><span className="min-w-0 flex-1">{copy.volume}</span><span className="font-mono">{mix.volume}%</span></label>
+              <input id="ambient-volume-mix" type="range" min={0} max={100} value={mix.volume} onChange={(event) => setVolume('mix', Number(event.target.value))} className="w-full accent-[#d9a441]" aria-label={copy.mixVolume} data-testid="input-ambient-volume-mix-sidebar" />
               {sourceLink(mixOption, 'link-ambient-source-mix-sidebar')}
             </>
           )}
