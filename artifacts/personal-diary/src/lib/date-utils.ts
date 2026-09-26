@@ -1,3 +1,5 @@
+import { getCurrentIntlLocale } from "@/lib/i18n";
+
 export type UzbekDateOptions = Intl.DateTimeFormatOptions;
 
 export function parseDateValue(value: unknown): Date | null {
@@ -28,5 +30,5 @@ export function formatUzbekDate(
   fallback = 'Sana ko‘rsatilmagan',
 ): string {
   const date = parseDateValue(value);
-  return date ? new Intl.DateTimeFormat('uz-UZ', options).format(date) : fallback;
+  return date ? new Intl.DateTimeFormat(getCurrentIntlLocale(), options).format(date) : fallback;
 }

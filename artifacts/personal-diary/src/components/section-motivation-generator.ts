@@ -1,4 +1,5 @@
 import type { MotivationCategory } from "@/components/section-motivation-content";
+import { translateUiText, type AppLanguage } from "@/lib/i18n";
 
 export const MOTIVATION_POOL_SIZE = 10_000;
 
@@ -326,16 +327,25 @@ export function getMotivationPoolSize(category: MotivationCategory) {
   return assertPoolSize(category);
 }
 
-export function generateMotivationEntry(category: MotivationCategory, index: number): MotivationEntry {
+export function generateMotivationEntry(
+  category: MotivationCategory,
+  index: number,
+  language?: AppLanguage,
+): MotivationEntry {
   const templates = motivationTemplates[category];
   const poolSize = assertPoolSize(category);
   const safeIndex = ((Math.floor(index) % poolSize) + poolSize) % poolSize;
   const actionIndex = safeIndex % templates.actions.length;
   const wisdomIndex = Math.floor(safeIndex / templates.actions.length) % templates.wisdoms.length;
   const openerIndex = Math.floor(safeIndex / (templates.actions.length * templates.wisdoms.length));
+  const opener = templates.openers[openerIndex];
+  const wisdom = templates.wisdoms[wisdomIndex];
+  const action = templates.actions[actionIndex];
+  const localize = (text: string) =>
+    language ? translateUiText(text, language) : text;
 
   return {
     emoji: templates.emojis[safeIndex % templates.emojis.length],
-    text: `${templates.openers[openerIndex]} ${templates.wisdoms[wisdomIndex]} ${templates.actions[actionIndex]}`,
+    text: `${localize(opener)} ${localize(wisdom)} ${localize(action)}`,
   };
 }

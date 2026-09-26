@@ -1,3 +1,5 @@
+import { formatEnergyLevelAriaLabel } from '@/lib/i18n';
+
 const energyWords = ['Juda past', 'Past', 'Quvvat kam', 'Biroz past', 'O‘rtacha', 'Yaxshi', 'Tetikka yaqin', 'Tetikka', 'Juda tetik', 'Eng yuqori'];
 
 export function EnergySelector({
@@ -26,7 +28,7 @@ export function EnergySelector({
             onClick={() => onChange(value === level ? null : level)}
             disabled={disabled}
             aria-pressed={value === level}
-            aria-label={`Energiya darajasi ${level}`}
+            aria-label={formatEnergyLevelAriaLabel(level)}
             className={`grid min-h-11 aspect-square place-items-center rounded-xl border text-[14px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50 ${value === level ? 'border-[#47796c] bg-[#dcebe4] text-[#35614f] ring-2 ring-[#47796c]/20 dark:bg-[#294538] dark:text-[#b5d9c4]' : 'border-border bg-background text-muted-foreground hover:border-[#8fb59b] hover:text-foreground'}`}
             data-testid={`button-energy-${level}`}
           >

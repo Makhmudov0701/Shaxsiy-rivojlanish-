@@ -20,6 +20,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { BookOpenCheck, Check, ChevronLeft, Edit3, Layers3, Lightbulb, Loader2, Plus, RotateCcw, Trash2, Volume2, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
 import { useForm } from 'react-hook-form';
 import { Link } from 'wouter';
 import { z } from 'zod';
@@ -167,7 +168,7 @@ function getTimeZone() {
 }
 
 function formatDue(value: string) {
-  return new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
+  return new Intl.DateTimeFormat(getCurrentIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(value));
 }
 
 export function RepetitionPage() {
@@ -207,11 +208,11 @@ export function RepetitionPage() {
     }
   };
   const removeDeck = (deck: RepetitionDeck) => {
-    if (!window.confirm(`“${deck.name}” to‘plami va uning kartalarini o‘chirishni xohlaysizmi?`)) return;
+    if (!window.confirm(formatContentDeleteConfirmation(deck.name, 'deck'))) return;
     deleteDeck.mutate({ id: deck.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListRepetitionDecksQueryKey() }); queryClient.invalidateQueries({ queryKey: getListRepetitionCardsQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetRepetitionStatsQueryKey({ timeZone }) }); setSelectedDeckId(null); setNotice({ message: 'To‘plam o‘chirildi.' }); }, onError: () => setNotice({ message: 'To‘plamni o‘chirib bo‘lmadi.', tone: 'error' }) });
   };
   const removeCard = (card: RepetitionCard) => {
-    if (!window.confirm('Bu kartni o‘chirishni xohlaysizmi?')) return;
+    if (!window.confirm(formatContentDeleteConfirmation(card.front, 'card'))) return;
     deleteCard.mutate({ id: card.id }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getListRepetitionCardsQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetRepetitionStatsQueryKey({ timeZone }) }); setNotice({ message: 'Kart o‘chirildi.' }); }, onError: () => setNotice({ message: 'Kartni o‘chirib bo‘lmadi.', tone: 'error' }) });
   };
   const errorQuery = decksQuery.isError || cardsQuery.isError || statsQuery.isError;

@@ -13,6 +13,7 @@ import {
   localDateKey,
   randomMotivationIndex,
 } from "@/components/section-motivation-rotation";
+import { useI18n } from "@/lib/i18n";
 
 const collapsedStoragePrefix = "kundalik-section-info-collapsed-";
 const legacyDailyMemeStoragePrefix = "kundalik-section-daily-meme-";
@@ -46,6 +47,7 @@ interface ManualQuoteSelection {
 }
 
 export function SectionMotivationCard({ sectionId, userId }: { sectionId: SectionId; userId: string }) {
+  const { language } = useI18n();
   const section = sectionMotivationContent[sectionId];
   const category = section.motivationCategory;
   const poolSize = getMotivationPoolSize(category);
@@ -58,7 +60,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
     && manualSelection.userId === userId
     && manualSelection.sectionId === sectionId;
   const currentIndex = manualSelectionIsCurrent ? manualSelection.index : dailyIndex;
-  const currentEntry = generateMotivationEntry(category, currentIndex);
+  const currentEntry = generateMotivationEntry(category, currentIndex, language);
   const panelId = `section-info-panel-${sectionId}`;
 
   useEffect(() => {

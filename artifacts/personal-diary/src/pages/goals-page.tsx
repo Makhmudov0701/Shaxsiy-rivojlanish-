@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatContentDeleteConfirmation, formatGoalDuration, getCurrentIntlLocale } from '@/lib/i18n';
 import { useForm, useWatch } from 'react-hook-form';
 import {
   CalendarRange,
@@ -143,14 +144,6 @@ function clampPercent(value: number) {
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function durationLabel(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const remaining = minutes % 60;
-  if (!hours) return `${remaining} daq.`;
-  if (!remaining) return `${hours} soat`;
-  return `${hours} soat ${remaining} daq.`;
-}
-
 function GoalsBoard({ storageKey }: { storageKey: string }) {
   const store = useLocalModuleStorage(storageKey, EMPTY_GOALS, isPersonalGoalList, 'Maqsadlar');
   const form = useForm<GoalFormValues>({ defaultValues: newGoalForm() });
@@ -262,7 +255,7 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
   };
 
   const deleteGoal = (goal: PersonalGoal) => {
-    if (!window.confirm(`“${goal.title}” maqsadini o‘chirishni xohlaysizmi?`)) return;
+    if (!window.confirm(formatContentDeleteConfirmation(goal.title, 'goal'))) return;
     if (store.save(store.value.filter((item) => item.id !== goal.id))) showNotice('Maqsad o‘chirildi.');
     if (editingId === goal.id) resetComposer();
   };
@@ -502,7 +495,7 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
                           <CategoryIcon size={13} className={category.iconColor} />{category.label}
                         </span>
                         <span className="rounded-full bg-[#dcebe4] px-2.5 py-1 text-[9px] font-semibold text-[#35614f] dark:bg-[#294538] dark:text-[#b5d9c4]">{horizonLabels[goal.horizon]}</span>
-                        {goal.targetDate && <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground"><CalendarRange size={12} />{new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${goal.targetDate}T12:00:00`))}</span>}
+                        {goal.targetDate && <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground"><CalendarRange size={12} />{new Intl.DateTimeFormat(getCurrentIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${goal.targetDate}T12:00:00`))}</span>}
                       </div>
                       <h3 className="mt-3 break-words font-serif text-[25px] leading-tight">{goal.title}</h3>
                       {goal.description && <p className="mt-2 text-[12px] leading-relaxed text-muted-foreground">{goal.description}</p>}
@@ -518,7 +511,7 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
                     <div className="flex items-center justify-between gap-3 text-[13px]">
                       <span className="font-medium text-muted-foreground">{metric === 'milestones' ? 'Qadamlar bajarilishi' : metric === 'quantity' ? 'Miqdor bo‘yicha' : metric === 'time' ? 'Sarflangan vaqt' : 'Bajarilish foizi'}</span>
                       <span className="font-semibold text-[#35614f] dark:text-[#b5d9c4]" data-testid={`text-goal-progress-${goal.id}`}>
-                        {metric === 'milestones' ? `${progress}% · ${completed}/${goal.tasks.length}` : metric === 'quantity' ? `${currentValue} / ${targetValue} ${goal.metricUnit ?? ''}` : metric === 'time' ? `${durationLabel(currentValue)} / ${durationLabel(targetValue)}` : `${progress}%`}
+                        {metric === 'milestones' ? `${progress}% · ${completed}/${goal.tasks.length}` : metric === 'quantity' ? `${currentValue} / ${targetValue} ${goal.metricUnit ?? ''}` : metric === 'time' ? `${formatGoalDuration(currentValue)} / ${formatGoalDuration(targetValue)}` : `${progress}%`}
                       </span>
                     </div>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${goal.title} bajarilishi`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>

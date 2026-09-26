@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { formatLocalModuleStorageMessage } from '@/lib/i18n';
 
 export type LocalModuleStatus = 'loading' | 'ready' | 'error';
 
@@ -82,8 +83,8 @@ export function useLocalModuleStorage<T>(
     try {
       setValue(read());
       setStatus('ready');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : `${label} ma’lumotlarini o‘qib bo‘lmadi.`);
+    } catch {
+      setError(formatLocalModuleStorageMessage(label, 'read'));
       setStatus('error');
     }
   }, [label, read]);
@@ -95,8 +96,8 @@ export function useLocalModuleStorage<T>(
         setValue(read());
         setError('');
         setStatus('ready');
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : `${label} ma’lumotlarini o‘qib bo‘lmadi.`);
+      } catch {
+        setError(formatLocalModuleStorageMessage(label, 'read'));
         setStatus('error');
       }
     };
@@ -112,7 +113,7 @@ export function useLocalModuleStorage<T>(
       setError('');
       return true;
     } catch {
-      setError(`${label} saqlanmadi. Brauzer xotirasi to‘lmaganini tekshiring.`);
+      setError(formatLocalModuleStorageMessage(label, 'save'));
       return false;
     }
   }, [label, status, storageKey]);

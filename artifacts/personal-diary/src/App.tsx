@@ -10,6 +10,7 @@ import { AmbientSoundProvider } from '@/components/ambient-sound';
 import { DiaryCoverProvider } from '@/components/diary-cover';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useI18n } from '@/lib/i18n';
 import NotFound from '@/pages/not-found';
 import { EntryPage, HomePage, SettingsPage, SignInPage, SignUpPage, UserPortalPage } from '@/pages/diary-pages';
 import { FocusTodoPage } from '@/pages/focus-todo-page';
@@ -206,10 +207,13 @@ function ClerkProviderWithRoutes() {
 }
 
 function App() {
+  const { language } = useI18n();
   return (
-    <WouterRouter base={basePath}>
-      <ClerkProviderWithRoutes />
-    </WouterRouter>
+    <div className="contents" data-app-language={language}>
+      <WouterRouter base={basePath}>
+        <ClerkProviderWithRoutes />
+      </WouterRouter>
+    </div>
   );
 }
 

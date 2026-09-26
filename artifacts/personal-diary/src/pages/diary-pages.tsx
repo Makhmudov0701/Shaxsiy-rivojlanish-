@@ -4,6 +4,7 @@ import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp, useUser } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, Bold, CalendarDays, Check, ChevronDown, CircleAlert, Download, Eye, FileJson, FileText, FolderOpen, Heart, ImagePlus, Italic, List, LoaderCircle, LockKeyhole, Mic, MicOff, Pencil, Plus, Quote, Search, ShieldCheck, Star, Upload, X } from 'lucide-react';
+import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
 import {
   DiaryEntryInput,
   DiaryEntryUpdate,
@@ -274,7 +275,7 @@ export function UserPortalPage() {
   };
   const updateQueries = (entry?: DiaryEntry) => { queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() }); queryClient.invalidateQueries({ queryKey: getGetDiaryWeeklySummaryQueryKey() }); if (entry) queryClient.invalidateQueries({ queryKey: getGetDiaryEntryQueryKey(entry.id) }); };
   const onFavorite = (entry: DiaryEntry) => favoriteMutation.mutate({ id: entry.id, data: { favorite: !entry.favorite } }, { onSuccess: (updated) => { updateQueries(updated); flash(updated.favorite ? 'Sevimlilarga qo‘shildi.' : 'Sevimlilardan olib tashlandi.'); }, onError: () => flash('Yozuvni yangilab bo‘lmadi.') });
-  const onDelete = (entry: DiaryEntry) => { if (!window.confirm(`“${entry.title}” yozuvini o‘chirishni xohlaysizmi?`)) return; deleteMutation.mutate({ id: entry.id }, { onSuccess: () => { updateQueries(); flash('Yozuv o‘chirildi.'); }, onError: () => flash('Yozuvni o‘chirib bo‘lmadi.') }); };
+  const onDelete = (entry: DiaryEntry) => { if (!window.confirm(formatDeleteConfirmation(entry.title, 'entry'))) return; deleteMutation.mutate({ id: entry.id }, { onSuccess: () => { updateQueries(); flash('Yozuv o‘chirildi.'); }, onError: () => flash('Yozuvni o‘chirib bo‘lmadi.') }); };
   const downloadExport = async (format: 'json' | 'pdf') => {
     setExporting(format);
     try {
@@ -619,7 +620,7 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
     setVoiceError('');
     setVoicePreview('');
     const recognition = new SpeechRecognition();
-    recognition.lang = 'uz-UZ';
+    recognition.lang = getCurrentIntlLocale();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.onresult = (event) => {
@@ -821,12 +822,12 @@ export function SettingsPage() {
     try {
       const backup = JSON.parse(await file.text()) as Parameters<typeof restoreBackupMutation.mutateAsync>[0]['data'];
       if (!backup || backup.version < 1 || !Array.isArray(backup.entries)) throw new Error('format');
-      if (!window.confirm('Tiklash mavjud kundaligingizdagi barcha yozuv va suratlarni almashtiradi. Davom etasizmi?')) return;
+      if (!window.confirm(formatDiaryOverwriteConfirmation())) return;
       const result = await restoreBackupMutation.mutateAsync({ data: backup });
       queryClient.invalidateQueries({ queryKey: getListDiaryEntriesQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDiarySummaryQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetDiaryWeeklySummaryQueryKey() });
-      setNotice(`${result.entriesRestored} ta yozuv va ${result.photosRestored} ta surat tiklandi.`);
+      setNotice(formatDiaryBackupRestoreMessage(result.entriesRestored, result.photosRestored));
       window.setTimeout(() => setNotice(''), 3200);
     } catch {
       setError('Zaxira fayli noto‘g‘ri yoki tiklash amalga oshmadi.');

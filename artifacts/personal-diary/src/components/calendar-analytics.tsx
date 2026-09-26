@@ -9,12 +9,41 @@ import { getListDiaryEntriesQueryKey, Mood, useListDiaryEntries } from '@workspa
 import type { DiaryEntry } from '@workspace/api-client-react';
 import { moodMeta, MoodBadge } from '@/components/diary-ui';
 import { formatUzbekDate, parseDateValue } from '@/lib/date-utils';
+import { calendarNavigationLabel, formatDiaryEntryCount, formatRecordedDays, getCurrentIntlLocale, getCurrentLanguage, translateUiText } from '@/lib/i18n';
 import { EMPTY_ENERGY_LOG, energyStorageKey, isEnergyLog, useLocalModuleStorage, type EnergyLog } from '@/lib/local-module-storage';
 
 type AnalyticsMode = 'calendar' | 'analytics';
 
-const weekdayLabels = ['Ya', 'Du', 'Se', 'Cho', 'Pa', 'Ju', 'Sha'];
 const moodValues = Object.values(Mood);
+
+function dominantMoodLabel(name: string) {
+  const language = getCurrentLanguage();
+  const localizedName = translateUiText(name, language);
+  return {
+    uz: `Ko‘proq ${localizedName.toLocaleLowerCase(getCurrentIntlLocale())}`,
+    en: `Most often: ${localizedName}`,
+    ru: `Чаще всего: ${localizedName}`,
+    ko: `가장 자주 느낀 기분: ${localizedName}`,
+  }[language];
+}
+
+function energyPointLabel(day: number, level: number) {
+  return {
+    uz: `${day}-kun · quvvat ${level}/10`,
+    en: `Day ${day} · energy ${level}/10`,
+    ru: `${day}-й день · энергия ${level}/10`,
+    ko: `${day}일 · 에너지 ${level}/10`,
+  }[getCurrentLanguage()];
+}
+
+function energyChartLabel(month: string) {
+  return {
+    uz: `${month} oyida qayd etilgan quvvat darajasi grafigi`,
+    en: `Energy levels recorded in ${month}`,
+    ru: `Уровень энергии, записанный за ${month}`,
+    ko: `${month}에 기록된 에너지 수준`,
+  }[getCurrentLanguage()];
+}
 
 function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -68,7 +97,7 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
     <div className="rounded-[24px] border border-card-border bg-card p-5 sm:p-7">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Yozuvlar taqvimi</p><p className="mt-1 font-serif text-[23px] capitalize">{monthLabel(visibleMonth)}</p></div>
-        <div className="text-right"><p className="font-serif text-[27px] leading-none">{monthEntries.length}</p><p className="mt-1 text-[10px] text-muted-foreground">{monthDays} kun yozilgan</p></div>
+        <div className="text-right"><p className="font-serif text-[27px] leading-none">{monthEntries.length}</p><p className="mt-1 text-[10px] text-muted-foreground">{formatRecordedDays(monthDays)}</p></div>
       </div>
       <Calendar
         month={visibleMonth}
@@ -78,8 +107,7 @@ function CalendarView({ entries, visibleMonth, setVisibleMonth }: { entries: Dia
         modifiers={{ hasEntry: entryDates }}
         modifiersClassNames={{ hasEntry: 'bg-[#f8e9bf] text-[#6c4c21] rounded-xl' }}
         className="w-full [--cell-size:clamp(2.25rem,8vw,3.7rem)]"
-        formatters={{ formatCaption: monthLabel, formatWeekdayName: (date) => weekdayLabels[date.getDay()] }}
-        labels={{ labelPrevious: () => 'Oldingi oy', labelNext: () => 'Keyingi oy', labelDayButton: (date) => `${date.getDate()}-${monthLabel(date)}` }}
+        formatters={{ formatCaption: monthLabel }}
         aria-label="Yozuvlar taqvimi"
       />
       <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-border/70 pt-4 text-[10px] text-muted-foreground"><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full bg-[#d9a441]" /> yozuv bor</span><span className="inline-flex items-center gap-2"><span className="size-2 rounded-full border border-[#cfc09c] bg-background" /> bo‘sh kun</span><span className="ml-auto">Sanani tanlang</span></div>
@@ -94,7 +122,7 @@ function MoodAnalytics({ entries, visibleMonth, setVisibleMonth }: { entries: Di
     return date !== null && date.getFullYear() === visibleMonth.getFullYear() && date.getMonth() === visibleMonth.getMonth();
   });
   const moodCounts = countMoods(monthEntries);
-  const moodData = moodValues.map((mood) => ({ mood, name: moodMeta[mood].label, count: moodCounts[mood], fill: moodMeta[mood].color })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
+  const moodData = moodValues.map((mood) => ({ mood, name: translateUiText(moodMeta[mood].label), count: moodCounts[mood], fill: moodMeta[mood].color })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
   const monthlyMoodData = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 5 + index, 1);
     const monthEntriesForChart = entries.filter((entry) => {
@@ -105,13 +133,13 @@ function MoodAnalytics({ entries, visibleMonth, setVisibleMonth }: { entries: Di
     return { month: shortMonthLabel(date), ...counts };
   });
   const dominantMood = moodData[0];
-  const chartConfig = moodValues.reduce((config, mood) => ({ ...config, [mood]: { label: moodMeta[mood].label, color: moodMeta[mood].color } }), {});
+  const chartConfig = moodValues.reduce((config, mood) => ({ ...config, [mood]: { label: translateUiText(moodMeta[mood].label), color: moodMeta[mood].color } }), {});
 
   return (
     <div className="rounded-[24px] border border-card-border bg-card p-5 sm:p-7">
-      <div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyatlar xaritasi</p><h3 className="mt-2 font-serif text-[25px] leading-tight">{dominantMood ? `Ko‘proq ${dominantMood.name.toLowerCase()}` : 'Hali kuzatuv yo‘q'}</h3><p className="mt-1 text-[11px] text-muted-foreground">{monthLabel(visibleMonth)}</p></div><div className="flex items-center gap-1"><button type="button" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Oldingi oy"><ChevronLeft size={15} /></button><button type="button" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label="Keyingi oy"><ChevronRight size={15} /></button></div></div>
-      {moodData.length > 0 ? <><div className="mt-5 grid items-center gap-3 sm:grid-cols-[180px_1fr]"><ChartContainer config={{ count: { label: 'Yozuvlar', color: '#30243f' } }} className="mx-auto aspect-square h-[180px] w-full max-w-[180px]" aria-label="Tanlangan oydagi kayfiyatlar taqsimoti"><PieChart><ChartTooltip content={<ChartTooltipContent hideLabel />} /><Pie data={moodData} dataKey="count" nameKey="name" innerRadius={53} outerRadius={78} paddingAngle={3} strokeWidth={0} isAnimationActive={false}>{moodData.map((item) => <Cell key={item.mood} fill={item.fill} />)}</Pie></PieChart></ChartContainer><div className="space-y-2.5">{moodData.map((item) => <div key={item.mood} className="flex items-center gap-2.5 text-[11px]"><span className="size-2 rounded-full" style={{ backgroundColor: item.fill }} /><span className="min-w-0 flex-1 truncate text-muted-foreground">{item.name}</span><span className="font-mono text-[10px] text-foreground">{item.count}</span></div>)}</div></div></> : <div className="mt-5 rounded-2xl border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-5 py-8 text-center dark:border-[#584c37] dark:bg-[#2b271f]"><p className="font-serif text-[24px]">Bu oyda kayfiyatlar yozilmagan.</p><p className="mx-auto mt-2 max-w-xs text-[12px] leading-relaxed text-muted-foreground">Boshqa oyga o‘ting yoki yangi yozuv bilan kuzatuvni boshlang.</p></div>}
-      <div className="mt-7 border-t border-border/70 pt-5"><div className="flex items-center justify-between gap-3"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-muted-foreground">Oxirgi olti oy</p><span className="text-[10px] text-muted-foreground">{entries.length} ta yozuv</span></div><ChartContainer config={chartConfig} className="mt-4 h-[250px] w-full" aria-label="Oxirgi olti oyda kayfiyatlar soni"><BarChart data={monthlyMoodData} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={8} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} width={30} /><ChartTooltip cursor={{ fill: 'hsl(var(--muted) / .5)' }} content={<ChartTooltipContent />} /><Bar dataKey="peaceful" name={moodMeta.peaceful.label} stackId="mood" fill="var(--color-peaceful)" isAnimationActive={false} /><Bar dataKey="happy" name={moodMeta.happy.label} stackId="mood" fill="var(--color-happy)" isAnimationActive={false} /><Bar dataKey="grateful" name={moodMeta.grateful.label} stackId="mood" fill="var(--color-grateful)" isAnimationActive={false} /><Bar dataKey="energized" name={moodMeta.energized.label} stackId="mood" fill="var(--color-energized)" isAnimationActive={false} /><Bar dataKey="thoughtful" name={moodMeta.thoughtful.label} stackId="mood" fill="var(--color-thoughtful)" isAnimationActive={false} /><Bar dataKey="sad" name={moodMeta.sad.label} stackId="mood" fill="var(--color-sad)" isAnimationActive={false} /><Bar dataKey="anxious" name={moodMeta.anxious.label} stackId="mood" fill="var(--color-anxious)" radius={[5, 5, 2, 2]} isAnimationActive={false} /></BarChart></ChartContainer><div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">{moodValues.map((mood) => <span key={mood} className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: moodMeta[mood].color }} />{moodMeta[mood].label}</span>)}</div></div>
+      <div className="flex items-start justify-between gap-4"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Kayfiyatlar xaritasi</p><h3 className="mt-2 font-serif text-[25px] leading-tight">{dominantMood ? dominantMoodLabel(dominantMood.name) : 'Hali kuzatuv yo‘q'}</h3><p className="mt-1 text-[11px] text-muted-foreground">{monthLabel(visibleMonth)}</p></div><div className="flex items-center gap-1"><button type="button" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() - 1, 1))} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label={calendarNavigationLabel('previous')}><ChevronLeft size={15} /></button><button type="button" onClick={() => setVisibleMonth(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 1))} className="grid size-8 place-items-center rounded-lg border border-border text-muted-foreground hover:bg-muted" aria-label={calendarNavigationLabel('next')}><ChevronRight size={15} /></button></div></div>
+      {moodData.length > 0 ? <><div className="mt-5 grid items-center gap-3 sm:grid-cols-[180px_1fr]"><ChartContainer config={{ count: { label: translateUiText('Yozuvlar'), color: '#30243f' } }} className="mx-auto aspect-square h-[180px] w-full max-w-[180px]" aria-label="Tanlangan oydagi kayfiyatlar taqsimoti"><PieChart><ChartTooltip content={<ChartTooltipContent hideLabel />} /><Pie data={moodData} dataKey="count" nameKey="name" innerRadius={53} outerRadius={78} paddingAngle={3} strokeWidth={0} isAnimationActive={false}>{moodData.map((item) => <Cell key={item.mood} fill={item.fill} />)}</Pie></PieChart></ChartContainer><div className="space-y-2.5">{moodData.map((item) => <div key={item.mood} className="flex items-center gap-2.5 text-[11px]"><span className="size-2 rounded-full" style={{ backgroundColor: item.fill }} /><span className="min-w-0 flex-1 truncate text-muted-foreground">{item.name}</span><span className="font-mono text-[10px] text-foreground">{item.count}</span></div>)}</div></div></> : <div className="mt-5 rounded-2xl border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-5 py-8 text-center dark:border-[#584c37] dark:bg-[#2b271f]"><p className="font-serif text-[24px]">Bu oyda kayfiyatlar yozilmagan.</p><p className="mx-auto mt-2 max-w-xs text-[12px] leading-relaxed text-muted-foreground">Boshqa oyga o‘ting yoki yangi yozuv bilan kuzatuvni boshlang.</p></div>}
+      <div className="mt-7 border-t border-border/70 pt-5"><div className="flex items-center justify-between gap-3"><p className="font-mono text-[9px] uppercase tracking-[.14em] text-muted-foreground">Oxirgi olti oy</p><span className="text-[10px] text-muted-foreground">{formatDiaryEntryCount(entries.length)}</span></div><ChartContainer config={chartConfig} className="mt-4 h-[250px] w-full" aria-label="Oxirgi olti oyda kayfiyatlar soni"><BarChart data={monthlyMoodData} margin={{ top: 8, right: 4, left: -22, bottom: 0 }}><XAxis dataKey="month" axisLine={false} tickLine={false} tickMargin={8} /><YAxis allowDecimals={false} axisLine={false} tickLine={false} width={30} /><ChartTooltip cursor={{ fill: 'hsl(var(--muted) / .5)' }} content={<ChartTooltipContent />} /><Bar dataKey="peaceful" name={translateUiText(moodMeta.peaceful.label)} stackId="mood" fill="var(--color-peaceful)" isAnimationActive={false} /><Bar dataKey="happy" name={translateUiText(moodMeta.happy.label)} stackId="mood" fill="var(--color-happy)" isAnimationActive={false} /><Bar dataKey="grateful" name={translateUiText(moodMeta.grateful.label)} stackId="mood" fill="var(--color-grateful)" isAnimationActive={false} /><Bar dataKey="energized" name={translateUiText(moodMeta.energized.label)} stackId="mood" fill="var(--color-energized)" isAnimationActive={false} /><Bar dataKey="thoughtful" name={translateUiText(moodMeta.thoughtful.label)} stackId="mood" fill="var(--color-thoughtful)" isAnimationActive={false} /><Bar dataKey="sad" name={translateUiText(moodMeta.sad.label)} stackId="mood" fill="var(--color-sad)" isAnimationActive={false} /><Bar dataKey="anxious" name={translateUiText(moodMeta.anxious.label)} stackId="mood" fill="var(--color-anxious)" radius={[5, 5, 2, 2]} isAnimationActive={false} /></BarChart></ChartContainer><div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">{moodValues.map((mood) => <span key={mood} className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground"><span className="size-2 rounded-full" style={{ backgroundColor: moodMeta[mood].color }} />{translateUiText(moodMeta[mood].label)}</span>)}</div></div>
     </div>
   );
 }
@@ -141,14 +169,14 @@ function EnergyTrendChart({ energyLog, status, error, visibleMonth }: { energyLo
       </div>
       {status === 'loading' ? <div className="mt-5 h-[190px] rounded-xl skeleton" aria-label="Quvvat qaydlari yuklanmoqda" /> : status === 'error' ? <p className="mt-5 rounded-xl border border-destructive/20 bg-destructive/5 p-4 text-[11px] text-destructive" role="alert">{error}</p> : values.length ? (
         <div className="mt-5">
-          <svg viewBox="0 0 620 180" className="h-auto w-full overflow-visible" role="img" aria-label={`${monthLabel(visibleMonth)} oyida qayd etilgan quvvat darajasi grafigi`}>
+          <svg viewBox="0 0 620 180" className="h-auto w-full overflow-visible" role="img" aria-label={energyChartLabel(monthLabel(visibleMonth))}>
             {[1, 5, 10].map((level) => {
               const y = 140 - ((level - 1) / 9) * 110;
               return <g key={level}><line x1="38" x2="604" y1={y} y2={y} stroke="currentColor" strokeOpacity=".12" strokeDasharray="3 5" /><text x="7" y={y + 4} fill="currentColor" opacity=".55" fontSize="10">{level}</text></g>;
             })}
             {area && <path d={area} fill="#8fb59b" fillOpacity=".16" />}
             {line && <path d={line} fill="none" stroke="#5f9271" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />}
-            {points.map((point) => <g key={point.day}><circle cx={point.x} cy={point.y} r="5" fill="#5f9271" stroke="var(--card)" strokeWidth="2"><title>{point.day}-kun · quvvat {point.level}/10</title></circle></g>)}
+            {points.map((point) => <g key={point.day}><circle cx={point.x} cy={point.y} r="5" fill="#5f9271" stroke="var(--card)" strokeWidth="2"><title>{energyPointLabel(point.day, point.level)}</title></circle></g>)}
             {Array.from({ length: Math.ceil(daysInMonth / 5) }, (_, index) => index * 5 + 1).filter((day) => day <= daysInMonth).map((day) => <text key={day} x={42 + ((day - 1) / Math.max(1, daysInMonth - 1)) * 552} y="171" textAnchor="middle" fill="currentColor" opacity=".55" fontSize="9">{day}</text>)}
           </svg>
           <p className="mt-1 text-[10px] text-muted-foreground">Belgilar ustiga olib borib, kunlik qiymatni ko‘ring.</p>

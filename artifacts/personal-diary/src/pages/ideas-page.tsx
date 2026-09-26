@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
 import { useForm } from 'react-hook-form';
 import { Lightbulb, Pencil, Plus, Search, Tag, Trash2, X } from 'lucide-react';
 import { Form } from '@/components/ui/form';
@@ -12,7 +13,7 @@ const emptyForm: IdeaFormValues = { text: '', tags: '' };
 function parseTags(value: string) {
   const seen = new Set<string>();
   return value.split(/[,\n]/).map((tag) => tag.trim().replace(/^#+/, '').slice(0, 28)).filter((tag) => {
-    const key = tag.toLocaleLowerCase('uz-UZ');
+    const key = tag.toLocaleLowerCase(getCurrentIntlLocale());
     if (!tag || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -27,11 +28,11 @@ function IdeasCanvas({ storageKey }: { storageKey: string }) {
   const [activeTag, setActiveTag] = useState('');
   const [formError, setFormError] = useState('');
   const visibleIdeas = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('uz-UZ');
+    const query = search.trim().toLocaleLowerCase(getCurrentIntlLocale());
     return [...store.value]
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .filter((idea) => (!activeTag || idea.tags.includes(activeTag))
-        && (!query || `${idea.text} ${idea.tags.join(' ')}`.toLocaleLowerCase('uz-UZ').includes(query)));
+        && (!query || `${idea.text} ${idea.tags.join(' ')}`.toLocaleLowerCase(getCurrentIntlLocale()).includes(query)));
   }, [activeTag, search, store.value]);
   const tags = useMemo(() => [...new Set(store.value.flatMap((idea) => idea.tags))].sort((a, b) => a.localeCompare(b, 'uz')), [store.value]);
 
@@ -67,7 +68,7 @@ function IdeasCanvas({ storageKey }: { storageKey: string }) {
   };
 
   const deleteIdea = (idea: QuickIdea) => {
-    if (!window.confirm('Bu fikrni o‘chirishni xohlaysizmi?')) return;
+    if (!window.confirm(formatContentDeleteConfirmation(idea.text, 'idea'))) return;
     store.save(store.value.filter((item) => item.id !== idea.id));
     if (editingId === idea.id) {
       setEditingId(null);
@@ -116,7 +117,7 @@ function IdeasCanvas({ storageKey }: { storageKey: string }) {
                 <p className="whitespace-pre-wrap break-words text-[13px] leading-relaxed">{idea.text}</p>
                 <div className="mt-4 flex flex-wrap items-center gap-1.5">{idea.tags.map((tag) => <button key={tag} type="button" onClick={() => setActiveTag(tag)} className="rounded-full bg-[#eee8d5] px-2.5 py-1 text-[9px] text-[#756d5e] dark:bg-[#413a2b] dark:text-[#d2c6a9]" data-testid={`tag-idea-${idea.id}-${tag}`}>#{tag}</button>)}</div>
                 <div className="mt-5 flex items-center justify-between border-t border-border/70 pt-3">
-                  <span className="font-mono text-[9px] text-muted-foreground">{new Intl.DateTimeFormat('uz-UZ', { day: 'numeric', month: 'short' }).format(new Date(idea.updatedAt))}</span>
+                  <span className="font-mono text-[9px] text-muted-foreground">{new Intl.DateTimeFormat(getCurrentIntlLocale(), { day: 'numeric', month: 'short' }).format(new Date(idea.updatedAt))}</span>
                   <div className="flex gap-1"><button type="button" onClick={() => editIdea(idea)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Fikrni tahrirlash" data-testid={`button-edit-idea-${idea.id}`}><Pencil size={14} /></button><button type="button" onClick={() => deleteIdea(idea)} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Fikrni o‘chirish" data-testid={`button-delete-idea-${idea.id}`}><Trash2 size={14} /></button></div>
                 </div>
               </article>

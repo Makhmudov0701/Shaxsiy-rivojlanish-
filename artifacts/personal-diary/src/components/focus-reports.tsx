@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BarChart3, CalendarDays, Clock3 } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
+import { getCurrentIntlLocale, getCurrentLanguage } from '@/lib/i18n';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
@@ -61,7 +62,66 @@ function dayKey(dateOrTimestamp: Date | number) {
 }
 
 function dateLabel(date: Date, options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }) {
-  return new Intl.DateTimeFormat('uz-UZ', options).format(date);
+  return new Intl.DateTimeFormat(getCurrentIntlLocale(), options).format(date);
+}
+
+function getPersonalProjectLabel() {
+  return {
+    uz: 'Shaxsiy',
+    en: 'Personal',
+    ru: 'Личное',
+    ko: '개인',
+  }[getCurrentLanguage()];
+}
+
+function formatFocusMinutes(minutes: number) {
+  const language = getCurrentLanguage();
+  if (language === 'uz') return `${minutes} daqiqa`;
+  if (language === 'en') return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  if (language === 'ko') return `${minutes}분`;
+  const plural = new Intl.PluralRules('ru-RU').select(minutes);
+  return `${minutes} ${plural === 'one' ? 'минута' : plural === 'few' ? 'минуты' : 'минут'}`;
+}
+
+function formatFocusSessionCount(count: number) {
+  const language = getCurrentLanguage();
+  if (language === 'uz') return `${count} ta fokus sessiyasi`;
+  if (language === 'en') return `${count} ${count === 1 ? 'focus session' : 'focus sessions'}`;
+  if (language === 'ko') return `${count}회 집중 세션`;
+  const plural = new Intl.PluralRules('ru-RU').select(count);
+  return `${count} ${plural === 'one' ? 'фокус-сессия' : plural === 'few' ? 'фокус-сессии' : 'фокус-сессий'}`;
+}
+
+function formatTaskCount(count: number) {
+  const language = getCurrentLanguage();
+  if (language === 'uz') return `${count} ta`;
+  if (language === 'en') return `${count} ${count === 1 ? 'task' : 'tasks'}`;
+  if (language === 'ko') return `${count}개`;
+  const plural = new Intl.PluralRules('ru-RU').select(count);
+  return `${count} ${plural === 'one' ? 'задача' : plural === 'few' ? 'задачи' : 'задач'}`;
+}
+
+function formatFocusBucketTooltip(detail: string, minutes: number) {
+  return `${detail}: ${formatFocusMinutes(minutes)}`;
+}
+
+function formatSessionHeatmapTooltip(date: Date, count: number) {
+  const formattedDate = dateLabel(date);
+  const language = getCurrentLanguage();
+  if (language === 'uz') return `${formattedDate}: ${count} sessiya`;
+  if (language === 'en') return `${formattedDate}: ${count} ${count === 1 ? 'session' : 'sessions'}`;
+  if (language === 'ko') return `${formattedDate}: ${count}회 세션`;
+  const plural = new Intl.PluralRules('ru-RU').select(count);
+  return `${formattedDate}: ${count} ${plural === 'one' ? 'сессия' : plural === 'few' ? 'сессии' : 'сессий'}`;
+}
+
+function formatSessionHeatmapAriaLabel(periodLabel: string) {
+  return {
+    uz: `Tanlangan davrdagi sessiyalar: ${periodLabel}`,
+    en: `Sessions in the selected period: ${periodLabel}`,
+    ru: `Сессии за выбранный период: ${periodLabel}`,
+    ko: `선택한 기간의 세션: ${periodLabel}`,
+  }[getCurrentLanguage()];
 }
 
 function getDateBounds(range: ReportRange, customRange?: DateRange): DateBounds {
@@ -110,10 +170,13 @@ function getChartUnit(range: ReportRange, bounds: DateBounds): ChartUnit {
 }
 
 function getChartUnitLabel(unit: ChartUnit) {
-  if (unit === 'hour') return 'Soatlar bo‘yicha';
-  if (unit === 'day') return 'Hafta kunlari bo‘yicha';
-  if (unit === 'week') return 'Haftalar bo‘yicha';
-  return 'Oylar bo‘yicha';
+  const labels: Record<ChartUnit, Record<ReturnType<typeof getCurrentLanguage>, string>> = {
+    hour: { uz: 'Soatlar bo‘yicha', en: 'By hour', ru: 'По часам', ko: '시간별' },
+    day: { uz: 'Hafta kunlari bo‘yicha', en: 'By day', ru: 'По дням', ko: '일별' },
+    week: { uz: 'Haftalar bo‘yicha', en: 'By week', ru: 'По неделям', ko: '주별' },
+    month: { uz: 'Oylar bo‘yicha', en: 'By month', ru: 'По месяцам', ko: '월별' },
+  };
+  return labels[unit][getCurrentLanguage()];
 }
 
 function createBucket(start: Date, endInclusive: Date, label: string, detail: string): ChartBucket {
@@ -147,7 +210,7 @@ function buildChartBuckets(unit: ChartUnit, bounds: DateBounds): ChartBucket[] {
 
   if (unit === 'day') {
     for (let date = startOfDay(bounds.start); date.getTime() <= bounds.end.getTime(); date = addDays(date, 1)) {
-      const weekday = new Intl.DateTimeFormat('uz-UZ', { weekday: 'short' }).format(date);
+      const weekday = new Intl.DateTimeFormat(getCurrentIntlLocale(), { weekday: 'short' }).format(date);
       buckets.push(createBucket(date, date, String(date.getDate()), `${dateLabel(date)} · ${weekday}`));
     }
     return buckets;
@@ -170,7 +233,7 @@ function buildChartBuckets(unit: ChartUnit, bounds: DateBounds): ChartBucket[] {
     const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 0);
     const start = month.getTime() < bounds.start.getTime() ? bounds.start : month;
     const end = monthEnd.getTime() > bounds.end.getTime() ? bounds.end : monthEnd;
-    const label = new Intl.DateTimeFormat('uz-UZ', { month: 'short' }).format(month);
+    const label = new Intl.DateTimeFormat(getCurrentIntlLocale(), { month: 'short' }).format(month);
     buckets.push(createBucket(start, end, label, `${label} ${month.getFullYear()}`));
     month = new Date(month.getFullYear(), month.getMonth() + 1, 1);
   }
@@ -178,14 +241,37 @@ function buildChartBuckets(unit: ChartUnit, bounds: DateBounds): ChartBucket[] {
 }
 
 function getPeriodLabel(range: ReportRange, bounds: DateBounds, customRange?: DateRange) {
-  if (range === 'custom' && !customRange?.from) return 'Sana oralig‘ini tanlang';
-  if (range === 'custom' && customRange?.from && !customRange.to) return `${dateLabel(bounds.start)} · tugash sanasini tanlang`;
+  const language = getCurrentLanguage();
+  if (range === 'custom' && !customRange?.from) {
+    return {
+      uz: 'Sana oralig‘ini tanlang',
+      en: 'Select a date range',
+      ru: 'Выберите диапазон дат',
+      ko: '날짜 범위를 선택하세요',
+    }[language];
+  }
+  if (range === 'custom' && customRange?.from && !customRange.to) {
+    const endDatePrompt = {
+      uz: 'tugash sanasini tanlang',
+      en: 'select an end date',
+      ru: 'выберите дату окончания',
+      ko: '종료 날짜를 선택하세요',
+    }[language];
+    return `${dateLabel(bounds.start)} · ${endDatePrompt}`;
+  }
   if (dayKey(bounds.start) === dayKey(bounds.end)) return dateLabel(bounds.start);
   return `${dateLabel(bounds.start, { day: 'numeric', month: 'short' })} – ${dateLabel(bounds.end)}`;
 }
 
 function getCustomRangeLabel(customRange?: DateRange) {
-  if (!customRange?.from) return 'Sana tanlash';
+  if (!customRange?.from) {
+    return {
+      uz: 'Sana tanlash',
+      en: 'Choose dates',
+      ru: 'Выбрать даты',
+      ko: '날짜 선택',
+    }[getCurrentLanguage()];
+  }
   const from = dateLabel(customRange.from, { day: 'numeric', month: 'short' });
   if (!customRange.to) return `${from} – ...`;
   return `${from} – ${dateLabel(customRange.to)}`;
@@ -218,7 +304,8 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
   const focusMinutes = reportSessions.reduce((sum, session) => sum + session.durationMinutes, 0);
   const projectData = useMemo(() => {
     const totals = new Map<string, number>();
-    reportSessions.forEach((session) => totals.set(session.project || 'Shaxsiy', (totals.get(session.project || 'Shaxsiy') ?? 0) + session.durationMinutes));
+    const fallbackProject = getPersonalProjectLabel();
+    reportSessions.forEach((session) => totals.set(session.project || fallbackProject, (totals.get(session.project || fallbackProject) ?? 0) + session.durationMinutes));
     return Array.from(totals.entries()).sort((a, b) => b[1] - a[1]).slice(0, 6);
   }, [reportSessions]);
   const chartBuckets = useMemo(() => {
@@ -323,16 +410,16 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
         <div className="rounded-2xl bg-[#e6efe8] p-5 dark:bg-[#283c32]" data-testid="metric-focus-time">
           <p className="text-[10px] text-[#527463] dark:text-[#b8d6c3]">Tanlangan davr · diqqat vaqti</p>
           <p className="mt-2 font-mono text-[30px] leading-none text-[#315d4e] dark:text-[#d1ebd9]">{Math.floor(focusMinutes / 60)}<span className="ml-1 text-[13px]">soat</span> {focusMinutes % 60}<span className="ml-1 text-[13px]">daq</span></p>
-          <p className="mt-4 text-[10px] text-[#527463] dark:text-[#b8d6c3]">{reportSessions.length} ta fokus sessiyasi</p>
+          <p className="mt-4 text-[10px] text-[#527463] dark:text-[#b8d6c3]">{formatFocusSessionCount(reportSessions.length)}</p>
         </div>
         <div className="rounded-2xl bg-[#f5eee2] p-5" data-testid="metric-focus-sessions">
           <p className="text-[10px] text-[#8d7047]">Fokus sessiyalari</p>
-          <p className="mt-2 font-mono text-[30px] leading-none text-[#80583a]">{reportSessions.length}<span className="ml-1 text-[13px]">ta</span></p>
+          <p className="mt-2 font-mono text-[30px] leading-none text-[#80583a]">{reportSessions.length}</p>
           <p className="mt-4 text-[10px] text-[#8d7047]">{periodLabel}</p>
         </div>
         <div className="rounded-2xl bg-[#eeebf3] p-5 dark:bg-[#34303d]" data-testid="metric-completed-tasks">
           <p className="text-[10px] text-[#706283] dark:text-[#cfc3dd]">Bajarilgan vazifalar</p>
-          <p className="mt-2 font-mono text-[30px] leading-none text-[#5b4c6f] dark:text-[#e2d8eb]">{completedTasks.length}<span className="ml-1 text-[13px]">ta</span></p>
+          <p className="mt-2 font-mono text-[30px] leading-none text-[#5b4c6f] dark:text-[#e2d8eb]">{completedTasks.length}</p>
           <p className="mt-4 text-[10px] text-[#706283] dark:text-[#cfc3dd]">Tanlangan davrda yakunlandi</p>
         </div>
       </div>
@@ -347,9 +434,9 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
           <div className="mt-5 overflow-x-auto pb-1">
             <div className={`flex h-[165px] items-end gap-2 ${chartBuckets.length > 14 ? 'min-w-[620px]' : ''}`}>
               {chartBuckets.map((bucket, index) => (
-                <div key={`${bucket.startAt}-${index}`} className="flex min-w-0 flex-1 flex-col items-center gap-2" aria-label={`${bucket.detail}: ${bucket.minutes} daqiqa`}>
+                <div key={`${bucket.startAt}-${index}`} className="flex min-w-0 flex-1 flex-col items-center gap-2" aria-label={formatFocusBucketTooltip(bucket.detail, bucket.minutes)}>
                   <span className="font-mono text-[9px] text-muted-foreground">{bucket.minutes || ''}</span>
-                  <div className="flex h-[112px] w-full items-end rounded-lg bg-[#f0eee5] dark:bg-[#34372f]" title={`${bucket.detail}: ${bucket.minutes} daqiqa`}>
+                  <div className="flex h-[112px] w-full items-end rounded-lg bg-[#f0eee5] dark:bg-[#34372f]" title={formatFocusBucketTooltip(bucket.detail, bucket.minutes)}>
                     <div className="w-full rounded-lg bg-[#83a998] transition-[height]" style={{ height: `${Math.max(bucket.minutes ? 8 : 3, (bucket.minutes / maxBucket) * 100)}%` }} />
                   </div>
                   <span className="text-[9px] text-muted-foreground">{bucket.label}</span>
@@ -366,7 +453,7 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
               <div key={project} className="grid grid-cols-[minmax(80px,.6fr)_1fr_44px] items-center gap-3 text-[11px]">
                 <span className="truncate">{project}</span>
                 <span className="h-2 overflow-hidden rounded-full bg-muted"><span className={`block h-full rounded-full ${index % 2 ? 'bg-[#b88b68]' : 'bg-[#6e9b87]'}`} style={{ width: `${(value / maxProject) * 100}%` }} /></span>
-                <span className="font-mono text-[9px] text-muted-foreground">{value} daq</span>
+                <span className="font-mono text-[9px] text-muted-foreground">{formatFocusMinutes(value)}</span>
               </div>
             )) : <p className="rounded-xl bg-muted px-3 py-5 text-[11px] text-muted-foreground">Tanlangan davrda fokus sessiyalari yo‘q.</p>}
           </div>
@@ -379,12 +466,12 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground">Sessiya issiqlik xaritasi</p>
             <span className="text-[9px] text-muted-foreground">{periodLabel}</span>
           </div>
-          <div className="mt-4 max-w-full overflow-x-auto pb-1" aria-label={`Tanlangan davrdagi sessiyalar: ${periodLabel}`}>
+          <div className="mt-4 max-w-full overflow-x-auto pb-1" aria-label={formatSessionHeatmapAriaLabel(periodLabel)}>
             <div className="grid w-max auto-cols-[10px] grid-flow-col grid-rows-7 gap-1.5">
               {heatmapCells.map((cell, index) => (
                 <span
                   key={`${cell.key}-${index}`}
-                  title={cell.inRange ? `${dateLabel(cell.date)}: ${cell.count} sessiya` : undefined}
+                  title={cell.inRange ? formatSessionHeatmapTooltip(cell.date, cell.count) : undefined}
                   aria-hidden={!cell.inRange}
                   className={`size-2.5 rounded-[3px] ${cell.inRange ? getHeatColor(cell.count) : 'invisible'}`}
                   data-testid={`heatmap-cell-${index}`}
@@ -407,9 +494,9 @@ export function FocusReports({ sessions, tasks }: { sessions: ReportSession[]; t
               <div key={`${session.startedAt}-${session.project}`} className="flex items-center justify-between gap-3 rounded-xl bg-muted/60 px-3 py-2.5 text-[10px]">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{session.project}</p>
-                  <p className="mt-1 text-muted-foreground">{dateLabel(new Date(session.startedAt), { weekday: 'short', day: 'numeric', month: 'short' })} · {new Intl.DateTimeFormat('uz-UZ', { hour: '2-digit', minute: '2-digit' }).format(new Date(session.startedAt))}</p>
+                  <p className="mt-1 text-muted-foreground">{dateLabel(new Date(session.startedAt), { weekday: 'short', day: 'numeric', month: 'short' })} · {new Intl.DateTimeFormat(getCurrentIntlLocale(), { hour: '2-digit', minute: '2-digit' }).format(new Date(session.startedAt))}</p>
                 </div>
-                <span className="shrink-0 font-mono text-[#47796c]">{session.durationMinutes} daq</span>
+                <span className="shrink-0 font-mono text-[#47796c]">{formatFocusMinutes(session.durationMinutes)}</span>
               </div>
             )) : <p className="rounded-xl bg-muted px-3 py-5 text-[11px] text-muted-foreground">Tanlangan davrda bajarilgan fokus sessiyalari yo‘q.</p>}
           </div>

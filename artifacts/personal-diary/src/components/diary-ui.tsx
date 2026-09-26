@@ -8,6 +8,7 @@ import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } fro
 import { AmbientSoundControl } from '@/components/ambient-sound';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath } from '@/components/section-motivation-content';
+import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText } from '@/lib/i18n';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
   peaceful: { label: 'Tinch', color: '#47796c', soft: '#dcebe4' },
@@ -96,9 +97,9 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
           <div className="flex min-w-0 flex-wrap gap-1.5">
           <MoodBadge mood={entry.mood} small />
             <span className="rounded-full bg-[#eee8d5] px-2 py-1 text-[10px] text-[#756d5e]">{entry.folder}</span>
-          {entry.tags.slice(0, 2).map((tag) => { const taggedMood = tag.startsWith('mood:') ? tag.slice('mood:'.length) as Mood : null; return <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{taggedMood && taggedMood in moodMeta ? `Kayfiyat: ${moodMeta[taggedMood].label}` : `#${tag}`}</span>; })}
+          {entry.tags.slice(0, 2).map((tag) => { const taggedMood = tag.startsWith('mood:') ? tag.slice('mood:'.length) as Mood : null; return <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{taggedMood && taggedMood in moodMeta ? formatMoodAriaLabel(translateUiText(moodMeta[taggedMood].label)) : `#${tag}`}</span>; })}
         </div>
-        <button type="button" onClick={() => onDelete(entry)} className="text-muted-foreground/50 opacity-100 transition-all hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100" aria-label={`${entry.title} yozuvini o‘chirish`} data-testid={`button-delete-${entry.id}`}>
+        <button type="button" onClick={() => onDelete(entry)} className="text-muted-foreground/50 opacity-100 transition-all hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100" aria-label={formatDeleteItemLabel(entry.title, 'entry')} data-testid={`button-delete-${entry.id}`}>
           <span className="font-mono text-[9px] uppercase tracking-[0.12em]">o‘chirish</span>
         </button>
       </div>
@@ -194,6 +195,7 @@ export function DiaryShell({ children }: { children: ReactNode }) {
             <LogoMark />
             <button type="button" onClick={() => setMobileOpen(false)} className="grid size-9 place-items-center rounded-xl text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden" aria-label="Yon menyuni yopish" title="Yon menyuni yopish"><X size={17} /></button>
           </div>
+          <LanguageSelector className="mt-5 px-1" />
           <div className="mt-8">
             <p className="mb-3 px-3 text-[12px] font-semibold text-sidebar-foreground/55">Asosiy bo‘limlar</p>
             <nav className="space-y-1">

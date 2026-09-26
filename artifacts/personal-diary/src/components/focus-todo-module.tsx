@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { ambientSounds, useAmbientSound, type AmbientSound } from '@/components/ambient-sound';
 import { FocusReports } from '@/components/focus-reports';
+import { formatContentDeleteConfirmation, formatTimerDurationAriaLabel, formatTimerDurationFieldLabel, formatTimerPresetsGroupLabel } from '@/lib/i18n';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 type WorkspaceTab = 'timer' | 'tasks' | 'reports' | 'settings';
@@ -610,7 +611,7 @@ function FocusTimer({
                         setNotice('');
                       }
                     }}
-                    aria-label="Taymer davomiyligi daqiqalarda"
+                    aria-label={formatTimerDurationFieldLabel(modeInfo.label)}
                     className="w-[5ch] rounded-lg border border-[#d8c795] bg-[#fff9e9] px-1 py-1 text-center font-mono text-[clamp(2.2rem,7vw,3.6rem)] leading-none tracking-[-.08em] text-[#493c2b] outline-none focus:ring-2 focus:ring-[#a56c34]/30 dark:border-[#665837] dark:bg-[#3b3224] dark:text-[#f1e4c3]"
                     data-testid="input-main-timer-duration"
                   />
@@ -624,7 +625,7 @@ function FocusTimer({
                     setEditingDuration(true);
                   }}
                   title="Davomiylikni o‘zgartirish"
-                  aria-label={`Taymer davomiyligini o‘zgartirish, hozir ${timer.durationMinutes} daqiqa`}
+                  aria-label={formatTimerDurationAriaLabel(timer.durationMinutes)}
                   className="mt-2 rounded-md font-mono text-[clamp(2.8rem,8vw,4rem)] leading-none tracking-[-.08em] text-[#493c2b] underline decoration-dotted underline-offset-8 transition-colors hover:text-[#47796c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9b6543]/50 dark:text-[#f1e4c3]"
                   data-testid="button-edit-main-timer-duration"
                 >
@@ -635,7 +636,7 @@ function FocusTimer({
             </div>
           </div>
         </div>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2" role="group" aria-label="Taymer davomiyligini tez tanlash" data-testid="main-timer-duration-presets">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2" role="group" aria-label={formatTimerPresetsGroupLabel(modeInfo.label)} data-testid="main-timer-duration-presets">
             {[15, 25, 30, 45, 60].map((minutes) => (
               <button
                 key={minutes}
@@ -798,14 +799,14 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
                       value={drafts[key]}
                       onChange={(event) => updateDurationDraft(key, event.target.value)}
                       onBlur={() => finishDurationEdit(key)}
-                      aria-label={`${label} davomiyligi`}
+                      aria-label={formatTimerDurationFieldLabel(label)}
                       aria-invalid={invalid}
                       className="min-w-0 flex-1 rounded-lg border border-[#d8d1bd] bg-card px-3 py-2 font-mono text-[16px] outline-none focus:ring-2 focus:ring-[#47796c]/25 dark:border-[#4b4d43]"
                       data-testid={`input-${key}`}
                     />
                     <span className="shrink-0 text-[10px] text-muted-foreground">daqiqa</span>
                   </span>
-                  <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={`${label} uchun tez tanlovlar`}>
+                  <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label={formatTimerPresetsGroupLabel(label)}>
                     {DURATION_PRESETS[key].map((minutes) => (
                       <button
                         key={minutes}
@@ -902,7 +903,8 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
 
   const toggleTask = (id: string) => setWorkspace((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === id ? { ...task, completed: !task.completed, completedAt: !task.completed ? Date.now() : undefined } : task), timer: current.timer.activeTaskId === id && !current.tasks.find((task) => task.id === id)?.completed ? { ...current.timer, activeTaskId: null } : current.timer }));
   const deleteTask = (id: string) => {
-    if (!window.confirm('Bu vazifani o‘chirishni xohlaysizmi?')) return;
+    const taskTitle = workspace.tasks.find((task) => task.id === id)?.title ?? '';
+    if (!window.confirm(formatContentDeleteConfirmation(taskTitle, 'task'))) return;
     setWorkspace((current) => ({ ...current, tasks: current.tasks.filter((task) => task.id !== id), timer: current.timer.activeTaskId === id ? { ...current.timer, activeTaskId: null } : current.timer }));
   };
   const renameTask = (id: string, title: string) => setWorkspace((current) => ({ ...current, tasks: current.tasks.map((task) => task.id === id ? { ...task, title } : task) }));

@@ -6,6 +6,11 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatUzbekDate } from '@/lib/date-utils';
 import {
+  calendarNavigationLabel,
+  formatCalendarDayLabel,
+  getCurrentIntlLocale,
+} from '@/lib/i18n';
+import {
   ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -38,7 +43,16 @@ function Calendar({
       formatters={{
         formatMonthDropdown: (date) =>
           formatUzbekDate(date, { month: 'short' }, 'Oy'),
+        formatWeekdayName: (date) =>
+          new Intl.DateTimeFormat(getCurrentIntlLocale(), {
+            weekday: 'short',
+          }).format(date),
         ...formatters,
+      }}
+      labels={{
+        labelPrevious: () => calendarNavigationLabel('previous'),
+        labelNext: () => calendarNavigationLabel('next'),
+        labelDayButton: formatCalendarDayLabel,
       }}
       classNames={{
         root: cn('w-fit', defaultClassNames.root),

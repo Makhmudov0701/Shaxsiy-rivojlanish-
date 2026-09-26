@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { I18nProvider } from '@/lib/i18n';
 
 import './index.css';
 
@@ -11,7 +12,9 @@ createRoot(document.getElementById('root')!, {
     console.error(error, errorInfo.componentStack);
   },
 }).render(
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>,
+  <I18nProvider>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </I18nProvider>,
 );

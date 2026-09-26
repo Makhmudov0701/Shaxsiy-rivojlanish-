@@ -17,6 +17,7 @@ import {
   formatActiveClock,
   type ActiveTimeLanguage,
 } from "@/lib/active-time-copy";
+import { useI18n } from "@/lib/i18n";
 
 type LimitState = {
   enabled: boolean;
@@ -39,6 +40,7 @@ function currentTimeZone(): string {
 }
 
 function ActiveTimeGateForUser({ children }: { children: ReactNode }) {
+  const { language } = useI18n();
   const timeZone = useMemo(currentTimeZone, []);
   const queryClient = useQueryClient();
   const stateQuery = useGetActiveTimeLimit({ timeZone });
@@ -52,7 +54,6 @@ function ActiveTimeGateForUser({ children }: { children: ReactNode }) {
   const [pin, setPin] = useState("");
   const [overrideError, setOverrideError] = useState("");
   const state = stateQuery.data as LimitState | undefined;
-  const language = state?.language ?? "uz";
   const copy = activeTimeCopy[language];
   const queryKey = getGetActiveTimeLimitQueryKey({ timeZone });
 
@@ -239,6 +240,7 @@ export function ActiveTimeGate({ children }: { children: ReactNode }) {
 }
 
 export function ActiveTimeSettings() {
+  const { language, setLanguage } = useI18n();
   const timeZone = useMemo(currentTimeZone, []);
   const queryClient = useQueryClient();
   const query = useGetActiveTimeLimit({ timeZone });
@@ -247,12 +249,10 @@ export function ActiveTimeSettings() {
   const [draft, setDraft] = useState<{
     enabled?: boolean;
     limitSeconds?: number;
-    language?: ActiveTimeLanguage;
   }>({});
   const [pin, setPin] = useState("");
   const [message, setMessage] = useState("");
   const state = query.data as LimitState | undefined;
-  const language = draft.language ?? state?.language ?? "uz";
   const copy = activeTimeCopy[language];
   const enabled = draft.enabled ?? state?.enabled ?? false;
   const limitSeconds = draft.limitSeconds ?? state?.limitSeconds ?? 7200;
@@ -398,10 +398,7 @@ export function ActiveTimeSettings() {
             <select
               value={language}
               onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  language: event.target.value as ActiveTimeLanguage,
-                }))
+                setLanguage(event.target.value as ActiveTimeLanguage)
               }
               className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none focus:border-[#b89c5c]"
               data-testid="active-time-language"

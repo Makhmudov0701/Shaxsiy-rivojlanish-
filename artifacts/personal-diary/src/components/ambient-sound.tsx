@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AudioLines, Pause, Play, Volume2 } from 'lucide-react';
+import { formatAmbientControlTitle, formatAmbientLayerToggleLabel } from '@/lib/i18n';
 
 export type AmbientSound =
   | 'rain'
@@ -783,7 +784,7 @@ export function AmbientSoundControl({ collapsed }: { collapsed: boolean }) {
       <div className={`flex items-center gap-2 ${collapsed ? 'md:hidden' : ''}`}>
         <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary"><AudioLines size={15} /></span>
         <div className="min-w-0 flex-1"><p className="font-mono text-[8px] uppercase tracking-[.15em] text-sidebar-foreground/55">Fon tovushlari</p><p className="truncate text-[11px] font-medium">{primary.playing ? primaryLabel : 'Tinchlik rejimi'}</p></div>
-        <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-transform hover:scale-105" aria-label={primary.playing ? 'Asosiy fon tovushini to‘xtatish' : 'Asosiy fon tovushini boshlash'} title={primary.playing ? 'To‘xtatish' : 'Boshlash'} data-testid="button-ambient-toggle">{primary.playing ? <Pause size={14} /> : <Play size={14} />}</button>
+         <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground transition-transform hover:scale-105" aria-label={formatAmbientLayerToggleLabel(primary.playing, primaryLabel, 'primary')} title={formatAmbientControlTitle(primaryLabel, primary.playing)} data-testid="button-ambient-toggle">{primary.playing ? <Pause size={14} /> : <Play size={14} />}</button>
       </div>
       <div className={`mt-3 space-y-3 ${collapsed ? 'md:hidden' : ''}`}>
         <label className="block text-[9px] text-sidebar-foreground/65" htmlFor="ambient-sound-select">Asosiy tovush</label>
@@ -809,7 +810,7 @@ export function AmbientSoundControl({ collapsed }: { collapsed: boolean }) {
           {mix.selected && (
             <>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-7 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary" aria-label={mix.playing ? 'Ikkinchi tovushni to‘xtatish' : 'Ikkinchi tovushni boshlash'} data-testid="button-ambient-mix-toggle">{mix.playing ? <Pause size={12} /> : <Play size={12} />}</button>
+                <button type="button" onClick={() => { void toggle('mix'); }} className="grid size-7 shrink-0 place-items-center rounded-lg bg-sidebar-accent text-sidebar-primary" aria-label={formatAmbientLayerToggleLabel(mix.playing, mixLabel, 'secondary')} title={formatAmbientControlTitle(mixLabel, mix.playing)} data-testid="button-ambient-mix-toggle">{mix.playing ? <Pause size={12} /> : <Play size={12} />}</button>
                 <span className="min-w-0 flex-1 truncate text-[10px]">{mix.playing ? `Ijroda: ${mixLabel}` : mixLabel}</span>
               </div>
               {mix.selected === 'white-noise' && (
@@ -828,8 +829,8 @@ export function AmbientSoundControl({ collapsed }: { collapsed: boolean }) {
         </div>
       </div>
       {collapsed && <div className="hidden items-center justify-center gap-1 md:flex">
-        <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-10 w-full place-items-center rounded-xl text-sidebar-primary transition-colors hover:bg-sidebar-accent md:w-10" aria-label={primary.playing ? `Asosiy tovushni to‘xtatish: ${primaryLabel}` : `Asosiy tovushni boshlash: ${primaryLabel}`} title={`${primaryLabel} · ${primary.playing ? 'to‘xtatish' : 'boshlash'}`} data-testid="button-ambient-toggle-collapsed">{primary.playing ? <Pause size={16} /> : <AudioLines size={17} />}</button>
-        {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-sidebar-accent ${mix.playing ? 'text-sidebar-primary' : 'text-sidebar-foreground/60'}`} aria-label={mix.playing ? `Ikkinchi tovushni to‘xtatish: ${mixLabel}` : `Ikkinchi tovushni boshlash: ${mixLabel}`} title={`${mixLabel} · ${mix.playing ? 'to‘xtatish' : 'boshlash'}`} data-testid="button-ambient-mix-toggle-collapsed">{mix.playing ? <Pause size={14} /> : <AudioLines size={15} />}</button>}
+         <button type="button" onClick={() => { void toggle('primary'); }} className="grid size-10 w-full place-items-center rounded-xl text-sidebar-primary transition-colors hover:bg-sidebar-accent md:w-10" aria-label={formatAmbientLayerToggleLabel(primary.playing, primaryLabel, 'primary')} title={formatAmbientControlTitle(primaryLabel, primary.playing)} data-testid="button-ambient-toggle-collapsed">{primary.playing ? <Pause size={16} /> : <AudioLines size={17} />}</button>
+         {mix.selected && <button type="button" onClick={() => { void toggle('mix'); }} className={`grid size-8 shrink-0 place-items-center rounded-lg transition-colors hover:bg-sidebar-accent ${mix.playing ? 'text-sidebar-primary' : 'text-sidebar-foreground/60'}`} aria-label={formatAmbientLayerToggleLabel(mix.playing, mixLabel, 'secondary')} title={formatAmbientControlTitle(mixLabel, mix.playing)} data-testid="button-ambient-mix-toggle-collapsed">{mix.playing ? <Pause size={14} /> : <AudioLines size={15} />}</button>}
       </div>}
     </section>
   );

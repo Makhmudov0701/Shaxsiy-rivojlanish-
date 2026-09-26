@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { DiaryEntry } from '@workspace/api-client-react';
 import { formatUzbekDate, parseDateValue } from '@/lib/date-utils';
+import { formatDiaryDateEntryCount, formatDeleteConfirmation, formatDeleteItemLabel, formatHabitDateStatus } from '@/lib/i18n';
 
 function localDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -140,8 +141,8 @@ export function OnThisDayAndHeatmap({ entries, loading = false }: { entries: Dia
                   <span
                     key={localDateKey(date)}
                     className={`aspect-square rounded-[3px] ${future ? 'bg-transparent' : colors[intensity]}`}
-                    title={future ? '' : `${formatUzbekDate(date, { day: 'numeric', month: 'long', year: 'numeric' })}: ${count} ta yozuv`}
-                    aria-label={future ? undefined : `${formatUzbekDate(date, { day: 'numeric', month: 'long', year: 'numeric' })}: ${count} ta yozuv`}
+                    title={future ? '' : formatDiaryDateEntryCount(date, count)}
+                    aria-label={future ? undefined : formatDiaryDateEntryCount(date, count)}
                   />
                 );
               })}
@@ -256,7 +257,7 @@ export function HabitTracker({ storageKey }: { storageKey: string }) {
   };
 
   const removeHabit = (habit: Habit) => {
-    if (!window.confirm(`“${habit.name}” odatini o‘chirishni xohlaysizmi?`)) return;
+    if (!window.confirm(formatDeleteConfirmation(habit.name, 'habit'))) return;
     setHabits((current) => current.filter((item) => item.id !== habit.id));
   };
 
@@ -313,7 +314,7 @@ export function HabitTracker({ storageKey }: { storageKey: string }) {
                         <p className="truncate font-serif text-[21px] leading-tight">{habit.name}</p>
                         <span className="mt-1 inline-block rounded-full bg-[#eee8d5] px-2 py-1 text-[9px] uppercase tracking-[0.08em] text-[#756d5e] dark:bg-[#413a2b] dark:text-[#d4c49b]">{habit.category}</span>
                       </div>
-                      <button type="button" onClick={() => removeHabit(habit)} className="rounded-lg p-2 text-muted-foreground/60 transition-colors hover:bg-[#fff0ec] hover:text-destructive" aria-label={`${habit.name} odatini o‘chirish`}><Trash2 size={15} /></button>
+                      <button type="button" onClick={() => removeHabit(habit)} className="rounded-lg p-2 text-muted-foreground/60 transition-colors hover:bg-[#fff0ec] hover:text-destructive" aria-label={formatDeleteItemLabel(habit.name, 'habit')}><Trash2 size={15} /></button>
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] text-muted-foreground">
                       <span><strong className="font-mono text-foreground">{percent}%</strong> 30 kunlik natija</span>
@@ -329,7 +330,7 @@ export function HabitTracker({ storageKey }: { storageKey: string }) {
                           const isComplete = habit.completedDates.includes(key);
                           const isSelected = key === selectedDate;
                           return (
-                            <button key={key} type="button" onClick={() => toggleDate(habit.id, key)} className={`flex min-w-[25px] flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[9px] transition-colors ${isSelected ? 'ring-1 ring-[#b48b3d] ring-offset-1 ring-offset-background' : ''} ${isComplete ? 'bg-[#78a98c] text-[#183e30]' : 'bg-muted text-muted-foreground hover:bg-[#e5dcc4]'}`} aria-label={`${formatUzbekDate(date, { day: 'numeric', month: 'long' })}, ${isComplete ? 'bajarilgan' : 'bajarilmagan'}`}>
+                            <button key={key} type="button" onClick={() => toggleDate(habit.id, key)} className={`flex min-w-[25px] flex-1 flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-[9px] transition-colors ${isSelected ? 'ring-1 ring-[#b48b3d] ring-offset-1 ring-offset-background' : ''} ${isComplete ? 'bg-[#78a98c] text-[#183e30]' : 'bg-muted text-muted-foreground hover:bg-[#e5dcc4]'}`} aria-label={formatHabitDateStatus(date, isComplete)}>
                               <span>{formatUzbekDate(date, { weekday: 'narrow' })}</span>
                               <span className="font-mono text-[10px]">{date.getDate()}</span>
                             </button>
@@ -554,7 +555,7 @@ export function PrivateVault({ storageKey }: { storageKey: string }) {
   };
 
   const deleteNote = (note: EncryptedNote) => {
-    if (!vault || !window.confirm(`“${note.title}” maxfiy yozuvini o‘chirishni xohlaysizmi?`)) return;
+    if (!vault || !window.confirm(formatDeleteConfirmation(note.title, 'privateNote'))) return;
     persistVault({ ...vault, notes: vault.notes.filter((item) => item.id !== note.id) });
     if (editingId === note.id) {
       setEditingId(null);
@@ -649,7 +650,7 @@ export function PrivateVault({ storageKey }: { storageKey: string }) {
                         <span className="block truncate font-serif text-[18px]">{note.title}</span>
                         <span className="mt-0.5 block text-[10px] text-muted-foreground">Yangilangan: {formatUzbekDate(note.updatedAt, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                       </button>
-                      <button type="button" onClick={() => deleteNote(note)} className="rounded-lg p-2 text-muted-foreground/60 hover:bg-[#fff0ec] hover:text-destructive" aria-label={`${note.title} yozuvini o‘chirish`}><Trash2 size={15} /></button>
+                      <button type="button" onClick={() => deleteNote(note)} className="rounded-lg p-2 text-muted-foreground/60 hover:bg-[#fff0ec] hover:text-destructive" aria-label={formatDeleteItemLabel(note.title, 'privateNote')}><Trash2 size={15} /></button>
                     </article>
                   ))}
                 </div>

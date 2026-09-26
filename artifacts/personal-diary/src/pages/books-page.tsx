@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useUser } from '@clerk/react';
+import { formatContentDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
 import { useForm } from 'react-hook-form';
 import { BookOpen, Check, Pencil, Plus, Quote, Search, Star, Trash2, X } from 'lucide-react';
 import { Form } from '@/components/ui/form';
@@ -29,10 +30,10 @@ function BookTracker({ storageKey }: { storageKey: string }) {
     window.setTimeout(() => setNotice(''), 2400);
   };
   const visibleBooks = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('uz-UZ');
+    const query = search.trim().toLocaleLowerCase(getCurrentIntlLocale());
     return [...store.value]
       .filter((book) => (filter === 'all' || book.status === filter)
-        && (!query || `${book.title} ${book.author} ${book.takeaways} ${book.quotes.map((item) => item.text).join(' ')}`.toLocaleLowerCase('uz-UZ').includes(query)))
+        && (!query || `${book.title} ${book.author} ${book.takeaways} ${book.quotes.map((item) => item.text).join(' ')}`.toLocaleLowerCase(getCurrentIntlLocale()).includes(query)))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   }, [filter, search, store.value]);
 
@@ -71,7 +72,7 @@ function BookTracker({ storageKey }: { storageKey: string }) {
   };
 
   const deleteBook = (book: TrackedBook) => {
-    if (!window.confirm(`“${book.title}” kitobini javondan o‘chirishni xohlaysizmi?`)) return;
+    if (!window.confirm(formatContentDeleteConfirmation(book.title, 'book'))) return;
     if (store.save(store.value.filter((item) => item.id !== book.id))) showNotice('Kitob o‘chirildi.');
     if (editingId === book.id) {
       setEditingId(null);
