@@ -8,3 +8,4 @@
 - [Remote ambience audio](mixkit-audio-streaming.md) — stream cross-origin tracks with native audio and verify each source’s license and attribution requirements.
 - [Daily motivation and guide localization](diary-quote-localization.md) — keep quote and guide pools date-seeded, section-aware, and explicit in all supported languages.
 - [JSX localization transform](diary-localization-transform.md) — skip wrapping expressions that contain nested JSX; localize descendants to avoid overlapping AST edits.
+- [Pomodoro audio unlock](pomodoro-audio-unlock.md) — resume Web Audio from timer start so delayed completion alerts remain permitted.

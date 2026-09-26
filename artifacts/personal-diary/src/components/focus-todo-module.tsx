@@ -35,6 +35,17 @@ import { ambientSounds, useAmbientSound, type AmbientSound } from '@/components/
 import { getAmbientAudioCopy, getAmbientSoundName } from '@/lib/ambient-audio-copy';
 import { FocusReports } from '@/components/focus-reports';
 import { formatContentDeleteConfirmation, formatTimerDurationAriaLabel, formatTimerDurationFieldLabel, formatTimerPresetsGroupLabel, useI18n } from '@/lib/i18n';
+import {
+  DEFAULT_POMODORO_SOUND_PRESET,
+  DEFAULT_POMODORO_SOUND_VOLUME,
+  disposePomodoroNotificationAudio,
+  isPomodoroSoundPreset,
+  playPomodoroNotification,
+  POMODORO_SOUND_PRESETS,
+  preparePomodoroNotificationAudio,
+  safePomodoroSoundVolume,
+  type PomodoroSoundPreset,
+} from '@/lib/pomodoro-notification-sound';
 
 type TimerMode = 'focus' | 'shortBreak' | 'longBreak';
 type WorkspaceTab = 'timer' | 'tasks' | 'reports' | 'settings';
@@ -44,6 +55,8 @@ type FocusSettings = {
   shortBreakMinutes: number;
   longBreakMinutes: number;
   notificationSound: boolean;
+  notificationPreset: PomodoroSoundPreset;
+  notificationVolume: number;
   strictMode: boolean;
 };
 type DurationSettingKey = 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes';
@@ -90,6 +103,8 @@ const DEFAULT_SETTINGS: FocusSettings = {
   shortBreakMinutes: 5,
   longBreakMinutes: 15,
   notificationSound: true,
+  notificationPreset: DEFAULT_POMODORO_SOUND_PRESET,
+  notificationVolume: DEFAULT_POMODORO_SOUND_VOLUME,
   strictMode: false,
 };
 const MAX_TIMER_MINUTES = 180;
@@ -176,6 +191,10 @@ function safeWorkspace(value: unknown): WorkspaceData {
     shortBreakMinutes: safeDuration(rawSettings.shortBreakMinutes, DEFAULT_SETTINGS.shortBreakMinutes),
     longBreakMinutes: safeDuration(rawSettings.longBreakMinutes, DEFAULT_SETTINGS.longBreakMinutes),
     notificationSound: rawSettings.notificationSound !== false,
+    notificationPreset: isPomodoroSoundPreset(rawSettings.notificationPreset)
+      ? rawSettings.notificationPreset
+      : DEFAULT_SETTINGS.notificationPreset,
+    notificationVolume: safePomodoroSoundVolume(rawSettings.notificationVolume),
     strictMode: Boolean(rawSettings.strictMode),
   };
   const tasks = Array.isArray(value.tasks)
@@ -228,29 +247,6 @@ function safeWorkspace(value: unknown): WorkspaceData {
 
 function progressForTask(task: FocusTask) {
   return Math.min(100, Math.round((task.completedPomodoros / Math.max(1, task.estimate)) * 100));
-}
-
-function playNotification() {
-  try {
-    const Constructor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Constructor) return;
-    const context = new Constructor();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(660, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(880, context.currentTime + 0.16);
-    gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.42);
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.45);
-    window.setTimeout(() => void context.close(), 600);
-  } catch {
-    // Brauzer ovozni bloklashi mumkin; taymer baribir davom etadi.
-  }
 }
 
 const SOUND_ICONS: Record<AmbientSound, ReactNode> = {
@@ -501,7 +497,9 @@ function FocusTimer({
       const nextCycle = completedMode === 'focus' ? current.cycle + 1 : current.cycle;
       const nextMode: TimerMode = completedMode === 'focus' ? (nextCycle % 4 === 0 ? 'longBreak' : 'shortBreak') : 'focus';
       if (completedMode === 'focus') sessionRef.current('focus', current.activeTaskId, current.durationMinutes);
-      if (settings.notificationSound) playNotification();
+      if (settings.notificationSound) {
+        playPomodoroNotification(settings.notificationPreset, settings.notificationVolume);
+      }
       const nextDurationMinutes = secondsForMode(nextMode, settings) / 60;
       changeRef.current({ mode: nextMode, durationMinutes: nextDurationMinutes, remaining: nextDurationMinutes * 60, running: false, endAt: null, activeTaskId: current.activeTaskId, cycle: nextCycle });
       setNotice(completedMode === 'focus' ? 'Diqqat davri tugadi. Endi tanaffus vaqti.' : 'Tanaffus tugadi. Yana bir davrga tayyormisiz?');
@@ -550,6 +548,7 @@ function FocusTimer({
       return;
     }
     if (timer.remaining <= 0) return;
+    preparePomodoroNotificationAudio();
     const startsFocus = timer.mode === 'focus';
     focusPlaybackRef.current = startsFocus;
     if (startsFocus) {
@@ -757,6 +756,7 @@ function TaskRow({
 }
 
 function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { settings: FocusSettings; timer: TimerSnapshot; onSettingsChange: (settings: FocusSettings) => void; onTimerChange: (timer: TimerSnapshot) => void }) {
+  const [audioUnavailable, setAudioUnavailable] = useState(false);
   const [drafts, setDrafts] = useState<Record<DurationSettingKey, string>>(() => ({
     focusMinutes: String(settings.focusMinutes),
     shortBreakMinutes: String(settings.shortBreakMinutes),
@@ -806,6 +806,10 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
     const minutes = parseDurationInput(drafts[key]) ?? settings[key];
     setDrafts((current) => ({ ...current, [key]: String(minutes) }));
     applyDuration(key, minutes);
+  };
+
+  const testNotificationSound = () => {
+    setAudioUnavailable(!playPomodoroNotification(settings.notificationPreset, settings.notificationVolume));
   };
 
   const durationFields: Array<{ key: DurationSettingKey; label: string }> = [
@@ -869,7 +873,50 @@ function SettingsPanel({ settings, timer, onSettingsChange, onTimerChange }: { s
           <p className="mt-4 text-[10px] text-muted-foreground">1–180 daqiqa. Qiymatlar darhol saqlanadi; tanlangan davr bo‘lsa, taymer ham yangilanadi.</p>
         </div>
         <div className="min-w-0 space-y-4">
-          <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5"><div className="flex min-w-0 items-start justify-between gap-4"><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><Bell size={16} className="shrink-0 text-[#9b6543]" /><p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">Bildirishnoma ovozi</p></div><p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Sessiya tugaganda brauzer ichidagi qisqa ovoz yangraydi.</p></div><button type="button" role="switch" aria-checked={settings.notificationSound} onClick={() => onSettingsChange({ ...settings, notificationSound: !settings.notificationSound })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.notificationSound ? 'bg-[#47796c]' : 'bg-muted'}`} data-testid="switch-notification-sound"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.notificationSound ? 'left-6' : 'left-1'}`} /></button></div><button type="button" onClick={playNotification} disabled={!settings.notificationSound} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-45" data-testid="button-test-notification"><Volume2 size={13} /> Ovozini sinash</button></div>
+          <div className="min-w-0 rounded-2xl border border-border/70 bg-card p-5">
+            <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Bell size={16} className="shrink-0 text-[#9b6543]" />
+                  <p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">Bildirishnoma ovozi</p>
+                </div>
+                <p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Sessiya tugaganda tanlangan ovoz va balandlikda signal yangraydi.</p>
+              </div>
+              <div className="flex max-w-full shrink-0 items-center gap-2">
+                <select
+                  value={settings.notificationPreset}
+                  onChange={(event) => onSettingsChange({ ...settings, notificationPreset: event.target.value as PomodoroSoundPreset })}
+                  aria-label="Bildirishnoma ovozi uslubi"
+                  className="w-[190px] max-w-[55vw] min-w-0 rounded-lg border border-border bg-card px-2 py-1.5 text-[10px] font-medium outline-none focus:ring-2 focus:ring-[#47796c]/25"
+                  data-testid="select-notification-preset"
+                >
+                  {POMODORO_SOUND_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  ))}
+                </select>
+                <button type="button" role="switch" aria-checked={settings.notificationSound} aria-label="Bildirishnoma ovozini yoqish" onClick={() => onSettingsChange({ ...settings, notificationSound: !settings.notificationSound })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.notificationSound ? 'bg-[#47796c]' : 'bg-muted'}`} data-testid="switch-notification-sound"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.notificationSound ? 'left-6' : 'left-1'}`} /></button>
+              </div>
+            </div>
+            <div className="mt-4 flex min-w-0 items-center gap-3">
+              <label htmlFor="notification-volume" className="shrink-0 text-[10px] font-medium text-muted-foreground">Ovoz balandligi</label>
+              <input
+                id="notification-volume"
+                type="range"
+                min={0}
+                max={100}
+                step={1}
+                value={settings.notificationVolume}
+                onChange={(event) => onSettingsChange({ ...settings, notificationVolume: safePomodoroSoundVolume(event.target.value) })}
+                aria-label="Ovoz balandligi"
+                aria-valuetext={`${settings.notificationVolume}%`}
+                className="h-2 min-w-0 flex-1 cursor-pointer accent-[#47796c]"
+                data-testid="slider-notification-volume"
+              />
+              <output htmlFor="notification-volume" className="w-9 shrink-0 text-right font-mono text-[10px] text-muted-foreground" data-testid="value-notification-volume">{settings.notificationVolume}%</output>
+            </div>
+            <button type="button" onClick={testNotificationSound} className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-[10px] font-semibold text-muted-foreground hover:text-foreground" data-testid="button-test-notification"><Volume2 size={13} /> Ovozini sinash</button>
+            {audioUnavailable && <p className="mt-2 text-[10px] text-destructive" role="status" data-testid="status-audio-unavailable">Bu brauzerda ovoz ijrosi qo‘llab-quvvatlanmaydi.</p>}
+          </div>
           <div className={`min-w-0 rounded-2xl border p-5 ${settings.strictMode ? 'border-[#c8aa71] bg-[#fff8e7]' : 'border-border/70 bg-card'}`}><div className="flex min-w-0 items-start justify-between gap-4"><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><ShieldCheck size={16} className="shrink-0 text-muted-foreground" /><p className="min-w-0 break-words text-[10px] font-semibold uppercase tracking-[.14em] text-muted-foreground [overflow-wrap:anywhere]">Qat’iy rejim</p></div><p className="mt-3 break-words text-[11px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">Faol bo‘lsa, diqqat davri tugamaguncha uni o‘tkazib yuborish tugmasi ishlamaydi.</p></div><button type="button" role="switch" aria-checked={settings.strictMode} onClick={() => onSettingsChange({ ...settings, strictMode: !settings.strictMode })} className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${settings.strictMode ? 'bg-[#9b6543]' : 'bg-muted'}`} data-testid="switch-strict-mode"><span className={`absolute top-1 size-4 rounded-full bg-card transition-transform ${settings.strictMode ? 'left-6' : 'left-1'}`} /></button></div>{settings.strictMode && <p className="mt-4 break-words rounded-xl bg-[#f3e3bd] px-3 py-2 text-[10px] font-medium text-[#745a2f] [overflow-wrap:anywhere]" role="status" data-testid="status-strict-mode">Qat’iy rejim yoqilgan: diqqat paytida o‘tkazish yopiq, qayta boshlash va pauza esa mavjud.</p>}</div>
         </div>
       </div>
@@ -908,6 +955,8 @@ export function FocusTodoWorkspace({ storageKey }: { storageKey: string }) {
       setStorageError('Brauzer xotirasi to‘ldi. Eski vazifalarni o‘chirishni sinab ko‘ring.');
     }
   }, [workspace, storageKey, ready]);
+
+  useEffect(() => () => disposePomodoroNotificationAudio(), []);
 
   const tasks = workspace.tasks;
   const projects = useMemo(() => ['Hammasi', ...Array.from(new Set(tasks.map((task) => task.project).filter(Boolean)))], [tasks]);
