@@ -547,7 +547,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
           const nextLanguage = event.target.value;
           if (isAppLanguage(nextLanguage)) setLanguage(nextLanguage);
         }}
-        className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
         data-testid="select-app-language"
       >
         {appLanguages.map((item) => (

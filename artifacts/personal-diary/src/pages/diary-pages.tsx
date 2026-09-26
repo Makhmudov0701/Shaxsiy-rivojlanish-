@@ -4,7 +4,7 @@ import { Redirect, Link, useLocation, useParams } from 'wouter';
 import { useAuth, useSignIn, useSignUp, useUser } from '@clerk/react';
 import { MIN_PASSWORD_LENGTH, PASSWORD_TOO_SHORT_MESSAGE, passwordSchema } from '@workspace/api-zod';
 import { ArrowLeft, ArrowUpRight, Bold, CalendarDays, Check, ChevronDown, CircleAlert, Download, Eye, FileJson, FileText, FolderOpen, Heart, ImagePlus, Italic, List, LoaderCircle, LockKeyhole, Mic, MicOff, Pencil, Plus, Quote, Search, ShieldCheck, Star, Upload, X } from 'lucide-react';
-import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale } from '@/lib/i18n';
+import { formatDiaryBackupRestoreMessage, formatDiaryOverwriteConfirmation, formatDeleteConfirmation, getCurrentIntlLocale, LanguageSelector } from '@/lib/i18n';
 import {
   DiaryEntryInput,
   DiaryEntryUpdate,
@@ -203,9 +203,10 @@ export function HomePage() {
   if (!isLoaded) return <div className="min-h-[100dvh] bg-background" />;
   if (isSignedIn) return <Redirect to="/user-portal" />;
   return <div className="paper-grain min-h-[100dvh] overflow-hidden bg-background text-foreground">
-    <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-12">
-      <LogoMark />
-      <div className="flex items-center gap-2"><ThemeToggle /><Link href="/sign-in" className="hidden rounded-xl px-4 py-2.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block" data-testid="link-sign-in">Kirish</Link><Link href="/sign-up" className="rounded-xl bg-primary px-4 py-2.5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5" data-testid="link-sign-up">Boshlash <ArrowUpRight className="ml-1 inline-block" size={14} /></Link></div>
+    <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 py-4 sm:px-8 sm:py-6 lg:px-12">
+      <div className="sm:hidden"><LogoMark compact /></div>
+      <div className="hidden sm:block"><LogoMark /></div>
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2"><LanguageSelector className="w-[4.5rem] shrink-0" /><ThemeToggle /><Link href="/sign-in" className="hidden rounded-xl px-4 py-2.5 text-[12px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:block" data-testid="link-sign-in">Kirish</Link><Link href="/sign-up" className="rounded-xl bg-primary px-3 py-2.5 text-[12px] font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 sm:px-4" data-testid="link-sign-up">Boshlash <ArrowUpRight className="ml-1 inline-block" size={14} /></Link></div>
     </nav>
     <section className="relative mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 pt-14 sm:px-8 md:grid-cols-[1.05fr_.95fr] md:pb-32 md:pt-24 lg:px-12">
       <div className="relative z-10 diary-rise"><p className="font-mono text-[10px] uppercase tracking-[0.23em] text-[#9a6b23]">Har kunlik shaxsiy odat</p><h1 className="mt-5 max-w-2xl font-serif text-[clamp(4rem,8vw,7.7rem)] leading-[.86] tracking-[-0.055em] text-primary">Kichik<br /><em className="text-[#a66a13]">lahzalarni saqlang.</em></h1><p className="mt-8 max-w-md text-[16px] leading-[1.7] text-muted-foreground">Kun haqida xotirjam yozish uchun joy. Samimiy yozing, kerak bo‘lsa keyin toping va eslashga arzigulik lahzalarni asrang.</p><div className="mt-9 flex flex-wrap items-center gap-4"><Link href="/sign-up" className="group inline-flex items-center gap-3 rounded-2xl bg-primary px-5 py-3.5 text-[13px] font-semibold text-primary-foreground shadow-md transition-all hover:-translate-y-1 hover:shadow-lg" data-testid="button-hero-start">Kundalikni ochish <span className="grid size-6 place-items-center rounded-full bg-[#d9a441] text-primary"><ArrowUpRight size={14} /></span></Link><span className="font-mono text-[9px] uppercase tracking-[0.14em] text-muted-foreground">Faqat siz uchun</span></div></div>
@@ -951,17 +952,31 @@ function AuthCard({ mode }: { mode: 'sign-in' | 'sign-up' }) {
   };
 
   return <div className="w-full max-w-[440px] rounded-[24px] border border-[#d8ccb0] bg-[#fffaf0] p-7 shadow-xl sm:p-9">
-    <div className="mb-8 flex items-start justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy kundalik</p><h1 className="mt-3 font-serif text-[38px] leading-none text-[#30243f]">{verificationSent ? 'Emailni tasdiqlang' : isSignUp ? 'Kundalik oching' : 'Xush kelibsiz'}</h1><p className="mt-3 text-[13px] leading-relaxed text-[#756d7e]">{verificationSent ? 'Emailingizga yuborilgan kodni kiriting.' : isSignUp ? 'Faqat sizga tegishli sokin makon.' : 'Yozuvlaringizga qaytish vaqti keldi.'}</p></div><ThemeToggle /></div>
+    <div className="mb-8"><p className="font-mono text-[9px] uppercase tracking-[.2em] text-[#9a6b23]">Shaxsiy kundalik</p><h1 className="mt-3 font-serif text-[38px] leading-none text-[#30243f]">{verificationSent ? 'Emailni tasdiqlang' : isSignUp ? 'Kundalik oching' : 'Xush kelibsiz'}</h1><p className="mt-3 text-[13px] leading-relaxed text-[#756d7e]">{verificationSent ? 'Emailingizga yuborilgan kodni kiriting.' : isSignUp ? 'Faqat sizga tegishli sokin makon.' : 'Yozuvlaringizga qaytish vaqti keldi.'}</p></div>
     {verificationSent ? <form onSubmit={verify} className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Tasdiqlash kodi<input value={code} onChange={(event) => setCode(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="6 xonali kod" inputMode="numeric" autoComplete="one-time-code" /></label><button type="submit" disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />} Tasdiqlash</button></form> : <form onSubmit={submit} noValidate className="space-y-5"><label className="block text-[12px] font-medium text-[#30243f]">Email manzili<input value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="sizning@email.uz" type="email" autoComplete="email" /></label><label className="block text-[12px] font-medium text-[#30243f]">Parol<input value={password} onChange={(event) => setPassword(event.target.value)} className="mt-2 h-11 w-full rounded-xl border border-[#d8ccb0] bg-[#f7f0df] px-3 text-[#30243f] outline-none focus:border-[#b89c5c]" placeholder="Parolingiz" type="password" minLength={isSignUp ? MIN_PASSWORD_LENGTH : undefined} autoComplete={isSignUp ? 'new-password' : 'current-password'} /></label><button type="submit" disabled={busy || !loaded} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#30243f] text-[13px] font-semibold text-[#fffaf0] transition-colors hover:bg-[#4c3a5d] disabled:opacity-60">{busy && <LoaderCircle className="animate-spin" size={15} />}{isSignUp ? 'Ro‘yxatdan o‘tish' : 'Kirish'}</button></form>}
     {error && <p className="mt-5 rounded-xl border border-[#ecc6bd] bg-[#fff0ec] px-3 py-2.5 text-[12px] leading-relaxed text-[#8f3f2d]" role="alert">{error}</p>}
     <p className="mt-7 border-t border-[#e4dac3] pt-5 text-center text-[12px] text-[#756d7e]">{isSignUp ? 'Hisobingiz bormi?' : 'Hisobingiz yo‘qmi?'} <Link href={isSignUp ? '/sign-in' : '/sign-up'} className="font-semibold text-[#9a6b23]">{isSignUp ? 'Kirish' : 'Ro‘yxatdan o‘ting'}</Link></p>
   </div>;
 }
 
+function AuthPage({ mode }: { mode: 'sign-in' | 'sign-up' }) {
+  return <div className="relative flex min-h-[100dvh] items-center justify-center bg-background px-4 py-20 sm:py-10">
+    <div className="absolute left-3 top-3 sm:left-10 sm:top-8">
+      <div className="sm:hidden"><LogoMark compact /></div>
+      <div className="hidden sm:block"><LogoMark /></div>
+    </div>
+    <div className="absolute right-3 top-3 flex items-center gap-1.5 sm:right-10 sm:top-8 sm:gap-2">
+      <LanguageSelector className="w-[4.5rem] shrink-0" />
+      <ThemeToggle />
+    </div>
+    <AuthCard mode={mode} />
+  </div>;
+}
+
 export function SignInPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10"><div className="absolute left-6 top-6 sm:left-10 sm:top-8"><LogoMark /></div><AuthCard mode="sign-in" /></div>;
+  return <AuthPage mode="sign-in" />;
 }
 
 export function SignUpPage() {
-  return <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4 py-10"><div className="absolute left-6 top-6 sm:left-10 sm:top-8"><LogoMark /></div><AuthCard mode="sign-up" /></div>;
+  return <AuthPage mode="sign-up" />;
 }
