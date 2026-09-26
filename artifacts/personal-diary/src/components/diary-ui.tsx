@@ -7,7 +7,7 @@ import { formatUzbekDate } from '@/lib/date-utils';
 import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } from '@/components/rich-text';
 import { AmbientSoundControl } from '@/components/ambient-sound';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
-import { sectionIdForPath } from '@/components/section-motivation-content';
+import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
 import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, translateUiText } from '@/lib/i18n';
 
 export const moodMeta: Record<Mood, { label: string; color: string; soft: string }> = {
@@ -53,7 +53,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="grid size-9 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+      className="grid size-11 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
       aria-label={dark ? 'Yorug‘ rejimga o‘tish' : 'Qorong‘i rejimga o‘tish'}
       title={dark ? 'Yorug‘ rejim' : 'Qorong‘i rejim'}
       data-testid="button-theme-toggle"
@@ -160,6 +160,9 @@ export function DiaryShell({ children }: { children: ReactNode }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = location.split('?')[0];
   const sectionId = sectionIdForPath(pathname);
+  const pageTitle = sectionId
+    ? translateUiText(sectionMotivationContent[sectionId].title)
+    : 'Shaxsiy kundalik';
   const query = location.split('?')[1]?.split('#')[0] ?? '';
   const portalView = portalViewFromLocation(location);
   const secondarySelected = pathname === '/settings' || pathname === '/ideas' || pathname === '/habits' || pathname === '/vault' || (pathname === '/user-portal' && portalView !== 'entries');
@@ -195,7 +198,6 @@ export function DiaryShell({ children }: { children: ReactNode }) {
             <LogoMark />
             <button type="button" onClick={() => setMobileOpen(false)} className="grid size-9 place-items-center rounded-xl text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground md:hidden" aria-label="Yon menyuni yopish" title="Yon menyuni yopish"><X size={17} /></button>
           </div>
-          <LanguageSelector className="mt-5 px-1" />
           <div className="mt-8">
             <p className="mb-3 px-3 text-[12px] font-semibold text-sidebar-foreground/55">Asosiy bo‘limlar</p>
             <nav className="space-y-1">
@@ -227,20 +229,24 @@ export function DiaryShell({ children }: { children: ReactNode }) {
           <div className="flex items-center justify-between gap-3 border-t border-sidebar-border pt-4">
             <div className="min-w-0"><p className="truncate text-[13px] font-semibold">{firstName}</p><p className="mt-0.5 text-[11px] text-sidebar-foreground/55">Shaxsiy kundalik</p></div>
             <div className="flex shrink-0 items-center gap-2">
-              <ThemeToggle />
               <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="grid size-11 place-items-center rounded-xl text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label="Hisobdan chiqish" title="Hisobdan chiqish" data-testid="button-sign-out"><LogOut size={19} /></button>
             </div>
           </div>
         </div>
       </aside>
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border/70 bg-background/90 px-4 py-2.5 backdrop-blur md:hidden">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-2 border-b border-border/70 bg-background/90 px-3 backdrop-blur sm:px-4 md:pl-[280px] md:pr-6">
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setMobileOpen(true)} className="grid size-11 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground" aria-label="Menyuni ochish" title="Menyuni ochish" data-testid="button-mobile-menu"><Menu size={20} /></button>
-          <LogoMark compact />
+          <div className="md:hidden"><LogoMark compact /></div>
+          <span className="hidden min-w-0 truncate font-serif text-[17px] text-foreground md:block" data-testid="text-header-title">{pageTitle}</span>
         </div>
-        <Link href="/entry/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3.5 text-[13px] font-semibold text-primary-foreground shadow-sm" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} />Yozish</Link>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <LanguageSelector className="w-[4.5rem] shrink-0" />
+          <ThemeToggle />
+          <Link href="/entry/new" className="inline-flex size-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm sm:w-auto sm:px-3.5" aria-label="Yangi xotira yozish" data-testid="link-mobile-new"><Plus size={18} /><span className="hidden sm:inline">Yozish</span></Link>
+        </div>
       </header>
-      <main className="box-border min-h-[100dvh] w-full min-w-0 max-w-full md:pl-[264px]">
+      <main className="box-border min-h-[calc(100dvh-4rem)] w-full min-w-0 max-w-full md:pl-[264px]">
         {sectionId && <SectionMotivationCard key={sectionId} sectionId={sectionId} userId={user?.id ?? 'anonymous'} />}
         {children}
       </main>

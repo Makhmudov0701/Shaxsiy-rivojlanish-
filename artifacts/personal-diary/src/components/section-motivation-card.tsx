@@ -11,7 +11,8 @@ import {
 import {
   dailyMotivationIndex,
   localDateKey,
-  randomMotivationIndex,
+  nextMotivationIndex,
+  randomMotivationStride,
 } from "@/components/section-motivation-rotation";
 import { useI18n } from "@/lib/i18n";
 
@@ -44,6 +45,7 @@ interface ManualQuoteSelection {
   userId: string;
   sectionId: SectionId;
   index: number;
+  stride: number;
 }
 
 export function SectionMotivationCard({ sectionId, userId }: { sectionId: SectionId; userId: string }) {
@@ -104,18 +106,21 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
 
   const showNextQuote = () => {
     const currentDate = localDateKey();
-    const dateIndex = dailyMotivationIndex(category, userId, currentDate);
-    const previousIndex = manualSelection?.date === currentDate
+    const currentManualSelection = manualSelection?.date === currentDate
       && manualSelection.userId === userId
       && manualSelection.sectionId === sectionId
-      ? manualSelection.index
-      : dateIndex;
+      ? manualSelection
+      : null;
+    const previousIndex = currentManualSelection?.index
+      ?? dailyMotivationIndex(category, userId, currentDate);
+    const stride = currentManualSelection?.stride ?? randomMotivationStride(poolSize);
     setToday(currentDate);
     setManualSelection({
       date: currentDate,
       userId,
       sectionId,
-      index: randomMotivationIndex(previousIndex, poolSize),
+      index: nextMotivationIndex(previousIndex, stride, poolSize),
+      stride,
     });
   };
 
