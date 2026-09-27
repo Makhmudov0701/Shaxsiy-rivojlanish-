@@ -592,7 +592,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
   }, [user?.id]);
 
   return (
-    <label className={`flex min-w-0 items-center gap-2 ${className}`}>
+    <label className={`flex min-w-0 shrink-0 items-center gap-2 ${className}`}>
       <span className="sr-only">{label}</span>
       <select
         aria-label={label}
@@ -605,7 +605,7 @@ export function LanguageSelector({ className = "" }: { className?: string }) {
             if (user?.id) updateProfilePreference(user.id, { language: nextLanguage });
           }
         }}
-        className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-11 w-full min-w-0 shrink-0 rounded-xl border border-border bg-background px-2 text-xs font-semibold text-foreground shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring sm:px-3"
         data-testid="select-app-language"
       >
         {appLanguages.map((item) => (

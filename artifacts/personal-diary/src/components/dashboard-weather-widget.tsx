@@ -598,15 +598,15 @@ export function DashboardWeatherWidget() {
         ref={badgeRef}
         type="button"
         onClick={() => setIsPopoverOpen((open) => !open)}
-        className="flex h-10 max-w-[140px] items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white max-[400px]:max-w-[120px] max-[360px]:max-w-[108px] max-[340px]:max-w-[100px] sm:max-w-[150px] sm:gap-1.5 sm:px-2.5"
+        className="flex h-10 max-w-[68px] shrink-0 items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white min-[641px]:max-w-[150px] min-[641px]:gap-1.5 min-[641px]:px-2.5"
         aria-label={`${text.title}: ${currentCity}, ${temperatureText}, ${conditionText}`}
         aria-expanded={isPopoverOpen}
         aria-controls={isPopoverOpen ? 'dashboard-weather-popover' : undefined}
         title={`${currentCity} · ${temperatureText} · ${conditionText}`}
         data-testid="button-dashboard-weather"
       >
-        <MapPin className="size-3 shrink-0 text-[#a87925] max-[340px]:hidden" aria-hidden="true" />
-        <span className="min-w-0 max-w-12 flex-1 truncate text-[10px] font-medium max-[340px]:max-w-6 sm:max-w-16 sm:text-[11px]" data-testid="text-weather-city">
+        <MapPin className="hidden size-3 shrink-0 text-[#a87925] min-[641px]:block" aria-hidden="true" />
+        <span className="hidden min-w-0 max-w-16 flex-1 truncate text-[10px] font-medium min-[641px]:flex min-[641px]:text-[11px]" data-testid="text-weather-city">
           {currentCity}
         </span>
         <span className="shrink-0 text-[12px] font-semibold leading-none" data-testid="text-weather-temperature">{temperatureText}</span>

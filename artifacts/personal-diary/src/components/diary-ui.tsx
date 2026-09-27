@@ -104,7 +104,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggle}
-      className="grid size-11 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+      className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground max-[400px]:size-10"
       aria-label={dark ? labels.light : labels.dark}
       title={dark ? labels.lightTitle : labels.darkTitle}
       data-testid="button-theme-toggle"
@@ -281,15 +281,15 @@ export function DiaryShell({ children }: { children: ReactNode }) {
           <button type="button" onClick={() => signOut({ redirectUrl: appBasePath })} className="grid size-11 shrink-0 place-items-center rounded-xl text-sidebar-foreground/65 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground" aria-label={translateUiText('Hisobdan chiqish', language)} title={translateUiText('Hisobdan chiqish', language)} data-testid="button-sign-out"><LogOut size={19} /></button>
         </div>
       </aside>
-      <header className="sticky top-0 z-50 flex h-16 items-center justify-between gap-1 border-b border-border/70 bg-background/90 px-2 backdrop-blur max-[400px]:gap-0 max-[400px]:px-1 max-[340px]:px-0 sm:gap-2 sm:px-4 md:pl-[280px] md:pr-6">
-        <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setMobileOpen(true)} className="grid size-11 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground max-[400px]:size-10" aria-label={translateUiText('Menyuni ochish', language)} title={translateUiText('Menyuni ochish', language)} data-testid="button-mobile-menu"><Menu size={20} /></button>
-          <div className="md:hidden"><LogoMark compact /></div>
+      <header className="sticky top-0 z-50 flex h-16 min-w-0 items-center justify-between gap-1.5 border-b border-border/70 bg-background/90 px-1.5 backdrop-blur max-[360px]:px-1 sm:gap-2 sm:px-4 md:pl-[280px] md:pr-6">
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button type="button" onClick={() => setMobileOpen(true)} className="grid size-11 shrink-0 place-items-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground max-[400px]:size-10" aria-label={translateUiText('Menyuni ochish', language)} title={translateUiText('Menyuni ochish', language)} data-testid="button-mobile-menu"><Menu size={20} /></button>
+          <div className="shrink-0 md:hidden"><LogoMark compact /></div>
           {pathname !== '/user-portal' && <span className="hidden min-w-0 truncate font-serif text-[17px] text-foreground md:block" data-testid="text-header-title">{pageTitle}</span>}
         </div>
-        <div className="flex shrink-0 items-center gap-1 max-[400px]:gap-px sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           <DashboardWeatherWidget />
-          <LanguageSelector className="w-[4.5rem] shrink-0 max-[400px]:w-14" />
+          <LanguageSelector className="w-16 shrink-0 max-[360px]:w-14" />
           <ThemeToggle />
           <Link href="/entry/new" className="inline-flex size-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary text-[13px] font-semibold text-primary-foreground shadow-sm max-[400px]:size-10 sm:w-auto sm:px-3.5" aria-label={translateUiText('Yangi xotira yozish', language)} data-testid="link-mobile-new"><Plus size={18} /><span className="hidden sm:inline">{translateUiText('Yozish', language)}</span></Link>
         </div>
