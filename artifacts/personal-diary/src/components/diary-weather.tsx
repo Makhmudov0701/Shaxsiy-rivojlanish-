@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { WeatherCondition } from '@workspace/api-client-react';
+import { weatherConditionFromCode } from '@/lib/weather-utils';
+
+export { weatherConditionFromCode } from '@/lib/weather-utils';
 
 type WeatherValue = {
   weatherCondition: WeatherCondition | null;
@@ -12,14 +15,6 @@ const weatherOptions: Array<{ value: WeatherCondition; label: string; emoji: str
   { value: 'rainy', label: 'Yomg‘irli', emoji: '🌧️' },
   { value: 'snowy', label: 'Qorli', emoji: '❄️' },
 ];
-
-export function weatherConditionFromCode(code: number): WeatherCondition | null {
-  if (code === 0) return 'sunny';
-  if ([1, 2, 3, 45, 48].includes(code)) return 'cloudy';
-  if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99].includes(code)) return 'rainy';
-  if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snowy';
-  return null;
-}
 
 function locationErrorMessage(error: unknown): string {
   const code = typeof error === 'object' && error !== null && 'code' in error

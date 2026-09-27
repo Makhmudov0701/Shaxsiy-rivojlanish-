@@ -37,6 +37,7 @@ import type { DiaryEntry, DiaryPhoto, DiarySticker, DiaryWeeklySummary, WeatherC
 import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta, portalViewFromLocation, type PortalView } from '@/components/diary-ui';
 import { DiaryCoverBackdrop, DiaryCoverSettingsPanel } from '@/components/diary-cover';
 import { DiaryWeatherFields } from '@/components/diary-weather';
+import { DashboardWeatherWidget } from '@/components/dashboard-weather-widget';
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 import { formatUzbekDate, localDateKey } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
@@ -306,7 +307,10 @@ export function UserPortalPage() {
   return <DiaryShell><div className="mx-auto max-w-[1360px] px-5 py-8 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <section className="flex flex-col gap-6 rounded-[28px] border border-[#e2d8c1] bg-[#f7f0df] p-5 shadow-sm dark:border-[#514832] dark:bg-[#2d291f] sm:p-8 lg:flex-row lg:items-center lg:justify-between" aria-labelledby="diary-home-title">
       <div className="max-w-2xl"><p className="text-[13px] font-semibold text-[#8f601a]">Bugun uchun sokin joy</p><h1 id="diary-home-title" className="mt-2 font-serif text-[clamp(2.6rem,5vw,4.5rem)] leading-[.98] tracking-[-.045em]">Xush kelibsiz.</h1><p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">Bugun nima yodingizda qoldi? Bir necha so‘zdan boshlang.</p></div>
-      <Link href="/entry/new" className="inline-flex min-h-[72px] w-full items-center justify-center gap-4 rounded-2xl bg-primary px-5 py-4 text-left text-primary-foreground shadow-md transition-transform hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d9a441]/40 lg:w-auto lg:min-w-[340px] lg:px-7" data-testid="button-new-entry"><span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#d9a441] text-primary"><Plus size={26} strokeWidth={2.5} /></span><span><span className="block text-[18px] font-semibold sm:text-[20px]">Yangi xotira yozish</span><span className="mt-1 block text-[13px] text-primary-foreground/75">Qisqa yozsangiz ham bo‘ladi</span></span></Link>
+      <div className="flex w-full flex-col gap-3 lg:w-[340px] lg:shrink-0">
+        <DashboardWeatherWidget />
+        <Link href="/entry/new" className="inline-flex min-h-[72px] w-full items-center justify-center gap-4 rounded-2xl bg-primary px-5 py-4 text-left text-primary-foreground shadow-md transition-transform hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#d9a441]/40 lg:px-7" data-testid="button-new-entry"><span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#d9a441] text-primary"><Plus size={26} strokeWidth={2.5} /></span><span><span className="block text-[18px] font-semibold sm:text-[20px]">Yangi xotira yozish</span><span className="mt-1 block text-[13px] text-primary-foreground/75">Qisqa yozsangiz ham bo‘ladi</span></span></Link>
+      </div>
     </section>
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-card-border bg-card px-4 py-3.5">
       <p className="text-[14px] text-muted-foreground" aria-live="polite">{data ? <>Sizda <strong className="font-semibold text-foreground">{data.totalEntries}</strong> ta xotira bor. Bu oy <strong className="font-semibold text-foreground">{data.thisMonth}</strong> ta yozdingiz.</> : 'Xotiralaringiz yuklanmoqda…'}</p>
