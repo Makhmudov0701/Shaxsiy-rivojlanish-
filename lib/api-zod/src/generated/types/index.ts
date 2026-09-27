@@ -60,3 +60,4 @@ export * from './taskPriority';
 export * from './taskSubtask';
 export * from './taskUpdate';
 export * from './unauthorizedResponse';
+export * from './weatherCondition';

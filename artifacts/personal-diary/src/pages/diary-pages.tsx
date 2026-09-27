@@ -33,9 +33,10 @@ import {
   uploadDiaryPhoto,
 } from '@workspace/api-client-react';
 import { getListDiaryDailyStickersQueryKey, useDeleteDiaryDailySticker, useListDiaryDailyStickers, useUpsertDiaryDailySticker } from '@workspace/api-client-react';
-import type { DiaryEntry, DiaryPhoto, DiarySticker, DiaryWeeklySummary } from '@workspace/api-client-react';
+import type { DiaryEntry, DiaryPhoto, DiarySticker, DiaryWeeklySummary, WeatherCondition } from '@workspace/api-client-react';
 import { DiaryShell, EmptyEntries, EntryCard, FlashNotice, LogoMark, MoodBadge, ThemeToggle, moodMeta, portalViewFromLocation, type PortalView } from '@/components/diary-ui';
 import { DiaryCoverBackdrop, DiaryCoverSettingsPanel } from '@/components/diary-cover';
+import { DiaryWeatherFields } from '@/components/diary-weather';
 import { CalendarAnalytics } from '@/components/calendar-analytics';
 import { formatUzbekDate, localDateKey } from '@/lib/date-utils';
 import { estimatedReadingMinutes, RichTextPreview, richTextWordCount, VisualRichTextEditor, type RichFormat } from '@/components/rich-text';
@@ -421,6 +422,10 @@ type EntryFormLayoutProps = {
   setFolder: (value: string) => void;
   entryDate: string;
   setEntryDate: (value: string) => void;
+  weatherCondition: WeatherCondition | null;
+  setWeatherCondition: (value: WeatherCondition | null) => void;
+  temperatureC: number | null;
+  setTemperatureC: (value: number | null) => void;
   tags: string;
   setTags: (value: string) => void;
   moodTags: Mood[];
@@ -454,7 +459,7 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
   const favoriteCopy = diaryFavoriteCopy[language];
   const [showPreview, setShowPreview] = useState(false);
   const {
-    entry, isNew, title, setTitle, content, setContent, mood, setMood, energyLevel, setEnergyLevel, energyError, dailySticker, setDailySticker, stickerLoading, stickerLoadError, stickerSaveError, saveReady, folder, setFolder, entryDate, setEntryDate,
+     entry, isNew, title, setTitle, content, setContent, mood, setMood, energyLevel, setEnergyLevel, energyError, dailySticker, setDailySticker, stickerLoading, stickerLoadError, stickerSaveError, saveReady, folder, setFolder, entryDate, setEntryDate, weatherCondition, setWeatherCondition, temperatureC, setTemperatureC,
     tags, setTags, moodTags, setMoodTags, favorite, setFavorite, notice, error, photoError, photoList, removedPhotoIds, setRemovedPhotoIds,
     pendingFiles, setPendingFiles, photoPreviews, fileInputRef, addPhotos, isListening, voiceSupported, voicePreview,
     voiceError, toggleVoiceInput, pending, save, exportPdf, exportingPdf,
@@ -514,6 +519,14 @@ function EntryFormLayout(props: EntryFormLayoutProps) {
            </div>
          </header>
           <div className="px-4 pb-5 sm:px-7">
+            <DiaryWeatherFields
+              value={{ weatherCondition, temperatureC }}
+              onChange={(weather) => {
+                setWeatherCondition(weather.weatherCondition);
+                setTemperatureC(weather.temperatureC);
+              }}
+              disabled={pending}
+            />
            <section className="mt-5 flex flex-col gap-3 rounded-2xl border border-[#d8c795] bg-[#faf3df] p-4 dark:border-[#5e5037] dark:bg-[#302a20] sm:flex-row sm:items-center sm:justify-between" data-testid="daily-reflection-prompt">
              <div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Bugungi mulohaza</p><p className="mt-1 text-[13px] leading-relaxed text-foreground">{reflectionPrompt}</p></div>
              <button type="button" onClick={addReflectionPrompt} disabled={pending} className="min-h-10 shrink-0 rounded-xl border border-[#cdbd8e] bg-card px-3 text-[11px] font-semibold text-foreground transition-colors hover:bg-[#f8e9bf] disabled:opacity-50" data-testid="button-insert-reflection-prompt">Savolni matnga qo‘shish</button>
@@ -604,6 +617,8 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
   const [stickerSaveError, setStickerSaveError] = useState('');
   const [folder, setFolder] = useState(entry?.folder ?? defaultFolders[0]);
   const [entryDate, setEntryDate] = useState(entry?.entryDate ?? localDateKey());
+  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition | null>(entry?.weatherCondition ?? null);
+  const [temperatureC, setTemperatureC] = useState<number | null>(entry?.temperatureC ?? null);
   const [tags, setTags] = useState(entry?.tags.filter((tag) => !tag.startsWith('mood:')).join(', ') ?? '');
   const [moodTags, setMoodTags] = useState<Mood[]>(() => moodTagsFromStoredTags(entry?.tags ?? []));
   const [favorite, setFavorite] = useState(entry?.favorite ?? false);
@@ -751,9 +766,9 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
         return;
       }
       const saved = isNew && !activeEntry
-        ? await create.mutateAsync({ data: { title: title.trim(), content: content.trim(), mood, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryInput })
+        ? await create.mutateAsync({ data: { title: title.trim(), content: content.trim(), mood, weatherCondition, temperatureC, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryInput })
         : activeEntry
-          ? await update.mutateAsync({ id: activeEntry.id, data: { title: title.trim(), content: content.trim(), mood, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryUpdate })
+          ? await update.mutateAsync({ id: activeEntry.id, data: { title: title.trim(), content: content.trim(), mood, weatherCondition, temperatureC, folder: folder.trim() || defaultFolders[0], entryDate, tags: normalizedTags, favorite } satisfies DiaryEntryUpdate })
           : null;
       if (!saved) return;
       if (isNew) setCreatedEntry(saved);
@@ -808,7 +823,7 @@ function EntryForm({ entry, isNew, initialNotice = '' }: { entry?: DiaryEntry; i
     }
   };
   const pending = saving || create.isPending || update.isPending || deletePhoto.isPending;
-  return <EntryFormLayout entry={activeEntry ?? undefined} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} energyError={energyError} dailySticker={dailySticker} setDailySticker={setDailySticker} stickerLoading={dailyStickersQuery.isLoading} stickerLoadError={dailyStickersQuery.isError} stickerSaveError={stickerSaveError} saveReady={energyReady} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} tags={tags} setTags={setTags} moodTags={moodTags} setMoodTags={setMoodTags} favorite={favorite} setFavorite={setFavorite} notice={notice || initialNotice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
+  return <EntryFormLayout entry={activeEntry ?? undefined} isNew={isNew} title={title} setTitle={setTitle} content={content} setContent={setContent} mood={mood} setMood={setMood} energyLevel={energyLevel} setEnergyLevel={setEnergyLevel} energyError={energyError} dailySticker={dailySticker} setDailySticker={setDailySticker} stickerLoading={dailyStickersQuery.isLoading} stickerLoadError={dailyStickersQuery.isError} stickerSaveError={stickerSaveError} saveReady={energyReady} folder={folder} setFolder={setFolder} entryDate={entryDate} setEntryDate={setEntryDate} weatherCondition={weatherCondition} setWeatherCondition={setWeatherCondition} temperatureC={temperatureC} setTemperatureC={setTemperatureC} tags={tags} setTags={setTags} moodTags={moodTags} setMoodTags={setMoodTags} favorite={favorite} setFavorite={setFavorite} notice={notice || initialNotice} error={error} photoError={photoError} photoList={photoList} removedPhotoIds={removedPhotoIds} setRemovedPhotoIds={setRemovedPhotoIds} pendingFiles={pendingFiles} setPendingFiles={setPendingFiles} photoPreviews={photoPreviews} fileInputRef={fileInputRef} addPhotos={addPhotos} isListening={isListening} voiceSupported={voiceSupported} voicePreview={voicePreview} voiceError={voiceError} toggleVoiceInput={toggleVoiceInput} pending={pending} save={save} exportPdf={exportPdf} exportingPdf={exportingPdf} />;
   return <DiaryShell><div className="mx-auto max-w-[1050px] px-5 py-7 sm:px-8 md:px-10 lg:px-14 lg:py-12">
     <Link href={isNew ? '/user-portal' : `/entry/${entry?.id}`} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted-foreground transition-colors hover:text-foreground" data-testid="link-back"><ArrowLeft size={15} /> {isNew ? 'Arxivga qaytish' : 'Yozuvga qaytish'}</Link>
     <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_280px]"><div><div className="flex items-center gap-3"><span className="font-mono text-[10px] uppercase tracking-[.18em] text-[#9a6b23]">{isNew ? 'Yangi sahifa' : 'Sahifani tahrirlash'}</span>{!isNew && notice && <span className="inline-flex items-center gap-1 text-[10px] text-[#47796c]"><Check size={13} /> {notice}</span>}</div><input value={title} onChange={(e) => setTitle(e.target.value)} className="mt-5 w-full border-0 bg-transparent font-serif text-[clamp(3.2rem,7vw,6.5rem)] leading-[.88] tracking-[-.055em] text-primary outline-none placeholder:text-primary/20" placeholder="Saqlashga arzigulik fikr..." maxLength={160} aria-label="Sarlavha" data-testid="input-entry-title" /><div className="mt-8 flex items-center gap-3 border-b border-border pb-5 text-[11px] text-muted-foreground"><CalendarDays size={15} /><input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} className="bg-transparent outline-none" aria-label="Sana" data-testid="input-entry-date" /><span className="text-border">/</span><span>{moodMeta[mood].label}</span></div><textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Bugundan siz bilan nima qoldi? Istalgan joydan boshlang." className="mt-8 min-h-[380px] w-full resize-none border-0 bg-transparent font-serif text-[23px] leading-[1.55] text-foreground outline-none placeholder:text-muted-foreground/45" aria-label="Matn" data-testid="textarea-entry-content" /><div className="mt-4 rounded-2xl border border-[#d8cdaF] bg-[#fbf6e9] p-4 dark:border-[#5d523f] dark:bg-[#2d291f]" data-testid="voice-input-panel"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-[#9a6b23]">Ovozli yozish</p><p className="mt-1 text-[11px] text-muted-foreground">{isListening ? 'Sizni tinglayapman. Gapiring.' : 'Gapiring — so‘zlaringiz matnga aylanadi.'}</p></div><button type="button" onClick={toggleVoiceInput} disabled={pending || (!voiceSupported && !isListening)} className={`inline-flex items-center justify-center gap-2 rounded-xl border px-3.5 py-2.5 text-[11px] font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-55 ${isListening ? 'border-[#b75539] bg-[#f4ddd4] text-[#9d432d] shadow-sm' : 'border-[#cdbd8e] bg-card text-foreground hover:border-[#b89c5c] hover:bg-[#f8e9bf]'}`} aria-label={isListening ? 'Ovozli yozishni to‘xtatish' : 'Ovoz orqali yozish'} data-testid="button-voice-input">{isListening ? <MicOff size={15} /> : <Mic size={15} />}{isListening ? 'To‘xtatish' : 'Ovoz orqali yozish'}</button></div>{isListening && <p className="mt-3 flex items-center gap-2 text-[11px] text-[#9d432d]" aria-live="polite"><span className="size-2 animate-pulse rounded-full bg-[#b75539]" />{voicePreview || 'Tinglanmoqda...'}</p>}{!voiceSupported && <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Ovozli yozish bu brauzerda qo‘llab-quvvatlanmaydi.</p>}{voiceError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive" role="alert"><CircleAlert size={14} className="mt-0.5 shrink-0" />{voiceError}</p>}</div><div className="mt-8 rounded-2xl border border-card-border bg-card p-5"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] uppercase tracking-[.16em] text-muted-foreground">Suratlar</p><p className="mt-1 text-[11px] text-muted-foreground">Yozuvingizga 8 tagacha surat qo‘shing.</p></div><label htmlFor="entry-photos" className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[11px] font-semibold transition-colors hover:border-[#b89c5c]"><ImagePlus size={14} /> Surat qo‘shish</label><input ref={fileInputRef} id="entry-photos" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple onChange={addPhotos} className="sr-only" /></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">{photoList.filter((photo) => !removedPhotoIds.includes(photo.id)).map((photo) => <div key={photo.id} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={photo.url} alt={photo.fileName} className="size-full object-cover" /><button type="button" onClick={() => setRemovedPhotoIds((current) => [...current, photo.id])} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity group-hover:opacity-100" aria-label={`${photo.fileName} rasmini olib tashlash`}><X size={14} /></button></div>)}{photoPreviews.map(({ file, url }, index) => <div key={`${file.name}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl bg-muted"><img src={url} alt={file.name} className="size-full object-cover" /><button type="button" onClick={() => setPendingFiles((current) => current.filter((_, fileIndex) => fileIndex !== index))} className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-[#30243f]/85 text-white opacity-0 transition-opacity sm:group-hover:opacity-100" aria-label={`${file.name} rasmini olib tashlash`}><X size={14} /></button></div>)}</div>{photoError && <p className="mt-3 flex gap-2 text-[11px] leading-relaxed text-destructive"><CircleAlert size={14} className="mt-0.5 shrink-0" />{photoError}</p>}<p className="mt-3 text-[10px] leading-relaxed text-muted-foreground">Rasmlar faqat sizning hisobingiz orqali ko‘rinadi.</p></div></div>

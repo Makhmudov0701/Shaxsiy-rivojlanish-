@@ -3,6 +3,7 @@
 - [Vault credential separation](vault-local-security.md) — the private Vault uses a separate browser-local credential; legacy notes must stay recoverable if migration storage fails.
 - [Diary insights scope](diary-insights.md) — calendar and mood analytics intentionally use the complete private diary, independent of list filters.
 - [Diary portability](diary-portability.md) — full backups use authenticated JSON with embedded base64 media; rich text remains local markdown without paid services.
+- [Diary weather privacy](diary-weather-privacy.md) — prompt before using geolocation, then save weather only; do not retain coordinates.
 - [Expo Android module linking](expo-android-module-linking.md) — a local module config is not enough; verify Android project resolution, not just module search.
 - [Active-time heartbeat boundaries](active-time-heartbeats.md) — close foreground intervals on hide/background so capped accrual does not charge suspended time.
 - [Remote ambience audio](mixkit-audio-streaming.md) — stream cross-origin tracks with native audio and verify each source’s license and attribution requirements.

@@ -337,6 +337,8 @@ protectedRouter.post("/diary/entries", async (req, res): Promise<void> => {
       title: parsed.data.title,
       content: parsed.data.content,
       mood: parsed.data.mood,
+      weatherCondition: parsed.data.weatherCondition ?? null,
+      temperatureC: parsed.data.temperatureC ?? null,
       folder: parsed.data.folder,
       tags: parsed.data.tags ?? [],
       favorite: parsed.data.favorite,

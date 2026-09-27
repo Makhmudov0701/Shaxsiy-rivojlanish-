@@ -7,6 +7,7 @@
  */
 import type { DiaryBackupPhoto } from './diaryBackupPhoto';
 import type { Mood } from './mood';
+import type { WeatherCondition } from './weatherCondition';
 
 export interface DiaryBackupEntry {
   /**
@@ -16,6 +17,9 @@ export interface DiaryBackupEntry {
   title: string;
   content: string;
   mood: Mood;
+  weatherCondition?: WeatherCondition | null;
+  /** @nullable */
+  temperatureC?: number | null;
   /**
      * @minLength 1
      * @maxLength 40

@@ -22,6 +22,16 @@ export const Mood = {
   anxious: 'anxious',
 } as const;
 
+export type WeatherCondition = typeof WeatherCondition[keyof typeof WeatherCondition];
+
+
+export const WeatherCondition = {
+  sunny: 'sunny',
+  cloudy: 'cloudy',
+  rainy: 'rainy',
+  snowy: 'snowy',
+} as const;
+
 export type DiarySticker = typeof DiarySticker[keyof typeof DiarySticker];
 
 
@@ -62,6 +72,9 @@ export interface DiaryEntry {
   title: string;
   content: string;
   mood: Mood;
+  weatherCondition: WeatherCondition | null;
+  /** @nullable */
+  temperatureC: number | null;
   /**
      * @minLength 1
      * @maxLength 40
@@ -173,6 +186,9 @@ export interface DiaryEntryInput {
   /** @minLength 1 */
   content: string;
   mood: Mood;
+  weatherCondition?: WeatherCondition | null;
+  /** @nullable */
+  temperatureC?: number | null;
   /**
      * @minLength 1
      * @maxLength 40
@@ -196,6 +212,9 @@ export interface DiaryEntryUpdate {
   /** @minLength 1 */
   content?: string;
   mood?: Mood;
+  weatherCondition?: WeatherCondition | null;
+  /** @nullable */
+  temperatureC?: number | null;
   /**
      * @minLength 1
      * @maxLength 40
@@ -263,6 +282,9 @@ export interface DiaryBackupEntry {
   title: string;
   content: string;
   mood: Mood;
+  weatherCondition?: WeatherCondition | null;
+  /** @nullable */
+  temperatureC?: number | null;
   /**
      * @minLength 1
      * @maxLength 40

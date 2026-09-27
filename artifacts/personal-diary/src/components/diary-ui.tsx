@@ -8,6 +8,7 @@ import { estimatedReadingMinutes, plainTextFromRichText, richTextWordCount } fro
 import { QuickCaptureLauncher } from '@/components/quick-capture-launcher';
 import { SectionMotivationCard } from '@/components/section-motivation-card';
 import { sectionIdForPath, sectionMotivationContent } from '@/components/section-motivation-content';
+import { DiaryWeatherBadge } from '@/components/diary-weather';
 import { formatDeleteItemLabel, formatMoodAriaLabel, LanguageSelector, personalDevelopmentLabel, translateUiText, useI18n } from '@/lib/i18n';
 import { vaultNavigationLabel } from '@/lib/vault-i18n';
 import { applyThemePreference, readProfilePreferences, updateProfilePreference, type ThemePreference } from '@/lib/profile-preferences';
@@ -152,6 +153,7 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
       <div className="mt-6 flex items-end justify-between gap-3">
           <div className="flex min-w-0 flex-wrap gap-1.5">
           <MoodBadge mood={entry.mood} small />
+          <DiaryWeatherBadge weatherCondition={entry.weatherCondition} temperatureC={entry.temperatureC} />
             <span className="rounded-full bg-[#eee8d5] px-2 py-1 text-[10px] text-[#756d5e]">{entry.folder}</span>
           {entry.tags.slice(0, 2).map((tag) => { const taggedMood = tag.startsWith('mood:') ? tag.slice('mood:'.length) as Mood : null; return <span key={tag} className="rounded-full bg-muted px-2 py-1 text-[10px] text-muted-foreground">{taggedMood && taggedMood in moodMeta ? formatMoodAriaLabel(translateUiText(moodMeta[taggedMood].label)) : `#${tag}`}</span>; })}
         </div>

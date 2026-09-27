@@ -1,5 +1,5 @@
 import { createInsertSchema } from "drizzle-zod";
-import { boolean, date, pgEnum, pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, pgEnum, pgTable, real, serial, text, timestamp } from "drizzle-orm/pg-core";
 import { z } from "zod/v4";
 
 export const diaryMoodEnum = pgEnum("diary_mood", [
@@ -18,6 +18,8 @@ export const diaryEntriesTable = pgTable("diary_entries", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   mood: diaryMoodEnum("mood").notNull(),
+  weatherCondition: text("weather_condition"),
+  temperatureC: real("temperature_c"),
   folder: text("folder").notNull().default("Shaxsiy"),
   tags: text("tags").array().notNull().default([]),
   favorite: boolean("favorite").notNull().default(false),

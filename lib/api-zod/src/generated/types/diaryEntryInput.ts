@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Mood } from './mood';
+import type { WeatherCondition } from './weatherCondition';
 
 export interface DiaryEntryInput {
   /**
@@ -16,6 +17,9 @@ export interface DiaryEntryInput {
   /** @minLength 1 */
   content: string;
   mood: Mood;
+  weatherCondition?: WeatherCondition | null;
+  /** @nullable */
+  temperatureC?: number | null;
   /**
      * @minLength 1
      * @maxLength 40
