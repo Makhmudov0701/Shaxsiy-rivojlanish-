@@ -28,6 +28,9 @@ const copy: Record<AppLanguage, {
   unavailable: string;
   nearbyArea: string;
   fallbackCity: string;
+  sources: string;
+  weatherSource: string;
+  locationSource: string;
   conditions: Record<WeatherCondition, string>;
 }> = {
   uz: {
@@ -38,6 +41,9 @@ const copy: Record<AppLanguage, {
     unavailable: 'Ob-havo mavjud emas',
     nearbyArea: 'Yaqin hudud',
     fallbackCity: 'Toshkent',
+    sources: 'Manbalar',
+    weatherSource: 'Ob-havo: Open-Meteo',
+    locationSource: 'Joylashuv: BigDataCloud',
     conditions: { sunny: 'Quyoshli', cloudy: 'Bulutli', rainy: 'Yomg‘irli', snowy: 'Qorli' },
   },
   en: {
@@ -48,6 +54,9 @@ const copy: Record<AppLanguage, {
     unavailable: 'Weather unavailable',
     nearbyArea: 'Nearby area',
     fallbackCity: 'Tashkent',
+    sources: 'Sources',
+    weatherSource: 'Weather: Open-Meteo',
+    locationSource: 'Location: BigDataCloud',
     conditions: { sunny: 'Sunny', cloudy: 'Cloudy', rainy: 'Rainy', snowy: 'Snowy' },
   },
   ru: {
@@ -58,6 +67,9 @@ const copy: Record<AppLanguage, {
     unavailable: 'Погода недоступна',
     nearbyArea: 'Ближайший район',
     fallbackCity: 'Ташкент',
+    sources: 'Источники',
+    weatherSource: 'Погода: Open-Meteo',
+    locationSource: 'Местоположение: BigDataCloud',
     conditions: { sunny: 'Солнечно', cloudy: 'Облачно', rainy: 'Дождь', snowy: 'Снег' },
   },
   ko: {
@@ -68,6 +80,9 @@ const copy: Record<AppLanguage, {
     unavailable: '날씨를 불러올 수 없음',
     nearbyArea: '주변 지역',
     fallbackCity: '타슈켄트',
+    sources: '출처',
+    weatherSource: '날씨: Open-Meteo',
+    locationSource: '위치: BigDataCloud',
     conditions: { sunny: '맑음', cloudy: '흐림', rainy: '비', snowy: '눈' },
   },
 };
@@ -241,29 +256,44 @@ export function DashboardWeatherWidget() {
   const conditionText = weather.condition ? text.conditions[weather.condition] : text.title;
 
   return (
-    <aside
-      className="flex min-h-[82px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#221d2d] px-4 py-3 text-white shadow-lg shadow-[#221d2d]/10"
-      aria-label={text.title}
-      data-testid="dashboard-weather-widget"
-    >
-      <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10">
-        <WeatherIcon className={`size-6 ${iconColor} animate-pulse motion-reduce:animate-none`} aria-hidden="true" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-[11px] font-medium text-white/70">
-          <MapPin size={12} className="shrink-0 text-[#e4bd66]" aria-hidden="true" />
-          <span className="truncate" data-testid="text-weather-city">{weather.city ?? text.loading}</span>
-        </div>
-        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-          <span className="font-serif text-[25px] leading-none tracking-tight" data-testid="text-weather-temperature">
+    <details className="group relative shrink-0" data-testid="dashboard-weather-widget">
+      <summary
+        className="flex h-10 max-w-[118px] cursor-pointer list-none items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] [&::-webkit-details-marker]:hidden dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white sm:max-w-[132px] sm:gap-1.5 sm:px-2.5"
+        aria-label={`${text.title}: ${weather.city ?? text.loading}, ${weather.temperatureC === null ? '—' : `${Math.round(weather.temperatureC)}°C`}, ${conditionText}`}
+        title={text.title}
+        data-testid="button-dashboard-weather"
+      >
+        <MapPin className="size-3 shrink-0 text-[#a87925] max-[340px]:hidden" aria-hidden="true" />
+        <span className="min-w-0 max-w-10 flex-1 truncate text-[10px] font-medium max-[400px]:hidden sm:max-w-14 sm:text-[11px]" data-testid="text-weather-city">
+          {weather.city ?? text.loading}
+        </span>
+        <span className="shrink-0 text-[12px] font-semibold leading-none" data-testid="text-weather-temperature">
+          {weather.temperatureC === null ? '—' : Math.round(weather.temperatureC)}°C
+        </span>
+        <WeatherIcon className={`size-[15px] shrink-0 ${iconColor} animate-pulse motion-reduce:animate-none`} aria-hidden="true" />
+      </summary>
+      <div className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1rem))] rounded-2xl border border-border bg-card p-4 text-foreground shadow-xl">
+        <div className="flex items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
+            <WeatherIcon className={`size-5 ${iconColor}`} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold" data-testid="text-weather-city-detail">{weather.city ?? text.loading}</p>
+            <p className="mt-1 text-[12px] text-muted-foreground" data-testid="text-weather-condition">{conditionText}</p>
+          </div>
+          <span className="shrink-0 font-serif text-[22px] leading-none" data-testid="text-weather-temperature-detail">
             {weather.temperatureC === null ? '—' : Math.round(weather.temperatureC)}°C
           </span>
-          <span className="text-[12px] font-medium text-white/80" data-testid="text-weather-condition">{conditionText}</span>
         </div>
-        <p className="mt-1 truncate text-[9px] text-white/55" role="status" aria-live="polite" data-testid="status-dashboard-weather">
-          {statusText} <span aria-hidden="true">·</span> Open-Meteo · BigDataCloud
+        <p className="mt-3 rounded-xl bg-muted/70 px-3 py-2 text-[11px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-dashboard-weather">
+          {statusText}
         </p>
+        <div className="mt-3 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
+          <p className="mb-1 font-semibold uppercase tracking-[.1em]">{text.sources}</p>
+          <p>{text.weatherSource}</p>
+          <p>{text.locationSource}</p>
+        </div>
       </div>
-    </aside>
+    </details>
   );
 }
