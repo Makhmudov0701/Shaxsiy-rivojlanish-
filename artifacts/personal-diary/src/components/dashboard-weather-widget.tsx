@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Cloud, CloudRain, MapPin, Snowflake, Sun } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Cloud, CloudRain, LoaderCircle, MapPin, Search, Snowflake, Sun } from 'lucide-react';
 import type { WeatherCondition } from '@workspace/api-client-react';
 import { useI18n, type AppLanguage } from '@/lib/i18n';
 import { weatherConditionFromCode } from '@/lib/weather-utils';
@@ -17,8 +18,28 @@ type WeatherSnapshot = {
   city: string | null;
 };
 
+type StoredCity = {
+  name: string;
+  admin1?: string;
+  country?: string;
+};
+
+type GeocodingResult = Coordinates & {
+  id?: number;
+  name: string;
+  admin1?: string;
+  country?: string;
+};
+
+type ActiveLocation = {
+  coordinates: Coordinates;
+  city: string | null;
+  isFallback: boolean;
+};
+
 const FALLBACK_LOCATION: Coordinates = { latitude: 41.3111, longitude: 69.2797 };
 const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const SAVED_CITY_KEY = 'personal-diary-weather-city';
 
 const copy: Record<AppLanguage, {
   title: string;
@@ -31,6 +52,14 @@ const copy: Record<AppLanguage, {
   sources: string;
   weatherSource: string;
   locationSource: string;
+  locationPicker: string;
+  searchPlaceholder: string;
+  searching: string;
+  noCities: string;
+  searchFailed: string;
+  myLocation: string;
+  savedCityUnavailable: string;
+  storageUnavailable: string;
   conditions: Record<WeatherCondition, string>;
 }> = {
   uz: {
@@ -43,7 +72,15 @@ const copy: Record<AppLanguage, {
     fallbackCity: 'Toshkent',
     sources: 'Manbalar',
     weatherSource: 'Ob-havo: Open-Meteo',
-    locationSource: 'Joylashuv: BigDataCloud',
+    locationSource: 'Avto joylashuv: BigDataCloud · shahar qidiruvi: Open-Meteo',
+    locationPicker: 'Hudud tanlash',
+    searchPlaceholder: 'Shaharni kiriting...',
+    searching: 'Shaharlar qidirilmoqda…',
+    noCities: 'Shahar topilmadi.',
+    searchFailed: 'Shaharlarni qidirib bo‘lmadi. Qayta urinib ko‘ring.',
+    myLocation: 'Mening joylashuvim 📍',
+    savedCityUnavailable: 'Saqlangan shaharni topib bo‘lmadi. Boshqa joy qidiring yoki joylashuvingizdan foydalaning.',
+    storageUnavailable: 'Tanlovni ushbu qurilmada saqlab bo‘lmadi.',
     conditions: { sunny: 'Quyoshli', cloudy: 'Bulutli', rainy: 'Yomg‘irli', snowy: 'Qorli' },
   },
   en: {
@@ -56,7 +93,15 @@ const copy: Record<AppLanguage, {
     fallbackCity: 'Tashkent',
     sources: 'Sources',
     weatherSource: 'Weather: Open-Meteo',
-    locationSource: 'Location: BigDataCloud',
+    locationSource: 'Auto location: BigDataCloud · city search: Open-Meteo',
+    locationPicker: 'Choose a location',
+    searchPlaceholder: 'Enter a city...',
+    searching: 'Searching cities…',
+    noCities: 'No cities found.',
+    searchFailed: 'Could not search cities. Please try again.',
+    myLocation: 'My location 📍',
+    savedCityUnavailable: 'The saved city could not be found. Search for another place or use your location.',
+    storageUnavailable: 'This choice could not be saved on this device.',
     conditions: { sunny: 'Sunny', cloudy: 'Cloudy', rainy: 'Rainy', snowy: 'Snowy' },
   },
   ru: {
@@ -69,7 +114,15 @@ const copy: Record<AppLanguage, {
     fallbackCity: 'Ташкент',
     sources: 'Источники',
     weatherSource: 'Погода: Open-Meteo',
-    locationSource: 'Местоположение: BigDataCloud',
+    locationSource: 'Автоопределение: BigDataCloud · поиск города: Open-Meteo',
+    locationPicker: 'Выбрать местоположение',
+    searchPlaceholder: 'Введите название города...',
+    searching: 'Ищем города…',
+    noCities: 'Города не найдены.',
+    searchFailed: 'Не удалось найти города. Попробуйте ещё раз.',
+    myLocation: 'Моё местоположение 📍',
+    savedCityUnavailable: 'Не удалось найти сохранённый город. Найдите другое место или используйте своё местоположение.',
+    storageUnavailable: 'Не удалось сохранить выбор на этом устройстве.',
     conditions: { sunny: 'Солнечно', cloudy: 'Облачно', rainy: 'Дождь', snowy: 'Снег' },
   },
   ko: {
@@ -82,7 +135,15 @@ const copy: Record<AppLanguage, {
     fallbackCity: '타슈켄트',
     sources: '출처',
     weatherSource: '날씨: Open-Meteo',
-    locationSource: '위치: BigDataCloud',
+    locationSource: '자동 위치: BigDataCloud · 도시 검색: Open-Meteo',
+    locationPicker: '위치 선택',
+    searchPlaceholder: '도시를 입력하세요...',
+    searching: '도시 검색 중…',
+    noCities: '도시를 찾을 수 없습니다.',
+    searchFailed: '도시를 검색하지 못했습니다. 다시 시도해 주세요.',
+    myLocation: '내 위치 📍',
+    savedCityUnavailable: '저장된 도시를 찾을 수 없습니다. 다른 도시를 검색하거나 현재 위치를 사용하세요.',
+    storageUnavailable: '이 기기에 선택한 위치를 저장하지 못했습니다.',
     conditions: { sunny: '맑음', cloudy: '흐림', rainy: '비', snowy: '눈' },
   },
 };
@@ -109,6 +170,68 @@ function firstPlaceName(place: ReverseGeocodeResponse | null): string | null {
   return null;
 }
 
+function isGeocodingResult(value: unknown): value is GeocodingResult {
+  if (!value || typeof value !== 'object') return false;
+  const result = value as Record<string, unknown>;
+  return typeof result.name === 'string'
+    && typeof result.latitude === 'number'
+    && Number.isFinite(result.latitude)
+    && typeof result.longitude === 'number'
+    && Number.isFinite(result.longitude);
+}
+
+async function searchCities(query: string, signal: AbortSignal): Promise<GeocodingResult[]> {
+  const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+  url.search = new URLSearchParams({
+    name: query,
+    count: '6',
+    language: 'en',
+    format: 'json',
+  }).toString();
+  const response = await fetch(url, { signal });
+  if (!response.ok) throw new Error('city-search-failed');
+  const payload = await response.json() as { results?: unknown };
+  return Array.isArray(payload.results) ? payload.results.filter(isGeocodingResult) : [];
+}
+
+function readStoredCity(): StoredCity | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(SAVED_CITY_KEY);
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof value.name !== 'string' || !value.name.trim()) return null;
+    return {
+      name: value.name.trim(),
+      ...(typeof value.admin1 === 'string' ? { admin1: value.admin1 } : {}),
+      ...(typeof value.country === 'string' ? { country: value.country } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function storedCityFor(result: GeocodingResult): StoredCity {
+  return {
+    name: result.name,
+    ...(result.admin1 ? { admin1: result.admin1 } : {}),
+    ...(result.country ? { country: result.country } : {}),
+  };
+}
+
+function matchStoredCity(results: GeocodingResult[], saved: StoredCity): GeocodingResult | null {
+  const normalize = (value: string | undefined) => value?.trim().toLocaleLowerCase() ?? '';
+  const nameMatches = results.filter((result) => normalize(result.name) === normalize(saved.name));
+  return nameMatches.find((result) =>
+    (!saved.country || normalize(result.country) === normalize(saved.country))
+    && (!saved.admin1 || normalize(result.admin1) === normalize(saved.admin1)),
+  ) ?? nameMatches[0] ?? null;
+}
+
+function geocodingDetail(result: GeocodingResult): string {
+  return [result.admin1, result.country].filter(Boolean).join(' · ');
+}
+
 export function DashboardWeatherWidget() {
   const { language } = useI18n();
   const languageRef = useRef(language);
@@ -118,6 +241,21 @@ export function DashboardWeatherWidget() {
     city: null,
   });
   const [status, setStatus] = useState<WeatherStatus>('loading');
+  const [storedCity, setStoredCity] = useState<StoredCity | null>(() => readStoredCity());
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [cityQuery, setCityQuery] = useState('');
+  const [cityResults, setCityResults] = useState<GeocodingResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState(false);
+  const storedCityRef = useRef(storedCity);
+  const activeLocationRef = useRef<ActiveLocation | null>(null);
+  const activateLocationRef = useRef<(location: ActiveLocation) => void>(() => undefined);
+  const locationRequestIdRef = useRef(0);
+  const weatherControllerRef = useRef<AbortController | null>(null);
+  const badgeRef = useRef<HTMLButtonElement | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
   const text = copy[language];
 
   useEffect(() => {
@@ -126,15 +264,13 @@ export function DashboardWeatherWidget() {
 
   useEffect(() => {
     let mounted = true;
-    let controller: AbortController | null = null;
-    let refreshTimer: number | undefined;
-    let selectedCoordinates = FALLBACK_LOCATION;
-    let usingFallback = true;
+    let startupController: AbortController | null = null;
 
-    const loadWeather = async (coordinates: Coordinates, isFallback: boolean, lookupPlace: boolean) => {
-      controller?.abort();
+    const loadWeather = async (location: ActiveLocation) => {
+      weatherControllerRef.current?.abort();
       const requestController = new AbortController();
-      controller = requestController;
+      weatherControllerRef.current = requestController;
+      const { coordinates, city, isFallback } = location;
 
       const weatherUrl = new URL('https://api.open-meteo.com/v1/forecast');
       weatherUrl.search = new URLSearchParams({
@@ -154,9 +290,11 @@ export function DashboardWeatherWidget() {
       const uiLanguage = languageRef.current;
       setWeather((current) => ({
         ...current,
-        city: isFallback ? copy[uiLanguage].fallbackCity : copy[uiLanguage].nearbyArea,
+        city: city ?? (isFallback ? copy[uiLanguage].fallbackCity : copy[uiLanguage].nearbyArea),
       }));
-      const locationPromise: Promise<ReverseGeocodeResponse | null> = lookupPlace
+      setStatus('loading');
+      const locationPromise: Promise<ReverseGeocodeResponse | null> = city
+        ? Promise.resolve(null)
         ? fetch(locationUrl, { signal: requestController.signal })
           .then(async (response) => response.ok ? await response.json() as ReverseGeocodeResponse : null)
           .catch(() => null)
@@ -180,7 +318,8 @@ export function DashboardWeatherWidget() {
         setWeather({
           temperatureC: temperature,
           condition: weatherConditionFromCode(weatherCode),
-          city: firstPlaceName(locationResult)
+          city: city
+            ?? firstPlaceName(locationResult)
             ?? (isFallback ? copy[uiLanguage].fallbackCity : copy[uiLanguage].nearbyArea),
         });
         setStatus(isFallback ? 'fallback' : 'live');
@@ -188,49 +327,227 @@ export function DashboardWeatherWidget() {
         if (!mounted || requestController.signal.aborted) return;
         setStatus('unavailable');
       } finally {
-        if (controller === requestController) {
-          controller = null;
+        if (weatherControllerRef.current === requestController) {
+          weatherControllerRef.current = null;
         }
       }
     };
 
-    const startWeatherUpdates = (coordinates: Coordinates, isFallback: boolean) => {
+    const activateLocation = (location: ActiveLocation) => {
       if (!mounted) return;
-      selectedCoordinates = coordinates;
-      usingFallback = isFallback;
-      void loadWeather(coordinates, isFallback, true);
-      if (refreshTimer === undefined) {
-        refreshTimer = window.setInterval(() => {
-          void loadWeather(selectedCoordinates, usingFallback, false);
-        }, REFRESH_INTERVAL_MS);
-      }
+      activeLocationRef.current = location;
+      void loadWeather(location);
     };
+    activateLocationRef.current = activateLocation;
 
-    if (!navigator.geolocation) {
-      startWeatherUpdates(FALLBACK_LOCATION, true);
+    const initialRequestId = ++locationRequestIdRef.current;
+    const saved = storedCityRef.current;
+    if (saved) {
+      setWeather((current) => ({ ...current, city: saved.name }));
+      startupController = new AbortController();
+      void searchCities(saved.name, startupController.signal)
+        .then((results) => {
+          if (!mounted || initialRequestId !== locationRequestIdRef.current) return;
+          const match = matchStoredCity(results, saved);
+          if (!match) {
+            setStatus('unavailable');
+            return;
+          }
+          activateLocation({
+            coordinates: { latitude: match.latitude, longitude: match.longitude },
+            city: saved.name,
+            isFallback: false,
+          });
+        })
+        .catch(() => {
+          if (mounted && initialRequestId === locationRequestIdRef.current) setStatus('unavailable');
+        });
     } else {
-      try {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            startWeatherUpdates({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            }, false);
-          },
-          () => startWeatherUpdates(FALLBACK_LOCATION, true),
-          { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10_000 },
-        );
-      } catch {
-        startWeatherUpdates(FALLBACK_LOCATION, true);
+      const startFallback = () => {
+        if (initialRequestId !== locationRequestIdRef.current) return;
+        activateLocation({ coordinates: FALLBACK_LOCATION, city: null, isFallback: true });
+      };
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        startFallback();
+      } else {
+        try {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              if (!mounted || initialRequestId !== locationRequestIdRef.current) return;
+              activateLocation({
+                coordinates: {
+                  latitude: position.coords.latitude,
+                  longitude: position.coords.longitude,
+                },
+                city: null,
+                isFallback: false,
+              });
+            },
+            startFallback,
+            { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10_000 },
+          );
+        } catch {
+          startFallback();
+        }
       }
     }
 
+    const refreshTimer = window.setInterval(() => {
+      if (activeLocationRef.current) void loadWeather(activeLocationRef.current);
+    }, REFRESH_INTERVAL_MS);
+
     return () => {
       mounted = false;
-      if (refreshTimer !== undefined) window.clearInterval(refreshTimer);
-      controller?.abort();
+      locationRequestIdRef.current += 1;
+      window.clearInterval(refreshTimer);
+      startupController?.abort();
+      weatherControllerRef.current?.abort();
+      activeLocationRef.current = null;
+      activateLocationRef.current = () => undefined;
     };
   }, []);
+
+  useEffect(() => {
+    const query = cityQuery.trim();
+    if (!isPopoverOpen || query.length < 2) {
+      setCityResults([]);
+      setIsSearching(false);
+      setSearchError(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setIsSearching(true);
+      setSearchError(null);
+      void searchCities(query, controller.signal)
+        .then((results) => {
+          if (!controller.signal.aborted) setCityResults(results);
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) setSearchError(copy[languageRef.current].searchFailed);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setIsSearching(false);
+        });
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [cityQuery, isPopoverOpen]);
+
+  useEffect(() => {
+    if (!isPopoverOpen) {
+      setPopoverPosition(null);
+      return undefined;
+    }
+
+    const updatePosition = () => {
+      const badge = badgeRef.current;
+      if (!badge) return;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const width = Math.max(0, Math.min(320, viewportWidth - 16));
+      const rect = badge.getBoundingClientRect();
+      const desiredLeft = viewportWidth <= 640
+        ? (viewportWidth - width) / 2
+        : rect.right - width;
+      const left = Math.max(8, Math.min(desiredLeft, viewportWidth - width - 8));
+      const top = Math.max(8, Math.min(rect.bottom + 8, viewportHeight - 120));
+      setPopoverPosition({ top, left, width });
+    };
+
+    const closeOnOutsidePointer = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (badgeRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      setIsPopoverOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setIsPopoverOpen(false);
+      badgeRef.current?.focus();
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    document.addEventListener('pointerdown', closeOnOutsidePointer, true);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      document.removeEventListener('pointerdown', closeOnOutsidePointer, true);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isPopoverOpen]);
+
+  const chooseCity = (result: GeocodingResult) => {
+    const selected = storedCityFor(result);
+    storedCityRef.current = selected;
+    setStoredCity(selected);
+    setStorageError(false);
+    try {
+      window.localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(selected));
+    } catch {
+      setStorageError(true);
+    }
+    locationRequestIdRef.current += 1;
+    activateLocationRef.current({
+      coordinates: { latitude: result.latitude, longitude: result.longitude },
+      city: selected.name,
+      isFallback: false,
+    });
+    setCityQuery('');
+    setCityResults([]);
+    setIsPopoverOpen(false);
+  };
+
+  const useMyLocation = () => {
+    storedCityRef.current = null;
+    setStoredCity(null);
+    setStorageError(false);
+    setCityQuery('');
+    setCityResults([]);
+    try {
+      window.localStorage.removeItem(SAVED_CITY_KEY);
+    } catch {
+      setStorageError(true);
+    }
+
+    const requestId = ++locationRequestIdRef.current;
+    const startFallback = () => {
+      if (requestId !== locationRequestIdRef.current) return;
+      activateLocationRef.current({ coordinates: FALLBACK_LOCATION, city: null, isFallback: true });
+    };
+    setIsPopoverOpen(false);
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      startFallback();
+      return;
+    }
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (requestId !== locationRequestIdRef.current) return;
+          activateLocationRef.current({
+            coordinates: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            },
+            city: null,
+            isFallback: false,
+          });
+        },
+        startFallback,
+        { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10_000 },
+      );
+    } catch {
+      startFallback();
+    }
+  };
 
   const WeatherIcon = weather.condition === 'sunny'
     ? Sun
@@ -254,46 +571,119 @@ export function DashboardWeatherWidget() {
         ? text.fallback
         : text.unavailable;
   const conditionText = weather.condition ? text.conditions[weather.condition] : text.title;
+  const temperatureText = weather.temperatureC === null ? '—' : `${Math.round(weather.temperatureC)}°C`;
+  const currentCity = weather.city ?? text.loading;
 
   return (
-    <details className="group relative shrink-0" data-testid="dashboard-weather-widget">
-      <summary
-        className="flex h-10 max-w-[118px] cursor-pointer list-none items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] [&::-webkit-details-marker]:hidden dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white sm:max-w-[132px] sm:gap-1.5 sm:px-2.5"
-        aria-label={`${text.title}: ${weather.city ?? text.loading}, ${weather.temperatureC === null ? '—' : `${Math.round(weather.temperatureC)}°C`}, ${conditionText}`}
-        title={text.title}
+    <div className="relative shrink-0" data-testid="dashboard-weather-widget">
+      <button
+        ref={badgeRef}
+        type="button"
+        onClick={() => setIsPopoverOpen((open) => !open)}
+        className="flex h-10 max-w-[140px] items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white max-[400px]:max-w-[120px] max-[360px]:max-w-[108px] max-[340px]:max-w-[100px] sm:max-w-[150px] sm:gap-1.5 sm:px-2.5"
+        aria-label={`${text.title}: ${currentCity}, ${temperatureText}, ${conditionText}`}
+        aria-expanded={isPopoverOpen}
+        aria-controls="dashboard-weather-popover"
+        title={`${currentCity} · ${temperatureText} · ${conditionText}`}
         data-testid="button-dashboard-weather"
       >
         <MapPin className="size-3 shrink-0 text-[#a87925] max-[340px]:hidden" aria-hidden="true" />
-        <span className="min-w-0 max-w-10 flex-1 truncate text-[10px] font-medium max-[400px]:hidden sm:max-w-14 sm:text-[11px]" data-testid="text-weather-city">
-          {weather.city ?? text.loading}
+        <span className="min-w-0 max-w-12 flex-1 truncate text-[10px] font-medium max-[340px]:max-w-6 sm:max-w-16 sm:text-[11px]" data-testid="text-weather-city">
+          {currentCity}
         </span>
-        <span className="shrink-0 text-[12px] font-semibold leading-none" data-testid="text-weather-temperature">
-          {weather.temperatureC === null ? '—' : Math.round(weather.temperatureC)}°C
-        </span>
+        <span className="shrink-0 text-[12px] font-semibold leading-none" data-testid="text-weather-temperature">{temperatureText}</span>
         <WeatherIcon className={`size-[15px] shrink-0 ${iconColor} animate-pulse motion-reduce:animate-none`} aria-hidden="true" />
-      </summary>
-      <div className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1rem))] rounded-2xl border border-border bg-card p-4 text-foreground shadow-xl">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
-            <WeatherIcon className={`size-5 ${iconColor}`} aria-hidden="true" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-semibold" data-testid="text-weather-city-detail">{weather.city ?? text.loading}</p>
-            <p className="mt-1 text-[12px] text-muted-foreground" data-testid="text-weather-condition">{conditionText}</p>
+      </button>
+      {isPopoverOpen && popoverPosition && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={popoverRef}
+          id="dashboard-weather-popover"
+          role="dialog"
+          aria-label={text.locationPicker}
+          className="z-[100] overflow-y-auto rounded-2xl border border-border bg-card p-4 text-foreground shadow-2xl"
+          style={{
+            position: 'fixed',
+            top: popoverPosition.top,
+            left: popoverPosition.left,
+            width: popoverPosition.width,
+            maxHeight: 'calc(100dvh - 5rem)',
+          }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
+              <WeatherIcon className={`size-5 ${iconColor}`} aria-hidden="true" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-semibold" data-testid="text-weather-city-detail">{currentCity}</p>
+              <p className="mt-1 text-[12px] text-muted-foreground" data-testid="text-weather-condition">{conditionText}</p>
+            </div>
+            <span className="shrink-0 font-serif text-[22px] leading-none" data-testid="text-weather-temperature-detail">{temperatureText}</span>
           </div>
-          <span className="shrink-0 font-serif text-[22px] leading-none" data-testid="text-weather-temperature-detail">
-            {weather.temperatureC === null ? '—' : Math.round(weather.temperatureC)}°C
-          </span>
-        </div>
-        <p className="mt-3 rounded-xl bg-muted/70 px-3 py-2 text-[11px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-dashboard-weather">
-          {statusText}
-        </p>
-        <div className="mt-3 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
-          <p className="mb-1 font-semibold uppercase tracking-[.1em]">{text.sources}</p>
-          <p>{text.weatherSource}</p>
-          <p>{text.locationSource}</p>
-        </div>
-      </div>
-    </details>
+          <p className="mt-3 rounded-xl bg-muted/70 px-3 py-2 text-[11px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-dashboard-weather">
+            {statusText}
+          </p>
+
+          <div className="mt-4 border-t border-border pt-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[.1em] text-muted-foreground">{text.locationPicker}</p>
+            <label htmlFor="dashboard-weather-city-search" className="sr-only">{text.searchPlaceholder}</label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <input
+                id="dashboard-weather-city-search"
+                type="search"
+                value={cityQuery}
+                onChange={(event) => setCityQuery(event.target.value)}
+                placeholder={text.searchPlaceholder}
+                className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-[12px] text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-[#d9a441]"
+                autoComplete="off"
+                data-testid="input-weather-city-search"
+              />
+            </div>
+            <div className="mt-2 space-y-1" aria-live="polite">
+              {isSearching && <p className="flex items-center gap-2 px-2 py-2 text-[11px] text-muted-foreground"><LoaderCircle className="size-3.5 animate-spin" aria-hidden="true" />{text.searching}</p>}
+              {searchError && <p className="px-2 py-2 text-[11px] text-destructive" role="alert">{searchError}</p>}
+              {!isSearching && !searchError && cityQuery.trim().length >= 2 && cityResults.length === 0 && <p className="px-2 py-2 text-[11px] text-muted-foreground">{text.noCities}</p>}
+              {cityResults.map((result) => {
+                const detail = geocodingDetail(result);
+                return (
+                  <button
+                    key={result.id ?? `${result.name}-${result.latitude}-${result.longitude}`}
+                    type="button"
+                    onClick={() => chooseCity(result)}
+                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441]"
+                    data-testid="button-weather-city-result"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[12px] font-medium">{result.name}</span>
+                      {detail && <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">{detail}</span>}
+                    </span>
+                    <span className="shrink-0 text-[10px] font-semibold text-[#8f601a]">{result.country}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={useMyLocation}
+              className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-[12px] font-semibold transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441]"
+              data-testid="button-weather-my-location"
+            >
+              <MapPin className="size-4 text-[#a87925]" aria-hidden="true" />
+              {text.myLocation}
+            </button>
+            {storedCity && <p className="mt-2 text-[10px] text-muted-foreground">{storedCity.name}</p>}
+            {storageError && <p className="mt-2 text-[10px] text-destructive" role="alert">{text.storageUnavailable}</p>}
+            {!storedCity && status === 'unavailable' && <p className="mt-2 text-[10px] text-muted-foreground">{text.savedCityUnavailable}</p>}
+          </div>
+
+          <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
+            <p className="mb-1 font-semibold uppercase tracking-[.1em]">{text.sources}</p>
+            <p>{text.weatherSource}</p>
+            <p>{text.locationSource}</p>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </div>
   );
 }
