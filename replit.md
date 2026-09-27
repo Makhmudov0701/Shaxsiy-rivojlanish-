@@ -9,7 +9,7 @@ A private, calm writing space for capturing, searching, and revisiting daily dia
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Database env: `EXTERNAL_DATABASE_URL` optionally overrides `DATABASE_URL` for an external PostgreSQL provider such as Supabase. Keep the connection string in Replit Secrets or the Render service environment, never in the repository.
 
 ## Stack
 
@@ -33,6 +33,7 @@ A private, calm writing space for capturing, searching, and revisiting daily dia
 
 - Clerk browser sessions use same-origin cookies; the web client does not attach bearer tokens.
 - Every diary query is scoped to the authenticated Clerk user ID on the server.
+- The database package uses `EXTERNAL_DATABASE_URL` when set and otherwise falls back to the platform-provided `DATABASE_URL`.
 - OpenAPI codegen owns the shared request/response types used by both the API and the React client.
 - Calendar dates are stored as PostgreSQL `date` values so diary days are not shifted by timezone conversion.
 
