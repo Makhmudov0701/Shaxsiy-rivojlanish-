@@ -9,4 +9,4 @@
 - [Daily motivation and guide localization](diary-quote-localization.md) — keep quote and guide pools date-seeded, section-aware, and explicit in all supported languages.
 - [JSX localization transform](diary-localization-transform.md) — skip wrapping expressions that contain nested JSX; localize descendants to avoid overlapping AST edits.
 - [Pomodoro audio unlock](pomodoro-audio-unlock.md) — resume Web Audio from timer start so delayed completion alerts remain permitted.
-- [Brain Gym heatmap scoring](brain-gym-heatmap-scoring.md) — show correct/possible score totals in each day's details while keeping heatmap intensity about activity volume.
+- [Brain Gym history and heatmap](brain-gym-heatmap-scoring.md) — preserve legacy exercise records for profile and heatmap while keeping new knowledge bookmarks separate.

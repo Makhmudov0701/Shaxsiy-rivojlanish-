@@ -1,10 +1,12 @@
 ---
-name: Brain Gym heatmap scoring
-description: Product decision for showing exercise scores in the activity heatmap.
+name: Brain Gym history and heatmap
+description: Preserve historical exercise records and keep activity-volume heatmap semantics.
 ---
 
-Show Brain Gym correct/possible totals in the selected day's tooltip and accessible label, but keep heatmap color intensity based on activity volume rather than score quality.
+Historical Brain Gym exercise completions remain available to profile and calendar analytics after the interactive games are replaced. New knowledge-hub bookmarks use a separate per-user store; do not repurpose or overwrite the completion records.
 
-**Why:** Different Brain Gym difficulties have different possible-point totals, so using raw scores to color days would mix exercise difficulty and performance into the activity-volume signal.
+Show historical Brain Gym correct/possible totals in the selected day's tooltip and accessible label, but keep heatmap color intensity based on activity volume rather than score quality.
 
-**How to apply:** When adding new Brain Gym score details, preserve completion-based intensity and expose score totals as a separate daily metric.
+**Why:** The profile and heatmap still read completion history, and different exercise difficulties have different possible-point totals. Deleting or reusing those records would lose history or mix performance with activity volume.
+
+**How to apply:** Keep legacy completions intact until all consumers are intentionally migrated. Store new knowledge-hub state separately, and expose historical score totals as a daily detail rather than heatmap intensity.
