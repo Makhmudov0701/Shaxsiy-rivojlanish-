@@ -58,6 +58,7 @@ const copy: Record<AppLanguage, {
   noCities: string;
   searchFailed: string;
   myLocation: string;
+  savedLocation: string;
   savedCityUnavailable: string;
   storageUnavailable: string;
   conditions: Record<WeatherCondition, string>;
@@ -79,6 +80,7 @@ const copy: Record<AppLanguage, {
     noCities: 'Shahar topilmadi.',
     searchFailed: 'Shaharlarni qidirib bo‘lmadi. Qayta urinib ko‘ring.',
     myLocation: 'Mening joylashuvim 📍',
+    savedLocation: 'Saqlangan shahar',
     savedCityUnavailable: 'Saqlangan shaharni topib bo‘lmadi. Boshqa joy qidiring yoki joylashuvingizdan foydalaning.',
     storageUnavailable: 'Tanlovni ushbu qurilmada saqlab bo‘lmadi.',
     conditions: { sunny: 'Quyoshli', cloudy: 'Bulutli', rainy: 'Yomg‘irli', snowy: 'Qorli' },
@@ -100,6 +102,7 @@ const copy: Record<AppLanguage, {
     noCities: 'No cities found.',
     searchFailed: 'Could not search cities. Please try again.',
     myLocation: 'My location 📍',
+    savedLocation: 'Saved city',
     savedCityUnavailable: 'The saved city could not be found. Search for another place or use your location.',
     storageUnavailable: 'This choice could not be saved on this device.',
     conditions: { sunny: 'Sunny', cloudy: 'Cloudy', rainy: 'Rainy', snowy: 'Snowy' },
@@ -121,6 +124,7 @@ const copy: Record<AppLanguage, {
     noCities: 'Города не найдены.',
     searchFailed: 'Не удалось найти города. Попробуйте ещё раз.',
     myLocation: 'Моё местоположение 📍',
+    savedLocation: 'Сохранённый город',
     savedCityUnavailable: 'Не удалось найти сохранённый город. Найдите другое место или используйте своё местоположение.',
     storageUnavailable: 'Не удалось сохранить выбор на этом устройстве.',
     conditions: { sunny: 'Солнечно', cloudy: 'Облачно', rainy: 'Дождь', snowy: 'Снег' },
@@ -142,6 +146,7 @@ const copy: Record<AppLanguage, {
     noCities: '도시를 찾을 수 없습니다.',
     searchFailed: '도시를 검색하지 못했습니다. 다시 시도해 주세요.',
     myLocation: '내 위치 📍',
+    savedLocation: '저장된 도시',
     savedCityUnavailable: '저장된 도시를 찾을 수 없습니다. 다른 도시를 검색하거나 현재 위치를 사용하세요.',
     storageUnavailable: '이 기기에 선택한 위치를 저장하지 못했습니다.',
     conditions: { sunny: '맑음', cloudy: '흐림', rainy: '비', snowy: '눈' },
@@ -180,11 +185,11 @@ function isGeocodingResult(value: unknown): value is GeocodingResult {
     && Number.isFinite(result.longitude);
 }
 
-async function searchCities(query: string, signal: AbortSignal): Promise<GeocodingResult[]> {
+async function searchCities(query: string, signal: AbortSignal, count = 6): Promise<GeocodingResult[]> {
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
   url.search = new URLSearchParams({
     name: query,
-    count: '6',
+    count: String(count),
     language: 'en',
     format: 'json',
   }).toString();
@@ -222,10 +227,14 @@ function storedCityFor(result: GeocodingResult): StoredCity {
 function matchStoredCity(results: GeocodingResult[], saved: StoredCity): GeocodingResult | null {
   const normalize = (value: string | undefined) => value?.trim().toLocaleLowerCase() ?? '';
   const nameMatches = results.filter((result) => normalize(result.name) === normalize(saved.name));
-  return nameMatches.find((result) =>
-    (!saved.country || normalize(result.country) === normalize(saved.country))
-    && (!saved.admin1 || normalize(result.admin1) === normalize(saved.admin1)),
-  ) ?? nameMatches[0] ?? null;
+  if (saved.country) {
+    return nameMatches.find((result) =>
+      normalize(result.country) === normalize(saved.country)
+      && (!saved.admin1 || normalize(result.admin1) === normalize(saved.admin1)),
+    ) ?? nameMatches.find((result) => normalize(result.country) === normalize(saved.country)) ?? null;
+  }
+  if (saved.admin1) return nameMatches.find((result) => normalize(result.admin1) === normalize(saved.admin1)) ?? null;
+  return nameMatches[0] ?? null;
 }
 
 function geocodingDetail(result: GeocodingResult): string {
@@ -249,6 +258,7 @@ export function DashboardWeatherWidget() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [storageError, setStorageError] = useState(false);
+  const [savedCityLookupFailed, setSavedCityLookupFailed] = useState(false);
   const storedCityRef = useRef(storedCity);
   const activeLocationRef = useRef<ActiveLocation | null>(null);
   const activateLocationRef = useRef<(location: ActiveLocation) => void>(() => undefined);
@@ -295,10 +305,9 @@ export function DashboardWeatherWidget() {
       setStatus('loading');
       const locationPromise: Promise<ReverseGeocodeResponse | null> = city
         ? Promise.resolve(null)
-        ? fetch(locationUrl, { signal: requestController.signal })
+        : fetch(locationUrl, { signal: requestController.signal })
           .then(async (response) => response.ok ? await response.json() as ReverseGeocodeResponse : null)
           .catch(() => null)
-        : Promise.resolve(null);
 
       try {
         const [weatherResponse, locationResult] = await Promise.all([
@@ -345,11 +354,12 @@ export function DashboardWeatherWidget() {
     if (saved) {
       setWeather((current) => ({ ...current, city: saved.name }));
       startupController = new AbortController();
-      void searchCities(saved.name, startupController.signal)
+      void searchCities(saved.name, startupController.signal, 100)
         .then((results) => {
           if (!mounted || initialRequestId !== locationRequestIdRef.current) return;
           const match = matchStoredCity(results, saved);
           if (!match) {
+            setSavedCityLookupFailed(true);
             setStatus('unavailable');
             return;
           }
@@ -360,7 +370,10 @@ export function DashboardWeatherWidget() {
           });
         })
         .catch(() => {
-          if (mounted && initialRequestId === locationRequestIdRef.current) setStatus('unavailable');
+          if (mounted && initialRequestId === locationRequestIdRef.current) {
+            setSavedCityLookupFailed(true);
+            setStatus('unavailable');
+          }
         });
     } else {
       const startFallback = () => {
@@ -417,9 +430,10 @@ export function DashboardWeatherWidget() {
     }
 
     const controller = new AbortController();
+    setCityResults([]);
+    setIsSearching(true);
+    setSearchError(null);
     const timer = window.setTimeout(() => {
-      setIsSearching(true);
-      setSearchError(null);
       void searchCities(query, controller.signal)
         .then((results) => {
           if (!controller.signal.aborted) setCityResults(results);
@@ -488,6 +502,7 @@ export function DashboardWeatherWidget() {
     const selected = storedCityFor(result);
     storedCityRef.current = selected;
     setStoredCity(selected);
+    setSavedCityLookupFailed(false);
     setStorageError(false);
     try {
       window.localStorage.setItem(SAVED_CITY_KEY, JSON.stringify(selected));
@@ -508,7 +523,10 @@ export function DashboardWeatherWidget() {
   const useMyLocation = () => {
     storedCityRef.current = null;
     setStoredCity(null);
+    setSavedCityLookupFailed(false);
     setStorageError(false);
+    setWeather({ temperatureC: null, condition: null, city: text.nearbyArea });
+    setStatus('loading');
     setCityQuery('');
     setCityResults([]);
     try {
@@ -583,7 +601,7 @@ export function DashboardWeatherWidget() {
         className="flex h-10 max-w-[140px] items-center gap-1 rounded-full border border-[#ddcfaa] bg-[#faf6ea] px-2 text-foreground shadow-sm transition-colors hover:bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9a441] dark:border-[#5d5037] dark:bg-[#2d281f] dark:text-white max-[400px]:max-w-[120px] max-[360px]:max-w-[108px] max-[340px]:max-w-[100px] sm:max-w-[150px] sm:gap-1.5 sm:px-2.5"
         aria-label={`${text.title}: ${currentCity}, ${temperatureText}, ${conditionText}`}
         aria-expanded={isPopoverOpen}
-        aria-controls="dashboard-weather-popover"
+        aria-controls={isPopoverOpen ? 'dashboard-weather-popover' : undefined}
         title={`${currentCity} · ${temperatureText} · ${conditionText}`}
         data-testid="button-dashboard-weather"
       >
@@ -636,6 +654,12 @@ export function DashboardWeatherWidget() {
                 placeholder={text.searchPlaceholder}
                 className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-[12px] text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-[#d9a441]"
                 autoComplete="off"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && cityResults[0]) {
+                    event.preventDefault();
+                    chooseCity(cityResults[0]);
+                  }
+                }}
                 data-testid="input-weather-city-search"
               />
             </div>
@@ -671,9 +695,9 @@ export function DashboardWeatherWidget() {
               <MapPin className="size-4 text-[#a87925]" aria-hidden="true" />
               {text.myLocation}
             </button>
-            {storedCity && <p className="mt-2 text-[10px] text-muted-foreground">{storedCity.name}</p>}
+            {storedCity && <p className="mt-2 text-[10px] text-muted-foreground">{text.savedLocation}: {storedCity.name}</p>}
             {storageError && <p className="mt-2 text-[10px] text-destructive" role="alert">{text.storageUnavailable}</p>}
-            {!storedCity && status === 'unavailable' && <p className="mt-2 text-[10px] text-muted-foreground">{text.savedCityUnavailable}</p>}
+            {savedCityLookupFailed && <p className="mt-2 text-[10px] text-muted-foreground">{text.savedCityUnavailable}</p>}
           </div>
 
           <div className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">
