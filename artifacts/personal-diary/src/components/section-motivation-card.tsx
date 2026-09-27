@@ -164,8 +164,8 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
             <Icon size={20} strokeWidth={1.8} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{guideHeading}</p>
-            <h2 className="mt-0.5 break-words font-sans text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
+            {sectionId !== "diary" && <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{guideHeading}</p>}
+            <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
             {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{translateUiText(section.eyebrow, language)}</p>}
           </div>
           <button
@@ -223,7 +223,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                   </div>
                 </div>
                 <p className="border-t border-border/60 pt-3 font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                  {translateUiText(section.title, language)} {sectionGuideFooterLabel[language]} · {dailyGuideIndex + 1}/{SECTION_DAILY_GUIDE_POOL_SIZE}
+                  {sectionGuideFooterLabel[language]} · {dailyGuideIndex + 1}/{SECTION_DAILY_GUIDE_POOL_SIZE}
                 </p>
               </article>
 
@@ -240,17 +240,14 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{translateUiText("Bugungi motivatsiya", language)}</p>
                 </div>
                 <div className="relative flex min-h-[220px] min-w-0 flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
-                  <p className="min-w-0 max-w-full break-words font-sans text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
+                  <p className="min-w-0 max-w-full break-words font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
                     “{currentEntry.text}”
                   </p>
                   <p className="mt-4 min-w-0 break-words font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">
                     {translateUiText(section.motivationLabel, language)} · {currentIndex + 1}/{poolSize}
                   </p>
                 </div>
-                <div className="relative mt-5 flex min-w-0 items-center justify-between gap-3">
-                  <span className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.1em] text-muted-foreground">
-                    {translateUiText(section.eyebrow, language)}
-                  </span>
+                <div className="relative mt-5 flex min-w-0 justify-end gap-3">
                   <button
                     type="button"
                     onClick={showNextQuote}
