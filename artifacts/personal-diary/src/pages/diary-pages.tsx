@@ -227,7 +227,7 @@ export function HomePage() {
              <span className="font-mono text-[9px] uppercase tracking-[.18em] text-white/60">Seshanba / 08.13</span>
              <span className="size-2 rounded-full bg-[#d9a441]" />
            </div>
-           <p className="mt-10 font-serif text-[31px] leading-[1.02] text-white">“Kunni<br />imtihon emas,<br /><em>tashrif deb biling.”</em></p>
+            <p className="mt-10 font-sans text-[31px] leading-[1.02] text-white">“Kunni<br />imtihon emas,<br /><em>tashrif deb biling.”</em></p>
            <div className="mt-9 space-y-3">
              <div className="h-px w-full bg-white/25" />
              <div className="h-px w-[82%] bg-white/25" />
