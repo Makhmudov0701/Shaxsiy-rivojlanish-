@@ -1,6 +1,6 @@
 import { useClerk, useUser } from '@clerk/react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { BarChart3, BookMarked, BookOpen, Brain, CalendarCheck2, CalendarDays, Clock3, FolderOpen, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, UserCircle, X } from 'lucide-react';
+import { BookMarked, BookOpen, Brain, CalendarCheck2, Clock3, Lightbulb, ListTodo, LogOut, LockKeyhole, Menu, Moon, Plus, Repeat2, Settings, Star, Sun, UserCircle, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
 import type { DiaryEntry, Mood } from '@workspace/api-client-react';
 import { formatUzbekDate } from '@/lib/date-utils';
@@ -267,9 +267,6 @@ export function DiaryShell({ children }: { children: ReactNode }) {
             <SidebarNavLink href="/repetition" label={translateUiText('Takrorlash', language)} icon={<Repeat2 size={20} strokeWidth={1.8} />} active={repetitionSelected} onNavigate={closeMobile} testId="link-repetition" />
             <SidebarNavLink href="/vault" label={vaultNavigationLabel(language)} icon={<LockKeyhole size={20} />} active={pathname === '/vault'} onNavigate={closeMobile} testId="link-vault" />
             <SidebarNavLink href="/profile" label={profileLabel} icon={<UserCircle size={20} />} active={pathname === '/profile'} onNavigate={closeMobile} testId="link-profile" />
-            <SidebarNavLink href="/user-portal?view=calendar" label={translateUiText('Taqvim', language)} icon={<CalendarDays size={20} />} active={pathname === '/user-portal' && portalView === 'calendar'} onNavigate={closeMobile} testId="link-calendar" />
-            <SidebarNavLink href="/user-portal?view=folders" label={translateUiText('Mavzular', language)} icon={<FolderOpen size={20} />} active={pathname === '/user-portal' && portalView === 'folders'} onNavigate={closeMobile} testId="link-folders-tags" />
-            <SidebarNavLink href="/user-portal?view=analytics" label={translateUiText('Kayfiyat', language)} icon={<BarChart3 size={20} />} active={pathname === '/user-portal' && portalView === 'analytics'} onNavigate={closeMobile} testId="link-analytics" />
             <SidebarNavLink href="/ideas" label={translateUiText('G‘oyalar', language)} icon={<Lightbulb size={20} />} active={pathname === '/ideas'} onNavigate={closeMobile} testId="link-ideas" />
             <SidebarNavLink href="/brain-gym" label={brainGymLabel} icon={<Brain size={20} />} active={pathname === '/brain-gym'} onNavigate={closeMobile} testId="link-brain-gym" />
             <SidebarNavLink href="/habits" label={translateUiText('Odatlar', language)} icon={<CalendarCheck2 size={20} />} active={pathname === '/habits'} onNavigate={closeMobile} testId="link-habits" />
