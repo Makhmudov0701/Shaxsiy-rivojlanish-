@@ -144,7 +144,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
   };
 
   return (
-    <section className="mx-auto box-border w-full min-w-0 max-w-[100vw] px-4 pt-4 sm:px-8 sm:pt-6 lg:px-12" data-testid={`section-info-card-${sectionId}`}>
+    <section className="mx-auto box-border w-full min-w-0 max-w-[100vw] px-4 pt-4 font-sans sm:px-8 sm:pt-6 lg:px-12" data-testid={`section-info-card-${sectionId}`}>
       <div
         className="box-border w-full min-w-0 max-w-full overflow-hidden rounded-[24px] border bg-card shadow-sm"
         style={{
@@ -165,7 +165,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{guideHeading}</p>
-            <h2 className="mt-0.5 break-words font-serif text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
+            <h2 className="mt-0.5 break-words font-sans text-[22px] leading-tight text-foreground [overflow-wrap:anywhere] sm:text-[25px]">{translateUiText(section.title, language)}</h2>
             {!expanded && <p className="mt-0.5 break-words text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{translateUiText(section.eyebrow, language)}</p>}
           </div>
           <button
@@ -195,7 +195,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
               >
                 <div className="min-w-0">
                   <p
-                    className="min-w-0 break-words font-serif text-[clamp(1.2rem,1.7vw,1.55rem)] leading-[1.3] tracking-[-0.015em] text-foreground [overflow-wrap:anywhere]"
+                    className="min-w-0 break-words font-sans text-[clamp(1.2rem,1.7vw,1.55rem)] leading-[1.3] tracking-[-0.015em] text-foreground [overflow-wrap:anywhere]"
                     data-testid={`text-daily-section-guide-${sectionId}`}
                   >
                     {dailyGuide.intro}
@@ -240,7 +240,7 @@ export function SectionMotivationCard({ sectionId, userId }: { sectionId: Sectio
                   <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">{translateUiText("Bugungi motivatsiya", language)}</p>
                 </div>
                 <div className="relative flex min-h-[220px] min-w-0 flex-1 flex-col justify-center py-5" key={`${today}-${sectionId}-${currentIndex}`}>
-                  <p className="min-w-0 max-w-full break-words font-serif text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
+                  <p className="min-w-0 max-w-full break-words font-sans text-[clamp(1.45rem,2.35vw,1.9rem)] leading-[1.13] tracking-[-0.025em] text-foreground [overflow-wrap:anywhere] sm:max-w-[38rem]" data-testid={`text-daily-quote-${sectionId}`}>
                     “{currentEntry.text}”
                   </p>
                   <p className="mt-4 min-w-0 break-words font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground [overflow-wrap:anywhere]">

@@ -138,7 +138,7 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
     ko: { delete: '삭제', words: `${richTextWordCount(entry.content)}단어`, reading: `${estimatedReadingMinutes(entry.content)}분 읽기` },
   }[language];
   return (
-    <article className="group relative flex min-h-[218px] flex-col justify-between rounded-[22px] border border-card-border bg-card p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#c9b88a] hover:shadow-lg" data-testid={`card-entry-${entry.id}`}>
+    <article className="group relative flex min-h-[218px] flex-col justify-between rounded-[22px] border border-card-border bg-card p-5 font-sans shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#c9b88a] hover:shadow-lg" data-testid={`card-entry-${entry.id}`}>
       <div>
         <div className="mb-5 flex items-start justify-between gap-3">
           <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">{formatEntryDate(entry.entryDate)}</span>
@@ -147,7 +147,7 @@ export function EntryCard({ entry, onFavorite, onDelete, busyFavorite }: { entry
           </button>
         </div>
         <Link href={`/entry/${entry.id}`} className="block" data-testid={`link-entry-${entry.id}`}>
-          <h3 className="line-clamp-2 font-serif text-[26px] leading-[1.04] tracking-[-0.025em] text-foreground transition-colors group-hover:text-[#6c4c21]">{entry.title}</h3>
+          <h3 className="line-clamp-2 font-sans text-[26px] leading-[1.04] tracking-[-0.025em] text-foreground transition-colors group-hover:text-[#6c4c21]">{entry.title}</h3>
           <p className="mt-3 line-clamp-3 text-[13px] leading-[1.65] text-muted-foreground">{plainTextFromRichText(excerpt)}</p>
         </Link>
       </div>
@@ -328,11 +328,11 @@ export function EmptyEntries({ filtered, onCreate }: { filtered: boolean; onCrea
     },
   }[language];
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-6 py-16 text-center">
+    <div className="relative overflow-hidden rounded-[28px] border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-6 py-16 text-center font-sans">
       <div className="absolute -right-10 -top-10 size-36 rounded-full border-[18px] border-[#eadab0]/70" />
       <div className="absolute -bottom-16 -left-8 size-32 rounded-full border-[14px] border-[#d8e7dc]/80" />
       <span className="relative mx-auto grid size-14 place-items-center rounded-2xl bg-[#30243f] text-[#f8f3e9]"><BookOpen size={23} strokeWidth={1.5} /></span>
-      <h2 className="relative mt-6 font-serif text-[30px] tracking-[-0.03em]">{copy.title}</h2>
+      <h2 className="relative mt-6 font-sans text-[30px] tracking-[-0.03em]">{copy.title}</h2>
       <p className="relative mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">{copy.description}</p>
       <button type="button" onClick={onCreate} className="relative mt-7 inline-flex min-h-14 items-center gap-3 rounded-2xl bg-primary px-6 py-4 text-[16px] font-semibold text-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5" data-testid="button-empty-create"><Plus size={21} /> {translateUiText('Yangi xotira yozish', language)}</button>
     </div>

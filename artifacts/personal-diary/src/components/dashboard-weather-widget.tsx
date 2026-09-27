@@ -593,7 +593,7 @@ export function DashboardWeatherWidget() {
   const currentCity = weather.city ?? text.loading;
 
   return (
-    <div className="relative shrink-0" data-testid="dashboard-weather-widget">
+    <div className="relative shrink-0 font-sans" data-testid="dashboard-weather-widget">
       <button
         ref={badgeRef}
         type="button"
@@ -635,7 +635,7 @@ export function DashboardWeatherWidget() {
               <p className="truncate text-[13px] font-semibold" data-testid="text-weather-city-detail">{currentCity}</p>
               <p className="mt-1 text-[12px] text-muted-foreground" data-testid="text-weather-condition">{conditionText}</p>
             </div>
-            <span className="shrink-0 font-serif text-[22px] leading-none" data-testid="text-weather-temperature-detail">{temperatureText}</span>
+            <span className="shrink-0 font-sans text-[22px] leading-none" data-testid="text-weather-temperature-detail">{temperatureText}</span>
           </div>
           <p className="mt-3 rounded-xl bg-muted/70 px-3 py-2 text-[11px] text-muted-foreground" role="status" aria-live="polite" data-testid="status-dashboard-weather">
             {statusText}
