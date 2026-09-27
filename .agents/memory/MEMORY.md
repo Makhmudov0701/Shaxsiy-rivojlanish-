@@ -11,3 +11,4 @@
 - [JSX localization transform](diary-localization-transform.md) — skip wrapping expressions that contain nested JSX; localize descendants to avoid overlapping AST edits.
 - [Pomodoro audio unlock](pomodoro-audio-unlock.md) — resume Web Audio from timer start so delayed completion alerts remain permitted.
 - [Brain Gym history and heatmap](brain-gym-heatmap-scoring.md) — preserve legacy exercise records for profile and heatmap while keeping new knowledge bookmarks separate.
+- [Duplicate React type copies](react-type-copies.md) — check resolved React types when refs fail across package boundaries; bridge only the affected boundary.
