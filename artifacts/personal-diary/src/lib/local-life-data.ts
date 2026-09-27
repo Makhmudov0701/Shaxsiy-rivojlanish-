@@ -53,6 +53,14 @@ export type BookQuote = {
   createdAt: string;
 };
 
+export type BookPdfAttachment = {
+  fileName: string;
+  fileSize: number;
+  lastReadPage: number;
+  totalPages?: number;
+  attachedAt: string;
+};
+
 export type TrackedBook = {
   id: string;
   title: string;
@@ -60,6 +68,8 @@ export type TrackedBook = {
   status: BookStatus;
   takeaways: string;
   quotes: BookQuote[];
+  /** PDF bytes live separately in per-user IndexedDB. */
+  pdf?: BookPdfAttachment;
   /** Optional for backwards-compatible localStorage records. */
   favorite?: boolean;
   createdAt: string;
@@ -148,6 +158,23 @@ export function isTrackedBookList(value: unknown): value is TrackedBook[] {
     && typeof item.author === 'string'
     && bookStatuses.includes(item.status as BookStatus)
     && typeof item.takeaways === 'string'
+    && (item.pdf === undefined || (
+      isObject(item.pdf)
+      && typeof item.pdf.fileName === 'string'
+      && item.pdf.fileName.length > 0
+      && typeof item.pdf.fileSize === 'number'
+      && Number.isSafeInteger(item.pdf.fileSize)
+      && item.pdf.fileSize >= 0
+      && typeof item.pdf.lastReadPage === 'number'
+      && Number.isSafeInteger(item.pdf.lastReadPage)
+      && item.pdf.lastReadPage >= 1
+      && (item.pdf.totalPages === undefined || (
+        typeof item.pdf.totalPages === 'number'
+        && Number.isSafeInteger(item.pdf.totalPages)
+        && item.pdf.totalPages >= item.pdf.lastReadPage
+      ))
+      && isTimestamp(item.pdf.attachedAt)
+    ))
     && (item.favorite === undefined || typeof item.favorite === 'boolean')
     && Array.isArray(item.quotes)
     && item.quotes.every((quote) =>
