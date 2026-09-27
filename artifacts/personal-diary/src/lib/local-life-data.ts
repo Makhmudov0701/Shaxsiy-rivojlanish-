@@ -18,6 +18,14 @@ export type GoalTask = {
   done: boolean;
 };
 
+export type GoalDailyCheckInStatus = 'done' | 'missed';
+
+export type GoalDailyCheckIn = {
+  status: GoalDailyCheckInStatus;
+  reflection?: string;
+  updatedAt: string;
+};
+
 export type PersonalGoal = {
   id: string;
   title: string;
@@ -31,6 +39,7 @@ export type PersonalGoal = {
   metricTarget?: number;
   metricCurrent?: number;
   metricUnit?: string;
+  dailyCheckIns?: Record<string, GoalDailyCheckIn>;
   createdAt: string;
   updatedAt: string;
 };
@@ -87,6 +96,17 @@ export function isQuickIdeaList(value: unknown): value is QuickIdea[] {
 const horizons: GoalHorizon[] = ['week', 'month', 'half-year', 'year', 'free'];
 const goalCategories: GoalCategory[] = ['education', 'fitness', 'project', 'personal'];
 const goalMetrics: GoalMetric[] = ['milestones', 'quantity', 'time', 'percentage'];
+const goalDailyCheckInStatuses: GoalDailyCheckInStatus[] = ['done', 'missed'];
+
+function isGoalDailyCheckInMap(value: unknown): value is Record<string, GoalDailyCheckIn> {
+  return isObject(value) && Object.entries(value).every(([date, entry]) =>
+    isCalendarDate(date)
+    && isObject(entry)
+    && goalDailyCheckInStatuses.includes(entry.status as GoalDailyCheckInStatus)
+    && (entry.reflection === undefined || (typeof entry.reflection === 'string' && entry.reflection.length <= 500))
+    && isTimestamp(entry.updatedAt),
+  );
+}
 
 export function isPersonalGoalList(value: unknown): value is PersonalGoal[] {
   return Array.isArray(value) && value.every((item) =>
@@ -112,6 +132,7 @@ export function isPersonalGoalList(value: unknown): value is PersonalGoal[] {
     && (item.metric !== 'time' || item.metricTarget === undefined || Number.isInteger(item.metricTarget))
     && (item.metric !== 'time' || item.metricCurrent === undefined || Number.isInteger(item.metricCurrent))
     && (item.metricUnit === undefined || typeof item.metricUnit === 'string')
+    && (item.dailyCheckIns === undefined || isGoalDailyCheckInMap(item.dailyCheckIns))
     && isTimestamp(item.createdAt)
     && isTimestamp(item.updatedAt),
   );

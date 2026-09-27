@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { formatContentDeleteConfirmation, formatGoalDuration, getCurrentIntlLocale } from '@/lib/i18n';
+import { formatContentDeleteConfirmation, formatGoalDuration, getCurrentIntlLocale, translateUiText, useI18n } from '@/lib/i18n';
 import { useForm, useWatch } from 'react-hook-form';
 import {
   CalendarRange,
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { Form } from '@/components/ui/form';
 import { FlashNotice } from '@/components/diary-ui';
+import { GoalDailyTracker } from '@/components/goal-daily-tracker';
 import { ModulePageFrame, UserStoragePage } from '@/pages/local-module-pages';
 import { useLocalModuleStorage } from '@/lib/local-module-storage';
 import {
@@ -27,6 +28,7 @@ import {
   isPersonalGoalList,
   userStorageKey,
   type GoalCategory,
+  type GoalDailyCheckInStatus,
   type GoalHorizon,
   type GoalMetric,
   type GoalTask,
@@ -55,6 +57,81 @@ const horizonLabels: Record<GoalHorizon, string> = {
 const goalHorizons: GoalHorizon[] = ['week', 'month', 'half-year', 'year', 'free'];
 const periodFilters = ['all', ...goalHorizons] as const;
 type PeriodFilter = (typeof periodFilters)[number];
+
+const GOALS_LOCAL_COPY = {
+  uz: {
+    eyebrow: 'Kichik qadamlar',
+    halfYear: '6 oylik',
+    freeHorizon: 'Erkin',
+    unitLabel: 'Birlik',
+    addQuantity: 'Qo‘shiladigan miqdor',
+    taskDoneAria: 'Qadamni bajarildi deb belgilash',
+    taskUndoneAria: 'Qadamni bajarilmagan deb belgilash',
+    taskPlaceholder: (index: number) => `Qadam ${index}`,
+    missedView: 'O‘tkazib yuborilgan kunlar',
+    missedViewAria: 'O‘tkazib yuborilgan kunlar qaydlarini ko‘rish',
+    missedSummary: 'O‘tkazib yuborilgan kunlar qaydlari',
+    noMissed: 'Hozircha o‘tkazib yuborilgan kunlar yo‘q.',
+    noReflection: 'Izoh kiritilmagan.',
+    statusSaved: 'Kunlik holat saqlandi.',
+    statusCleared: 'Kunlik holat bekor qilindi.',
+    reflectionSaved: 'Izoh saqlandi.',
+  },
+  en: {
+    eyebrow: 'Small steps',
+    halfYear: '6 months',
+    freeHorizon: 'Flexible',
+    unitLabel: 'Unit',
+    addQuantity: 'Amount to add',
+    taskDoneAria: 'Mark step as completed',
+    taskUndoneAria: 'Mark step as not completed',
+    taskPlaceholder: (index: number) => `Step ${index}`,
+    missedView: 'Missed days',
+    missedViewAria: 'View missed-day records',
+    missedSummary: 'Missed-day records',
+    noMissed: 'There are no missed days yet.',
+    noReflection: 'No reflection added.',
+    statusSaved: 'Daily status saved.',
+    statusCleared: 'Daily status cleared.',
+    reflectionSaved: 'Reflection saved.',
+  },
+  ru: {
+    eyebrow: 'Маленькие шаги',
+    halfYear: '6 месяцев',
+    freeHorizon: 'Свободный срок',
+    unitLabel: 'Единица',
+    addQuantity: 'Добавляемое количество',
+    taskDoneAria: 'Отметить шаг выполненным',
+    taskUndoneAria: 'Отметить шаг невыполненным',
+    taskPlaceholder: (index: number) => `Шаг ${index}`,
+    missedView: 'Пропущенные дни',
+    missedViewAria: 'Показать записи о пропущенных днях',
+    missedSummary: 'Записи о пропущенных днях',
+    noMissed: 'Пока нет пропущенных дней.',
+    noReflection: 'Заметка не добавлена.',
+    statusSaved: 'Ежедневный статус сохранён.',
+    statusCleared: 'Ежедневный статус снят.',
+    reflectionSaved: 'Заметка сохранена.',
+  },
+  ko: {
+    eyebrow: '작은 실천',
+    halfYear: '6개월',
+    freeHorizon: '자유 일정',
+    unitLabel: '단위',
+    addQuantity: '추가할 수량',
+    taskDoneAria: '단계를 완료로 표시',
+    taskUndoneAria: '단계를 미완료로 표시',
+    taskPlaceholder: (index: number) => `단계 ${index}`,
+    missedView: '놓친 날',
+    missedViewAria: '놓친 날 기록 보기',
+    missedSummary: '놓친 날 기록',
+    noMissed: '아직 놓친 날이 없습니다.',
+    noReflection: '이유가 기록되지 않았습니다.',
+    statusSaved: '매일 상태를 저장했습니다.',
+    statusCleared: '매일 상태를 지웠습니다.',
+    reflectionSaved: '이유를 저장했습니다.',
+  },
+} as const;
 
 const categoryOptions: {
   value: GoalCategory;
@@ -146,6 +223,9 @@ function clampPercent(value: number) {
 
 function GoalsBoard({ storageKey }: { storageKey: string }) {
   const store = useLocalModuleStorage(storageKey, EMPTY_GOALS, isPersonalGoalList, 'Maqsadlar');
+  const { language } = useI18n();
+  const localCopy = GOALS_LOCAL_COPY[language];
+  const t = (text: string) => translateUiText(text, language);
   const form = useForm<GoalFormValues>({ defaultValues: newGoalForm() });
   const selectedHorizon = useWatch({ control: form.control, name: 'horizon' }) ?? 'month';
   const selectedMetric = useWatch({ control: form.control, name: 'metric' }) ?? 'milestones';
@@ -156,22 +236,79 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
   const [trackingDrafts, setTrackingDrafts] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const [showMissedDays, setShowMissedDays] = useState(false);
 
   const showNotice = (message: string) => {
-    setNotice(message);
+    setNotice(t(message));
     window.setTimeout(() => setNotice(''), 2400);
   };
+  const horizonLabel = (horizon: GoalHorizon) => horizon === 'half-year'
+    ? localCopy.halfYear
+    : horizon === 'free'
+      ? localCopy.freeHorizon
+      : t(horizonLabels[horizon]);
   const visibleGoals = useMemo(
     () => [...store.value]
       .filter((goal) => period === 'all' || goal.horizon === period)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [period, store.value],
   );
+  const missedEntries = useMemo(
+    () => store.value.flatMap((goal) => Object.entries(goal.dailyCheckIns ?? {})
+      .filter(([, entry]) => entry.status === 'missed')
+      .map(([date, entry]) => ({ goal, date, reflection: entry.reflection ?? '' })))
+      .sort((a, b) => b.date.localeCompare(a.date) || a.goal.title.localeCompare(b.goal.title)),
+    [store.value],
+  );
   const resetComposer = () => {
     setEditingId(null);
     setFormTasks([]);
     setFormError('');
     form.reset(newGoalForm());
+  };
+
+  const updateDailyStatus = (goalId: string, date: string, status: GoalDailyCheckInStatus) => {
+    const current = store.value.find((goal) => goal.id === goalId);
+    if (!current) return;
+    const now = new Date().toISOString();
+    const previousEntry = current.dailyCheckIns?.[date];
+    const cleared = previousEntry?.status === status;
+    const dailyCheckIns = { ...(current.dailyCheckIns ?? {}) };
+    if (cleared) {
+      delete dailyCheckIns[date];
+    } else {
+      const entry = {
+        status,
+        updatedAt: now,
+        ...(status === 'missed' && previousEntry?.status === 'missed' && previousEntry.reflection
+          ? { reflection: previousEntry.reflection }
+          : {}),
+      };
+      dailyCheckIns[date] = entry;
+    }
+    const nextDailyCheckIns = Object.keys(dailyCheckIns).length ? dailyCheckIns : undefined;
+    const saved = store.save(store.value.map((goal) => goal.id === goalId
+      ? { ...goal, dailyCheckIns: nextDailyCheckIns, updatedAt: now }
+      : goal));
+    if (saved) showNotice(cleared ? localCopy.statusCleared : localCopy.statusSaved);
+  };
+
+  const saveDailyReflection = (goalId: string, date: string, reflection: string) => {
+    const current = store.value.find((goal) => goal.id === goalId);
+    if (!current || current.dailyCheckIns?.[date]?.status !== 'missed') return;
+    const now = new Date().toISOString();
+    const trimmedReflection = reflection.trim().slice(0, 500);
+    const dailyCheckIns = {
+      ...(current.dailyCheckIns ?? {}),
+      [date]: {
+        ...current.dailyCheckIns[date],
+        ...(trimmedReflection ? { reflection: trimmedReflection } : { reflection: undefined }),
+        updatedAt: now,
+      },
+    };
+    if (store.save(store.value.map((goal) => goal.id === goalId ? { ...goal, dailyCheckIns, updatedAt: now } : goal))) {
+      showNotice(localCopy.reflectionSaved);
+    }
   };
 
   const submit = form.handleSubmit((values) => {
@@ -223,6 +360,7 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
       metricCurrent,
       metricUnit: values.metric === 'quantity' ? values.metricUnit.trim() : '',
       tasks,
+      dailyCheckIns: current?.dailyCheckIns,
       createdAt: current?.createdAt ?? now,
       updatedAt: now,
     };
@@ -346,27 +484,27 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
         <div className="flex items-start gap-3">
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#dcebe4] text-[#35614f] dark:bg-[#294538] dark:text-[#b5d9c4]"><Flag size={18} /></span>
           <div>
-            <p className="text-[12px] font-semibold text-[#47796c]">Bir kichik qadamdan boshlang</p>
-            <h2 className="mt-1 font-serif text-[25px] leading-tight">{editingId ? 'Maqsadni tahrirlash' : 'Yangi maqsad'}</h2>
+            <p className="text-[12px] font-semibold text-[#47796c]">{t('Bir kichik qadamdan boshlang')}</p>
+            <h2 className="mt-1 font-serif text-[25px] leading-tight">{editingId ? t('Maqsadni tahrirlash') : t('Yangi maqsad')}</h2>
           </div>
         </div>
 
         <Form {...form}>
           <form onSubmit={submit} className="mt-5 space-y-5">
             <div>
-              <label htmlFor="goal-title" className="text-[13px] font-medium">Maqsadingiz</label>
-              <input id="goal-title" {...form.register('title')} maxLength={100} placeholder="Masalan, kuniga 20 daqiqa kitob o‘qish" className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-3.5 text-[14px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-title" />
+              <label htmlFor="goal-title" className="text-[13px] font-medium">{t('Maqsadingiz')}</label>
+              <input id="goal-title" {...form.register('title')} maxLength={100} placeholder={t('Masalan, kuniga 20 daqiqa kitob o‘qish')} className="mt-2 min-h-12 w-full rounded-xl border border-border bg-background px-3.5 text-[14px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-title" />
             </div>
 
             <fieldset>
-              <legend className="text-[13px] font-medium">Toifa</legend>
+              <legend className="text-[13px] font-medium">{t('Toifa')}</legend>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {categoryOptions.map(({ value, label, icon: CategoryIcon, selected, iconColor }) => {
                   const active = form.watch('category') === value;
                   return (
                     <button key={value} type="button" onClick={() => form.setValue('category', value, { shouldDirty: true })} aria-pressed={active} className={`flex min-h-12 items-center gap-2.5 rounded-xl border px-3 py-2 text-left text-[13px] font-semibold transition-colors ${active ? selected : 'border-border bg-background hover:bg-muted'}`} data-testid={`button-goal-category-${value}`}>
                       <CategoryIcon size={17} className={iconColor} />
-                      {label}
+                      {t(label)}
                     </button>
                   );
                 })}
@@ -374,47 +512,47 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
             </fieldset>
 
             <fieldset>
-              <legend className="text-[13px] font-medium">Muddat</legend>
+              <legend className="text-[13px] font-medium">{t('Muddat')}</legend>
               <div className="mt-2 flex flex-wrap gap-2">
                 {goalHorizons.map((horizon) => (
                   <button key={horizon} type="button" onClick={() => chooseHorizon(horizon)} aria-pressed={selectedHorizon === horizon} className={`min-h-10 rounded-full border px-3.5 py-2 text-[12px] font-semibold transition-colors ${selectedHorizon === horizon ? 'border-[#35614f] bg-[#35614f] text-white dark:border-[#b5d9c4] dark:bg-[#b5d9c4] dark:text-[#20392d]' : 'border-border bg-background text-muted-foreground hover:border-[#8fb59b] hover:text-foreground'}`} data-testid={`button-goal-horizon-${horizon}`}>
-                    {horizonLabels[horizon]}
+                    {horizonLabel(horizon)}
                   </button>
                 ))}
               </div>
             </fieldset>
 
             <div>
-              <label htmlFor="goal-date" className="text-[13px] font-medium">Tugash sanasi</label>
+              <label htmlFor="goal-date" className="text-[13px] font-medium">{t('Tugash sanasi')}</label>
               <div className="relative mt-2">
                 <CalendarRange size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input id="goal-date" type="date" required={selectedHorizon === 'free'} {...form.register('targetDate')} className="min-h-12 w-full rounded-xl border border-border bg-background pl-10 pr-3 text-[13px] outline-none focus:border-[#8fb59b]" data-testid="input-goal-date" />
               </div>
               <p className="mt-1.5 text-[11px] text-muted-foreground">
-                {selectedHorizon === 'free' ? 'Erkin muddat uchun sanani kalendardan tanlang.' : 'Muddatni tanlaganingizda sana avtomatik belgilanadi; xohlasangiz o‘zgartiring.'}
+                {selectedHorizon === 'free' ? t('Erkin muddat uchun sanani kalendardan tanlang.') : t('Muddatni tanlaganingizda sana avtomatik belgilanadi; xohlasangiz o‘zgartiring.')}
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="goal-description" className="text-[13px] font-medium">Qisqacha izoh <span className="text-muted-foreground">(ixtiyoriy)</span></label>
-                <textarea id="goal-description" {...form.register('description')} rows={3} maxLength={600} placeholder="Maqsad haqida qisqacha..." className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-description" />
+                <label htmlFor="goal-description" className="text-[13px] font-medium">{t('Qisqacha izoh')} <span className="text-muted-foreground">{t('(ixtiyoriy)')}</span></label>
+                <textarea id="goal-description" {...form.register('description')} rows={3} maxLength={600} placeholder={t('Maqsad haqida qisqacha...')} className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-description" />
               </div>
               <div>
-                <label htmlFor="goal-motivation" className="text-[13px] font-medium">Motivatsiya <span className="text-muted-foreground">(ixtiyoriy)</span></label>
-                <textarea id="goal-motivation" {...form.register('motivation')} rows={3} maxLength={600} placeholder="Nega bu maqsad siz uchun muhim?" className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-motivation" />
+                <label htmlFor="goal-motivation" className="text-[13px] font-medium">{t('Motivatsiya')} <span className="text-muted-foreground">{t('(ixtiyoriy)')}</span></label>
+                <textarea id="goal-motivation" {...form.register('motivation')} rows={3} maxLength={600} placeholder={t('Nega bu maqsad siz uchun muhim?')} className="mt-2 w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-[13px] leading-relaxed outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-motivation" />
               </div>
             </div>
 
             <fieldset>
-              <legend className="text-[13px] font-medium">Bajarilishni qanday o‘lchaysiz?</legend>
+              <legend className="text-[13px] font-medium">{t('Bajarilishni qanday o‘lchaysiz?')}</legend>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {metricOptions.map(({ value, label, detail, icon: MetricIcon }) => {
                   const active = selectedMetric === value;
                   return (
                     <button key={value} type="button" onClick={() => chooseMetric(value)} aria-pressed={active} className={`min-h-[68px] rounded-xl border px-3 py-2.5 text-left transition-colors ${active ? 'border-[#6e9a7c] bg-[#edf4ee] dark:border-[#6e9a7c] dark:bg-[#24392c]' : 'border-border bg-background hover:bg-muted'}`} data-testid={`button-goal-metric-${value}`}>
-                      <span className="flex items-center gap-2 text-[12px] font-semibold"><MetricIcon size={15} className={active ? 'text-[#35614f] dark:text-[#b5d9c4]' : 'text-muted-foreground'} />{label}</span>
-                      <span className="mt-1 block pl-[23px] text-[10px] leading-snug text-muted-foreground">{detail}</span>
+                      <span className="flex items-center gap-2 text-[12px] font-semibold"><MetricIcon size={15} className={active ? 'text-[#35614f] dark:text-[#b5d9c4]' : 'text-muted-foreground'} />{t(label)}</span>
+                      <span className="mt-1 block pl-[23px] text-[10px] leading-snug text-muted-foreground">{t(detail)}</span>
                     </button>
                   );
                 })}
@@ -425,58 +563,84 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
               <div className="grid gap-3 rounded-2xl bg-muted/60 p-3 sm:grid-cols-2">
                 <div>
                   <label htmlFor="goal-metric-target" className="text-[12px] font-medium">
-                    {selectedMetric === 'time' ? 'Kerakli vaqt (daq.)' : 'Maqsadli miqdor'}
+                    {selectedMetric === 'time' ? t('Kerakli vaqt (daq.)') : t('Maqsadli miqdor')}
                   </label>
                   <input id="goal-metric-target" type="number" min="1" step={selectedMetric === 'time' ? 1 : 'any'} {...form.register('metricTarget', { valueAsNumber: true })} className="mt-1.5 min-h-10 w-full rounded-lg border border-border bg-background px-3 text-[13px] outline-none focus:border-[#8fb59b]" data-testid="input-goal-metric-target" />
                 </div>
                 {selectedMetric === 'quantity' ? (
                   <div>
-                    <label htmlFor="goal-metric-unit" className="text-[12px] font-medium">Birlik (ixtiyoriy)</label>
-                    <input id="goal-metric-unit" {...form.register('metricUnit')} maxLength={24} placeholder="sahifa, km..." className="mt-1.5 min-h-10 w-full rounded-lg border border-border bg-background px-3 text-[13px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-metric-unit" />
+                    <label htmlFor="goal-metric-unit" className="text-[12px] font-medium">{localCopy.unitLabel} {t('(ixtiyoriy)')}</label>
+                    <input id="goal-metric-unit" {...form.register('metricUnit')} maxLength={24} placeholder={t('sahifa, km...')} className="mt-1.5 min-h-10 w-full rounded-lg border border-border bg-background px-3 text-[13px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" data-testid="input-goal-metric-unit" />
                   </div>
                 ) : (
-                  <p className="self-end pb-2 text-[11px] leading-relaxed text-muted-foreground">Maqsadga erishgan vaqtingizda kartada daqiqalarni qo‘shib boring.</p>
+                  <p className="self-end pb-2 text-[11px] leading-relaxed text-muted-foreground">{t('Maqsadga erishgan vaqtingizda kartada daqiqalarni qo‘shib boring.')}</p>
                 )}
               </div>
             )}
-            {selectedMetric === 'percentage' && <p className="rounded-xl bg-muted/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">Maqsad kartasidagi slayder yordamida bajarilish foizini istalgan payt yangilang.</p>}
+            {selectedMetric === 'percentage' && <p className="rounded-xl bg-muted/60 px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">{t('Maqsad kartasidagi slayder yordamida bajarilish foizini istalgan payt yangilang.')}</p>}
 
             <fieldset>
-              <legend className="text-[13px] font-medium">Qadamlar <span className="text-muted-foreground">(ixtiyoriy)</span></legend>
+              <legend className="text-[13px] font-medium">{t('Qadamlar')} <span className="text-muted-foreground">{t('(ixtiyoriy)')}</span></legend>
               <div className="mt-2 space-y-2">
                 {formTasks.map((task, index) => (
                   <div key={task.id} className="flex items-center gap-2">
-                    <button type="button" onClick={() => setFormTasks((current) => current.map((item) => item.id === task.id ? { ...item, done: !item.done } : item))} aria-label={task.done ? 'Qadamni bajarilmagan deb belgilash' : 'Qadamni bajarildi deb belgilash'} aria-pressed={task.done} className={`grid size-10 shrink-0 place-items-center rounded-xl border ${task.done ? 'border-[#6e9a7c] bg-[#6e9a7c] text-white' : 'border-border bg-background text-muted-foreground'}`} data-testid={`button-edit-goal-task-${task.id}`}>
+                    <button type="button" onClick={() => setFormTasks((current) => current.map((item) => item.id === task.id ? { ...item, done: !item.done } : item))} aria-label={task.done ? localCopy.taskUndoneAria : localCopy.taskDoneAria} aria-pressed={task.done} className={`grid size-10 shrink-0 place-items-center rounded-xl border ${task.done ? 'border-[#6e9a7c] bg-[#6e9a7c] text-white' : 'border-border bg-background text-muted-foreground'}`} data-testid={`button-edit-goal-task-${task.id}`}>
                       {task.done ? <Check size={16} /> : <Circle size={15} />}
                     </button>
-                    <input value={task.text} onChange={(event) => setFormTasks((current) => current.map((item) => item.id === task.id ? { ...item, text: event.target.value } : item))} maxLength={140} placeholder={`Qadam ${index + 1}`} className="min-h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-[12px] outline-none placeholder:text-muted-foreground/60 focus:border-[#8fb59b]" aria-label={`Qadam ${index + 1}`} data-testid={`input-edit-goal-task-${task.id}`} />
-                    <button type="button" onClick={() => setFormTasks((current) => current.filter((item) => item.id !== task.id))} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Qadamni o‘chirish" data-testid={`button-remove-goal-task-${task.id}`}><X size={16} /></button>
+                    <input value={task.text} onChange={(event) => setFormTasks((current) => current.map((item) => item.id === task.id ? { ...item, text: event.target.value } : item))} maxLength={140} placeholder={localCopy.taskPlaceholder(index + 1)} className="min-h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-[12px] outline-none placeholder:text-muted-foreground/60 focus:border-[#8fb59b]" aria-label={localCopy.taskPlaceholder(index + 1)} data-testid={`input-edit-goal-task-${task.id}`} />
+                    <button type="button" onClick={() => setFormTasks((current) => current.filter((item) => item.id !== task.id))} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={t('Qadamni o‘chirish')} data-testid={`button-remove-goal-task-${task.id}`}><X size={16} /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setFormTasks((current) => current.length >= 16 ? current : [...current, { id: crypto.randomUUID(), text: '', done: false }])} disabled={formTasks.length >= 16} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-dashed border-border px-3 text-[12px] font-semibold text-muted-foreground hover:border-[#8fb59b] hover:text-foreground disabled:opacity-50" data-testid="button-add-goal-milestone">
-                  <Plus size={15} /> Qadam qo‘shish
+                  <Plus size={15} /> {t('Qadam qo‘shish')}
                 </button>
               </div>
-              <p className="mt-1.5 text-[11px] text-muted-foreground">Bajarilgan qadamlar tanlangan o‘lchov “Qadamlar” bo‘lsa, foizni avtomatik hisoblaydi.</p>
+              <p className="mt-1.5 text-[11px] text-muted-foreground">{t('Bajarilgan qadamlar tanlangan o‘lchov “Qadamlar” bo‘lsa, foizni avtomatik hisoblaydi.')}</p>
             </fieldset>
 
-            {(formError || store.error) && <p className="text-[13px] text-destructive" role="alert" data-testid="status-goal-error">{formError || store.error}</p>}
+            {(formError || store.error) && <p className="text-[13px] text-destructive" role="alert" data-testid="status-goal-error">{t(formError || store.error)}</p>}
             <div className="flex gap-2">
               <button type="submit" disabled={store.status !== 'ready'} className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-[14px] font-semibold text-primary-foreground disabled:opacity-50" data-testid="button-save-goal">
-                <Check size={17} />{editingId ? 'Saqlash' : 'Maqsadni qo‘shish'}
+                <Check size={17} />{editingId ? t('Saqlash') : t('Maqsadni qo‘shish')}
               </button>
-              {editingId && <button type="button" onClick={resetComposer} className="grid size-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground" aria-label="Tahrirni bekor qilish" data-testid="button-cancel-goal-edit"><X size={16} /></button>}
+              {editingId && <button type="button" onClick={resetComposer} className="grid size-11 place-items-center rounded-xl border border-border bg-background text-muted-foreground hover:text-foreground" aria-label={t('Tahrirni bekor qilish')} data-testid="button-cancel-goal-edit"><X size={16} /></button>}
             </div>
           </form>
         </Form>
-        <p className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">Maqsadlar va qadamlar shu brauzerda saqlanadi.</p>
+        <p className="mt-4 border-t border-border pt-3 text-[10px] leading-relaxed text-muted-foreground">{t('Maqsadlar va qadamlar shu brauzerda saqlanadi.')}</p>
       </section>
 
-      <section className="min-w-0" aria-label="Maqsadlar ro‘yxati">
-        <div className="flex flex-wrap gap-2 rounded-2xl border border-card-border bg-card p-3" role="tablist" aria-label="Maqsad muddatlari">
-          {periodFilters.map((value) => <button key={value} type="button" role="tab" aria-selected={period === value} onClick={() => setPeriod(value)} className={`min-h-10 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-colors ${period === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-goal-${value}`}>{value === 'all' ? 'Barchasi' : horizonLabels[value]}</button>)}
+      <section className="min-w-0" aria-label={t('Maqsadlar ro‘yxati')}>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-card-border bg-card p-3">
+          {!showMissedDays && <div className="flex flex-wrap gap-2" role="tablist" aria-label={t('Maqsad muddatlari')}>
+            {periodFilters.map((value) => <button key={value} type="button" role="tab" aria-selected={period === value} onClick={() => setPeriod(value)} className={`min-h-10 rounded-xl px-3.5 py-2 text-[12px] font-semibold transition-colors ${period === value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-goal-${value}`}>{value === 'all' ? t('Barchasi') : horizonLabel(value)}</button>)}
+          </div>}
+          <button type="button" onClick={() => setShowMissedDays((current) => !current)} aria-pressed={showMissedDays} aria-label={localCopy.missedViewAria} className={`min-h-10 rounded-xl px-3.5 py-2 text-[11px] font-semibold transition-colors ${showMissedDays ? 'bg-primary text-primary-foreground' : 'border border-border bg-background text-muted-foreground hover:text-foreground'}`} data-testid="button-goal-missed-view">
+            {localCopy.missedView} · {new Intl.NumberFormat(getCurrentIntlLocale()).format(missedEntries.length)}
+          </button>
         </div>
-        {store.status === 'loading' ? <div className="mt-4 h-48 rounded-[22px] skeleton" aria-label="Maqsadlar yuklanmoqda" /> : store.status === 'error' ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-[12px]" role="alert">{store.error}</div> : visibleGoals.length ? (
+        {store.status === 'loading' ? <div className="mt-4 h-48 rounded-[22px] skeleton" aria-label={t('Maqsadlar yuklanmoqda')} /> : store.status === 'error' ? <div className="mt-4 rounded-2xl border border-destructive/30 bg-destructive/5 p-5 text-[12px]" role="alert">{t(store.error)}</div> : showMissedDays ? (
+          <section className="mt-4 rounded-[22px] border border-card-border bg-card p-4 sm:p-5" aria-label={localCopy.missedSummary}>
+            <h2 className="font-serif text-[22px]">{localCopy.missedSummary}</h2>
+            {missedEntries.length ? (
+              <ul className="mt-3 space-y-2">
+                {missedEntries.map(({ goal, date, reflection }) => (
+                  <li key={`${goal.id}-${date}`} className="rounded-xl border border-red-500/20 bg-red-50/60 p-3 dark:bg-red-950/20">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                      <p className="min-w-0 break-words text-[13px] font-semibold">{goal.title}</p>
+                      <time dateTime={date} className="shrink-0 text-[10px] text-muted-foreground">
+                        {new Intl.DateTimeFormat(getCurrentIntlLocale(), { dateStyle: 'medium' }).format(new Date(`${date}T12:00:00`))}
+                      </time>
+                    </div>
+                    <p className="mt-2 whitespace-pre-wrap break-words text-[12px] leading-relaxed text-muted-foreground">
+                      {reflection || localCopy.noReflection}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="mt-3 text-[12px] text-muted-foreground">{localCopy.noMissed}</p>}
+          </section>
+        ) : visibleGoals.length ? (
           <div className="mt-4 space-y-4">
             {visibleGoals.map((goal) => {
               const completed = goal.tasks.filter((task) => task.done).length;
@@ -492,9 +656,9 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${category.selected}`} data-testid={`badge-goal-category-${goal.id}`}>
-                          <CategoryIcon size={13} className={category.iconColor} />{category.label}
+                          <CategoryIcon size={13} className={category.iconColor} />{t(category.label)}
                         </span>
-                        <span className="rounded-full bg-[#dcebe4] px-2.5 py-1 text-[9px] font-semibold text-[#35614f] dark:bg-[#294538] dark:text-[#b5d9c4]">{horizonLabels[goal.horizon]}</span>
+                        <span className="rounded-full bg-[#dcebe4] px-2.5 py-1 text-[9px] font-semibold text-[#35614f] dark:bg-[#294538] dark:text-[#b5d9c4]">{horizonLabel(goal.horizon)}</span>
                         {goal.targetDate && <span className="inline-flex items-center gap-1 text-[9px] text-muted-foreground"><CalendarRange size={12} />{new Intl.DateTimeFormat(getCurrentIntlLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(`${goal.targetDate}T12:00:00`))}</span>}
                       </div>
                       <h3 className="mt-3 break-words font-serif text-[25px] leading-tight">{goal.title}</h3>
@@ -502,19 +666,19 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
                       {goal.motivation && <p className="mt-2 border-l-2 border-[#8fb59b] pl-3 text-[12px] italic leading-relaxed text-muted-foreground" data-testid={`text-goal-motivation-${goal.id}`}>{goal.motivation}</p>}
                     </div>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => editGoal(goal)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Maqsadni tahrirlash" data-testid={`button-edit-goal-${goal.id}`}><Pencil size={17} /></button>
-                      <button type="button" onClick={() => deleteGoal(goal)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label="Maqsadni o‘chirish" data-testid={`button-delete-goal-${goal.id}`}><Trash2 size={17} /></button>
+                      <button type="button" onClick={() => editGoal(goal)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground" aria-label={t('Maqsadni tahrirlash')} data-testid={`button-edit-goal-${goal.id}`}><Pencil size={17} /></button>
+                      <button type="button" onClick={() => deleteGoal(goal)} className="grid size-11 place-items-center rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive" aria-label={t('Maqsadni o‘chirish')} data-testid={`button-delete-goal-${goal.id}`}><Trash2 size={17} /></button>
                     </div>
                   </div>
 
                   <div className="mt-5">
                     <div className="flex items-center justify-between gap-3 text-[13px]">
-                      <span className="font-medium text-muted-foreground">{metric === 'milestones' ? 'Qadamlar bajarilishi' : metric === 'quantity' ? 'Miqdor bo‘yicha' : metric === 'time' ? 'Sarflangan vaqt' : 'Bajarilish foizi'}</span>
+                      <span className="font-medium text-muted-foreground">{metric === 'milestones' ? t('Qadamlar bajarilishi') : metric === 'quantity' ? t('Miqdor bo‘yicha') : metric === 'time' ? t('Sarflangan vaqt') : t('Bajarilish foizi')}</span>
                       <span className="font-semibold text-[#35614f] dark:text-[#b5d9c4]" data-testid={`text-goal-progress-${goal.id}`}>
                         {metric === 'milestones' ? `${progress}% · ${completed}/${goal.tasks.length}` : metric === 'quantity' ? `${currentValue} / ${targetValue} ${goal.metricUnit ?? ''}` : metric === 'time' ? `${formatGoalDuration(currentValue)} / ${formatGoalDuration(targetValue)}` : `${progress}%`}
                       </span>
                     </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${goal.title} bajarilishi`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${goal.title}: ${metric === 'milestones' ? t('Qadamlar bajarilishi') : metric === 'quantity' ? t('Miqdor bo‘yicha') : metric === 'time' ? t('Sarflangan vaqt') : t('Bajarilish foizi')}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
                       <div className="h-full rounded-full bg-[#6e9a7c] transition-[width]" style={{ width: `${progress}%` }} />
                     </div>
                   </div>
@@ -522,32 +686,38 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
                   {(metric === 'quantity' || metric === 'time') && (
                     <div className="mt-4 flex flex-wrap items-end gap-2 rounded-xl bg-muted/60 p-3">
                       <div className="min-w-0 flex-1">
-                        <label htmlFor={`goal-tracking-${goal.id}`} className="text-[11px] font-medium text-muted-foreground">{metric === 'time' ? 'Qo‘shiladigan daqiqa' : `Qo‘shiladigan miqdor${goal.metricUnit ? ` (${goal.metricUnit})` : ''}`}</label>
+                        <label htmlFor={`goal-tracking-${goal.id}`} className="text-[11px] font-medium text-muted-foreground">{metric === 'time' ? t('Qo‘shiladigan daqiqa') : `${localCopy.addQuantity}${goal.metricUnit ? ` (${goal.metricUnit})` : ''}`}</label>
                         <input id={`goal-tracking-${goal.id}`} type="number" min="0.1" step={metric === 'time' ? 1 : 'any'} value={trackingDrafts[goal.id] ?? ''} onChange={(event) => setTrackingDrafts((current) => ({ ...current, [goal.id]: event.target.value }))} placeholder={metric === 'time' ? '15' : '1'} className="mt-1.5 min-h-10 w-full rounded-lg border border-border bg-background px-3 text-[12px] outline-none placeholder:text-muted-foreground/60 focus:border-[#8fb59b]" data-testid={`input-goal-tracking-${goal.id}`} />
                       </div>
-                      <button type="button" onClick={() => addTrackedAmount(goal)} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#dcebe4] px-3 text-[11px] font-semibold text-[#35614f] hover:bg-[#c5decf] dark:bg-[#294538] dark:text-[#b5d9c4]" data-testid={`button-add-goal-tracking-${goal.id}`}><Plus size={14} />{metric === 'time' ? 'Vaqt qo‘shish' : 'Qo‘shish'}</button>
+                      <button type="button" onClick={() => addTrackedAmount(goal)} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-[#dcebe4] px-3 text-[11px] font-semibold text-[#35614f] hover:bg-[#c5decf] dark:bg-[#294538] dark:text-[#b5d9c4]" data-testid={`button-add-goal-tracking-${goal.id}`}><Plus size={14} />{metric === 'time' ? t('Vaqt qo‘shish') : t('Qo‘shish')}</button>
                     </div>
                   )}
                   {metric === 'percentage' && (
                     <div className="mt-4 rounded-xl bg-muted/60 px-3 py-3">
                       <div className="mb-2 flex items-center justify-between text-[11px]">
-                        <label htmlFor={`goal-percentage-${goal.id}`} className="font-medium text-muted-foreground">Foizni yangilang</label>
+                          <label htmlFor={`goal-percentage-${goal.id}`} className="font-medium text-muted-foreground">{t('Foizni yangilang')}</label>
                         <span className="font-semibold text-[#35614f] dark:text-[#b5d9c4]">{progress}%</span>
                       </div>
-                      <input id={`goal-percentage-${goal.id}`} type="range" min="0" max="100" step="1" value={progress} onChange={(event) => updateMetricCurrent(goal.id, Number(event.target.value))} className="w-full accent-[#6e9a7c]" aria-label={`${goal.title} bajarilish foizi`} data-testid={`input-goal-percentage-${goal.id}`} />
+                      <input id={`goal-percentage-${goal.id}`} type="range" min="0" max="100" step="1" value={progress} onChange={(event) => updateMetricCurrent(goal.id, Number(event.target.value))} className="w-full accent-[#6e9a7c]" aria-label={`${goal.title}: ${t('Bajarilish foizi')}`} data-testid={`input-goal-percentage-${goal.id}`} />
                     </div>
                   )}
 
+                  <GoalDailyTracker
+                    goal={goal}
+                    onSetStatus={(date, status) => updateDailyStatus(goal.id, date, status)}
+                    onSaveReflection={(date, reflection) => saveDailyReflection(goal.id, date, reflection)}
+                  />
+
                   <div className="mt-5 border-t border-border/70 pt-4">
-                    <p className="mb-2 text-[13px] font-semibold text-muted-foreground">Qadamlar · {completed}/{goal.tasks.length}</p>
+                    <p className="mb-2 text-[13px] font-semibold text-muted-foreground">{t('Qadamlar')} · {completed}/{goal.tasks.length}</p>
                     {goal.tasks.length ? <ul className="space-y-1.5">{goal.tasks.map((task) => <li key={task.id} className="flex items-start gap-2 rounded-lg py-1">
-                      <button type="button" onClick={() => toggleTask(goal.id, task.id)} className={`grid size-10 shrink-0 place-items-center rounded-xl border ${task.done ? 'border-[#6e9a7c] bg-[#6e9a7c] text-white' : 'border-border text-transparent hover:border-[#6e9a7c]'}`} aria-label={task.done ? 'Qadamni bajarilmagan deb belgilash' : 'Qadamni bajarildi deb belgilash'} aria-pressed={task.done} data-testid={`button-toggle-goal-task-${task.id}`}>{task.done ? <Check size={17} /> : <Circle size={15} />}</button>
+                      <button type="button" onClick={() => toggleTask(goal.id, task.id)} className={`grid size-10 shrink-0 place-items-center rounded-xl border ${task.done ? 'border-[#6e9a7c] bg-[#6e9a7c] text-white' : 'border-border text-transparent hover:border-[#6e9a7c]'}`} aria-label={task.done ? localCopy.taskUndoneAria : localCopy.taskDoneAria} aria-pressed={task.done} data-testid={`button-toggle-goal-task-${task.id}`}>{task.done ? <Check size={17} /> : <Circle size={15} />}</button>
                       <span className={`min-w-0 flex-1 py-2 text-[13px] leading-relaxed ${task.done ? 'text-muted-foreground line-through' : ''}`}>{task.text}</span>
-                      <button type="button" onClick={() => removeTask(goal.id, task.id)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground/60 hover:text-destructive" aria-label="Qadamni o‘chirish" data-testid={`button-delete-goal-task-${task.id}`}><X size={17} /></button>
-                    </li>)}</ul> : <p className="text-[13px] text-muted-foreground">Hozircha qadam qo‘shilmagan.</p>}
+                      <button type="button" onClick={() => removeTask(goal.id, task.id)} className="grid size-10 shrink-0 place-items-center rounded-xl text-muted-foreground/60 hover:text-destructive" aria-label={t('Qadamni o‘chirish')} data-testid={`button-delete-goal-task-${task.id}`}><X size={17} /></button>
+                    </li>)}</ul> : <p className="text-[13px] text-muted-foreground">{t('Hozircha qadam qo‘shilmagan.')}</p>}
                     <div className="mt-3 flex gap-2">
-                      <input value={taskDrafts[goal.id] ?? ''} onChange={(event) => setTaskDrafts((current) => ({ ...current, [goal.id]: event.target.value }))} maxLength={140} placeholder="Keyingi qadamni yozing..." className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" aria-label="Yangi qadam" data-testid={`input-goal-task-${goal.id}`} />
-                      <button type="button" onClick={() => addTask(goal)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#dcebe4] text-[#35614f] hover:bg-[#c5decf] dark:bg-[#294538] dark:text-[#b5d9c4]" aria-label="Qadam qo‘shish" data-testid={`button-add-goal-task-${goal.id}`}><Plus size={18} /></button>
+                      <input value={taskDrafts[goal.id] ?? ''} onChange={(event) => setTaskDrafts((current) => ({ ...current, [goal.id]: event.target.value }))} maxLength={140} placeholder={t('Keyingi qadamni yozing...')} className="min-h-11 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground/65 focus:border-[#8fb59b]" aria-label={t('Yangi qadam')} data-testid={`input-goal-task-${goal.id}`} />
+                      <button type="button" onClick={() => addTask(goal)} className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#dcebe4] text-[#35614f] hover:bg-[#c5decf] dark:bg-[#294538] dark:text-[#b5d9c4]" aria-label={t('Qadam qo‘shish')} data-testid={`button-add-goal-task-${goal.id}`}><Plus size={18} /></button>
                     </div>
                   </div>
                 </article>
@@ -557,11 +727,11 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
         ) : (
           <div className="mt-4 rounded-[22px] border border-dashed border-[#cfc3a5] bg-[#f7f0df] px-5 py-12 text-center dark:border-[#584c37] dark:bg-[#2b271f]">
             <Flag size={22} className="mx-auto text-[#6e9a7c]" />
-            <h2 className="mt-3 font-serif text-[24px]">{store.value.length ? 'Bu muddatda maqsad yo‘q.' : 'Katta niyatni kichik qadamga bo‘ling.'}</h2>
-            <p className="mx-auto mt-2 max-w-sm text-[11px] leading-relaxed text-muted-foreground">{store.value.length ? 'Boshqa muddatni tanlang yoki yangi maqsad kiriting.' : 'Toifa va muddatni tanlang, so‘ng maqsadni kichik qadamlarga ajrating.'}</p>
+            <h2 className="mt-3 font-serif text-[24px]">{store.value.length ? t('Bu muddatda maqsad yo‘q.') : t('Katta niyatni kichik qadamga bo‘ling.')}</h2>
+            <p className="mx-auto mt-2 max-w-sm text-[11px] leading-relaxed text-muted-foreground">{store.value.length ? t('Boshqa muddatni tanlang yoki yangi maqsad kiriting.') : t('Toifa va muddatni tanlang, so‘ng maqsadni kichik qadamlarga ajrating.')}</p>
           </div>
         )}
-        {store.error && store.status === 'ready' && <p className="mt-3 text-[11px] text-destructive" role="alert" data-testid="status-goals-storage-error">{store.error}</p>}
+        {store.error && store.status === 'ready' && <p className="mt-3 text-[11px] text-destructive" role="alert" data-testid="status-goals-storage-error">{t(store.error)}</p>}
       </section>
       {notice && <FlashNotice message={notice} />}
     </div>
@@ -569,10 +739,14 @@ function GoalsBoard({ storageKey }: { storageKey: string }) {
 }
 
 export function GoalsPage() {
+  const { language } = useI18n();
+  const localCopy = GOALS_LOCAL_COPY[language];
+  const t = (text: string) => translateUiText(text, language);
+
   return (
     <UserStoragePage>
       {(userId) => (
-        <ModulePageFrame eyebrow="Kichik qadamlar" title="Maqsadlar" description="Bir maqsad tanlang, so‘ng uni kichik qadamlarga ajrating." icon={<Flag size={22} strokeWidth={1.7} />}>
+        <ModulePageFrame eyebrow={localCopy.eyebrow} title={t('Maqsadlar')} description={t('Bir maqsad tanlang, so‘ng uni kichik qadamlarga ajrating.')} icon={<Flag size={22} strokeWidth={1.7} />}>
           <GoalsBoard key={userId} storageKey={userStorageKey('goals', userId)} />
         </ModulePageFrame>
       )}
