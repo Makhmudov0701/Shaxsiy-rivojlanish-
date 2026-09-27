@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Task, TaskCategory, TaskInput, TaskPriority, TaskSubtask, TaskUpdate } from '@workspace/api-client-react';
 import { getListTasksQueryKey, useCreateTask, useDeleteTask, useListTasks, useUpdateTask } from '@workspace/api-client-react';
 import { Archive, CalendarDays, Check, Circle, Clock3, ListTodo, Pencil, Plus, Timer, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { formatContentDeleteConfirmation, formatSubtaskCompletionAriaLabel, formatTaskPomodoroAriaLabel, getCurrentIntlLocale, useI18n } from '@/lib/i18n';
@@ -53,6 +53,7 @@ const filters: { value: TaskFilter; label: string }[] = [
 ];
 
 const emptyForm: TaskFormValues = { title: '', description: '', category: 'this_week', dueDate: '', priority: 'normal', subtasks: [] };
+const TASK_ARCHIVE_FADE_MS = 300;
 const priorities: Record<TaskPriority, { label: string; className: string }> = {
   low: { label: 'Past', className: 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200' },
   normal: { label: 'O‘rtacha', className: 'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200' },
@@ -64,8 +65,8 @@ function taskIsInCurrentPeriod(task: Task, filter: TaskFilter) {
   return false;
 }
 
-function isArchivedTask(task: Task, now = Date.now()) {
-  return task.completed && Boolean(task.completedAt) && now - Date.parse(task.completedAt as string) > 7 * 24 * 60 * 60 * 1000;
+function isArchivedTask(task: Task) {
+  return task.completed;
 }
 
 function formatDueDate(value: string) {
@@ -169,18 +170,17 @@ export function TasksPage() {
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [pomodoroTask, setPomodoroTask] = useState('');
   const [showArchived, setShowArchived] = useState(false);
-  const [archiveNow, setArchiveNow] = useState(() => Date.now());
+  const [fadingTaskIds, setFadingTaskIds] = useState<Set<number>>(() => new Set());
 
   const tasks = tasksQuery.data ?? [];
-  useEffect(() => {
-    const interval = window.setInterval(() => setArchiveNow(Date.now()), 60_000);
-    return () => window.clearInterval(interval);
-  }, []);
 
-  const archivedTasks = useMemo(() => tasks.filter((task) => isArchivedTask(task, archiveNow)), [archiveNow, tasks]);
+  const archivedTasks = useMemo(() => tasks.filter(isArchivedTask), [tasks]);
   const visibleTasks = useMemo(() => {
-    const filtered = tasks.filter((task) => (showArchived ? isArchivedTask(task, archiveNow) : !isArchivedTask(task, archiveNow))
-      && taskIsInCurrentPeriod(task, filter));
+    const filtered = tasks.filter((task) => (
+      showArchived
+        ? isArchivedTask(task)
+        : (!isArchivedTask(task) || fadingTaskIds.has(task.id)) && taskIsInCurrentPeriod(task, filter)
+    ));
     return [...filtered].sort((a, b) => {
       if (a.completed !== b.completed) return a.completed ? 1 : -1;
       const priorityOrder: Record<TaskPriority, number> = { high: 0, normal: 1, low: 2 };
@@ -190,9 +190,10 @@ export function TasksPage() {
       if (b.dueDate) return 1;
       return b.createdAt.localeCompare(a.createdAt);
     });
-  }, [archiveNow, filter, showArchived, tasks]);
+  }, [fadingTaskIds, filter, showArchived, tasks]);
 
-  const completedCount = visibleTasks.filter((task) => task.completed).length;
+  const progressTasks = showArchived ? archivedTasks : tasks.filter((task) => taskIsInCurrentPeriod(task, filter));
+  const completedCount = progressTasks.filter((task) => task.completed).length;
   const mutationPending = createTask.isPending || updateTask.isPending;
 
   const closeComposer = () => {
@@ -242,9 +243,49 @@ export function TasksPage() {
 
   const toggleTask = (task: Task) => {
     setToggleError('');
-    updateTask.mutate({ id: task.id, data: { completed: !task.completed } }, {
-      onSuccess: invalidate,
-      onError: () => setToggleError('Topshiriq holatini saqlab bo‘lmadi. Qayta urinib ko‘ring.'),
+    const taskQueryKey = getListTasksQueryKey();
+    const previousTasks = queryClient.getQueryData<Task[]>(taskQueryKey);
+    const previousTask = previousTasks?.find((item) => item.id === task.id) ?? task;
+    const completed = !task.completed;
+    const shouldFadeOut = completed && !showArchived;
+    const fadeStartedAt = Date.now();
+    const clearFade = () => setFadingTaskIds((current) => {
+      if (!current.has(task.id)) return current;
+      const next = new Set(current);
+      next.delete(task.id);
+      return next;
+    });
+
+    if (shouldFadeOut) {
+      setFadingTaskIds((current) => new Set(current).add(task.id));
+    }
+    queryClient.setQueryData<Task[]>(taskQueryKey, (current) => current?.map((item) => item.id === task.id
+      ? {
+        ...item,
+        completed,
+        completedAt: completed ? item.completedAt ?? new Date(fadeStartedAt).toISOString() : null,
+        updatedAt: new Date(fadeStartedAt).toISOString(),
+      }
+      : item));
+
+    updateTask.mutate({ id: task.id, data: { completed } }, {
+      onSuccess: () => {
+        const finish = () => {
+          if (shouldFadeOut) clearFade();
+          invalidate();
+        };
+        const remainingFade = TASK_ARCHIVE_FADE_MS - (Date.now() - fadeStartedAt);
+        if (shouldFadeOut && remainingFade > 0) window.setTimeout(finish, remainingFade);
+        else finish();
+      },
+      onError: () => {
+        queryClient.setQueryData<Task[]>(taskQueryKey, (current) => {
+          if (!current || !previousTask) return previousTasks;
+          return current.map((item) => item.id === task.id ? previousTask : item);
+        });
+        if (shouldFadeOut) clearFade();
+        setToggleError('Topshiriq holatini saqlab bo‘lmadi. Qayta urinib ko‘ring.');
+      },
     });
   };
 
@@ -285,14 +326,14 @@ export function TasksPage() {
         </div>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-[22px] border border-card-border bg-card px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Joriy ko‘rinish</p><p className="mt-2 font-mono text-2xl text-foreground" data-testid="text-task-progress">{completedCount}<span className="text-muted-foreground">/{visibleTasks.length}</span></p><p className="mt-1 text-[11px] text-muted-foreground">bajarilgan topshiriq</p></div>
-          <div className="rounded-[22px] border border-card-border bg-card px-5 py-4 sm:col-span-2"><div className="flex items-center justify-between gap-3"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Sokin ritm</p><span className="font-mono text-[11px] text-muted-foreground">{visibleTasks.length ? Math.round((completedCount / visibleTasks.length) * 100) : 0}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#6ea883] transition-[width] duration-500" style={{ width: `${visibleTasks.length ? (completedCount / visibleTasks.length) * 100 : 0}%` }} /></div><p className="mt-2 text-[11px] text-muted-foreground">Bugungi rejalaringizga bosim emas, aniqlik qo‘shing.</p></div>
+          <div className="rounded-[22px] border border-card-border bg-card px-5 py-4"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Joriy ko‘rinish</p><p className="mt-2 font-mono text-2xl text-foreground" data-testid="text-task-progress">{completedCount}<span className="text-muted-foreground">/{progressTasks.length}</span></p><p className="mt-1 text-[11px] text-muted-foreground">bajarilgan topshiriq</p></div>
+          <div className="rounded-[22px] border border-card-border bg-card px-5 py-4 sm:col-span-2"><div className="flex items-center justify-between gap-3"><p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Sokin ritm</p><span className="font-mono text-[11px] text-muted-foreground">{progressTasks.length ? Math.round((completedCount / progressTasks.length) * 100) : 0}%</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-[#6ea883] transition-[width] duration-500" style={{ width: `${progressTasks.length ? (completedCount / progressTasks.length) * 100 : 0}%` }} /></div><p className="mt-2 text-[11px] text-muted-foreground">Bugungi rejalaringizga bosim emas, aniqlik qo‘shing.</p></div>
         </div>
 
          <div className="mt-8 flex flex-wrap items-center gap-2 rounded-[22px] border border-card-border bg-card p-2" role="tablist" aria-label="Topshiriqlar filtri">
-          {filters.map((item) => <button key={item.value} type="button" role="tab" aria-selected={filter === item.value} onClick={() => setFilter(item.value)} className={`min-h-10 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${filter === item.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-task-filter-${item.value}`}>{item.label}</button>)}
+          {filters.map((item) => <button key={item.value} type="button" role="tab" aria-selected={!showArchived && filter === item.value} onClick={() => { setFilter(item.value); setShowArchived(false); }} className={`min-h-10 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${!showArchived && filter === item.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid={`tab-task-filter-${item.value}`}>{item.label}</button>)}
            <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
-           <button type="button" role="tab" aria-selected={showArchived} onClick={() => setShowArchived(true)} className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${showArchived ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid="tab-task-archived"><Archive size={14} />{archiveCopy.archived}<span className="font-mono text-[10px] opacity-75">{archivedTasks.length}</span></button>
+            <button type="button" role="tab" aria-selected={showArchived} aria-label={`${archiveCopy.archived} (${archivedTasks.length})`} onClick={() => setShowArchived(true)} className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3.5 text-[12px] font-semibold transition-colors ${showArchived ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`} data-testid="tab-task-archived"><Archive size={14} />{archiveCopy.archived} ({archivedTasks.length})</button>
            {showArchived && <button type="button" role="tab" aria-selected={!showArchived} onClick={() => setShowArchived(false)} className="min-h-10 rounded-xl px-3.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground" data-testid="tab-task-active">{archiveCopy.active}</button>}
         </div>
 
@@ -306,8 +347,10 @@ export function TasksPage() {
            <div className="mt-5 space-y-3" aria-label={showArchived ? archiveCopy.archivedTitle : 'Topshiriqlar ro‘yxati'}>
             {visibleTasks.map((task) => {
               const meta = categories[task.category];
+              const isTransitionPending = fadingTaskIds.has(task.id);
+              const isFadingOut = isTransitionPending && !showArchived;
               return (
-                <article key={task.id} className={`group relative overflow-hidden rounded-[22px] border border-card-border bg-card px-4 py-4 shadow-sm transition-all duration-300 hover:border-[#b89c5c]/50 hover:shadow-md sm:px-5 ${task.completed ? 'opacity-70' : ''}`} data-testid={`card-task-${task.id}`}>
+                <article key={task.id} className={`group relative overflow-hidden rounded-[22px] border border-card-border bg-card px-4 py-4 shadow-sm transition-all duration-300 ease-out hover:border-[#b89c5c]/50 hover:shadow-md sm:px-5 ${isTransitionPending ? 'pointer-events-none' : ''} ${isFadingOut ? '-translate-x-1 scale-[.99] opacity-0' : task.completed ? 'opacity-70' : ''}`} data-testid={`card-task-${task.id}`} data-state={isFadingOut ? 'archiving' : undefined} aria-busy={isTransitionPending || undefined}>
                   <span className={`absolute inset-y-0 left-0 w-1 ${meta.dot}`} />
                   <div className="flex items-start gap-3 pl-1">
                     <button type="button" onClick={() => toggleTask(task)} disabled={updateTask.isPending} className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full border-2 transition-all duration-300 ${task.completed ? 'border-[#6ea883] bg-[#6ea883] text-[#17221c]' : 'border-border text-transparent hover:border-[#6ea883]'}`} aria-label={task.completed ? 'Bajarilmagan deb belgilash' : 'Bajarildi deb belgilash'} aria-pressed={task.completed} data-testid={`button-toggle-task-${task.id}`}>{task.completed ? <Check size={15} strokeWidth={2.5} /> : <Circle size={13} />}</button>
